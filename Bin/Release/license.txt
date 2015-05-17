@@ -1,0 +1,192 @@
+Scenome Platform Software License Agreement
+
+PLEASE READ THIS CONTRACT CAREFULLY. CLICKING THE BUTTON LABELED "ACCEPT" INDICATES ACCEPTANCE OF THE TERMS AND CONDITIONS SET FORTH BY THIS SOFTWARE LICENSE AGREEMENT. This Software License Agreement ( hereinafter "AGREEMENT" ) is entered into by and between Scenomics LLC ( hereinafter "LICENSOR" ) and you, your business, or your employer ( hereinafter "LICENSEE"). In consideration of the mutual covenants contained herein and other good and valuable consideration, the receipt and adequacy of which are hereby acknowledged, the parties agree as follows: 
+
+DEFINITIONS
+For the purposes of this AGREEMENT, definitions for the following terms are provided below:
+
+CONSIDERATION. "CONSIDERATION" shall mean something of value or benefit, including any of the following: 1.goods, 2. services, 3. compensation, 4. defrayment, 5. gratuity, 6. incentive, 7. largess, 8. reward, 9. stipend, 10. subsidy, 11. financial assistance, 12. work for hire, 13. fees, 14. payments, 15. profits, 16. revenue, 17. surcharges, 18. levies, 19. trades, 20. bartering,  21. donations, or 22. wages, given by both parties to an agreement that induces them to enter into the agreement to exchange mutual performances. 
+
+ORIGINAL EQUIPMENT. "ORIGINAL EQUIPMENT" shall mean any files included with the software installer at the time LICENSEE acquires the software installer from LICENSOR, and includes similar files subsequently provided to LICENSEE by LICENSOR, such as may be made available through patches or upgrades. 
+
+THE SOFTWARE. "THE SOFTWARE" shall mean the following components included as ORIGINAL EQUIPMENT, whether individually, in part, or as a whole: 
+   1. The file "SCENOME.EXE" ( hereinafter "SCENOME SHELL EXECUTABLE" ),
+   2. all Scenome Application files ( files ending with .SCENOMEAPP ),
+   3. all executable files ( files ending with .EXE ),
+   4. all dynamic linked libraries ( files ending with .DLL ),
+   5. all raster files ( files ending with .BMP, .TGA, .TIF, .PNG, .JPG, .DEM ),
+   6. all script files ( files ending with .SSL),
+   7. all GLSL files ( files ending with .GLSL, .VERT, .FRAG ),
+   8. all database files ( files ending with .BOX),
+   9. all C++ source code files ( files ending with .CPP ),
+   10. all C++ header code files ( files ending with .H ),
+   11. all object code files ( files ending with .LIB ),
+   12. all other source code files ( files ending with .INL ),
+   13. all solution files ( files ending with .SLN ),
+   14. all project files ( files ending with .VCPROJ ),
+   15. any other files which are copied onto LICENSEE'S computer during the installation process.
+   EVALUATION. "EVALUATION" shall mean installing and operating THE SOFTWARE for a period not longer than 30 consecutive days after LICENSEE first acquires THE SOFTWARE, for the sole purpose of evaluating the features and capabilities therein to determine whether or not THE SOFTWARE is suitable for a particular purpose. 
+   UPGRADE. "UPGRADE" shall mean any version of THE SOFTWARE released subsequent to the date on which LICENSEE first acquires THE SOFTWARE from LICENSOR. 
+   THIRD PARTY. "THIRD PARTY" shall mean any entity who is neither LICENSOR nor LICENSEE in the context of this AGREEMENT. 
+   DISSEMINATE. "DISSEMINATE" shall mean the act of translating, copying, transmitting, spreading, promulgating, furnishing, distributing, or providing THE SOFTWARE, through or by any means whatsoever, whether wholly or in part, to any THIRD PARTY. 
+   EXTENSION. "EXTENSION" shall mean, without regard to intent, purpose, packaging, or the presence or absence of trade dress, any file or collection of files produced in conjunction with THE SOFTWARE, or in accordance with the specifications therein, and stored on LICENSEE'S computer that 
+   1. arises from THE SOFTWARE, or 
+   2. due to accordance with specifications contained in THE SOFTWARE, relies upon, or requires for its operation, regardless of the nature or details thereof, any ORIGINAL EQUIPMENT included with THE SOFTWARE, or 
+   3. is designed, or implemented, or packaged for the express purpose of operating in conjunction with THE SOFTWARE, or 
+   4. is developed in accordance with THE SOFTWARE and therefore serves an ambiguous purpose, or fails to operate, when the ORIGINAL EQUIPMENT is not present on a computer or when the ORIGINAL EQUIPMENT is disabled. 
+   UNAUTHORIZED DERIVATIVE WORK. "UNAUTHORIZED DERIVATIVE WORK" shall mean any EXTENSION that includes, at the time of its DISSEMINATION by LICENSEE, any ORIGINAL EQUIPMENT included with THE SOFTWARE. 
+   AUTHORIZED EXTENSION. "AUTHORIZED EXTENSION" shall mean any EXTENSION that does not include, at the time of its DISSEMINATION by LICENSEE, any ORIGINAL EQUIPMENT included with THE SOFTWARE. 
+   COMPENSATION. "COMPENSATION" shall mean any form of CONSIDERATION provided to LICENSEE by a THIRD PARTY in exchange for goods or services arising from, or related to, THE SOFTWARE, or any EXTENSION, or AUTHORIZED EXTENSION, or UNAUTHORIZED DERIVATIVE WORK provided to a THIRD PARTY by LICENSEE. 
+   UNIQUE IDENTIFIERS. "UNIQUE IDENTIFIERS" shall mean, non-exhaustively, serial numbers, text strings, dialog boxes, and other features designed to identify THE SOFTWARE as the unique work of LICENSOR. 
+   SECURITY FEATURES. "SECURITY FEATURES" shall mean, non-exhaustively, features, techniques, watermarks, digital fingerprints, compilation into object code, and other methods designed to protect THE SOFTWARE from unauthorized use. 
+   BACKUP. "BACKUP" shall mean a single copy of THE SOFTWARE, made as permitted by law to protect LICENSEE from loss of data. 
+   COMMERCIAL USE. "COMMERCIAL USE" shall mean using THE SOFTWARE or any EXTENSION, or AUTHORIZED EXTENSION, or UNAUTHORIZED DERIVATIVE WORK, 
+   1. as the reason, origin, basis, root, or cause of any transaction between LICENSEE and any THIRD PARTY for which LICENSEE receives COMPENSATION, or
+   2. in a corporation, partnership, business, cooperative, or proprietorship, except for EVALUATION, or
+   3. to engage in any income producing activities regardless of the nature of such activities, or
+   4. to generate goodwill or other intangible assets, or
+   5. as a loss leader, or
+   6. to sell services or training, or
+   7. to create, sell, rent, or lease an application, product, or service, or
+   8. to engage in or to facilitate barter, or
+   9. to conduct any transaction subject to sales or use tax in any jurisdiction, or
+   10. as part of any transaction where there is a mutual exchange of CONSIDERATION.
+   PERSONAL USE. "PERSONAL USE" shall mean a single person using THE SOFTWARE on a single computer to 
+   1. develop EXTENSIONS for use solely on the same computer on which THE SOFTWARE is installed, or 
+   2. develop and DISSEMINATE to THIRD PARTIES any AUTHORIZED EXTENSIONS produced by LICENSEE, provided LICENSEE neither requests nor receives from any THIRD PARTY any COMPENSATION related to the AUTHORIZED EXTENSIONS. and provided that the following attribution accompanies each DISSEMINATED AUTHORIZED EXTENSIONS: "This application has been created with tools from Scenomics LLC. Please visit www.scenomics.com for more information and to obtain your copy of ScenomePlatform for your own personal use." 
+   LICENSED USER. "LICENSED USER" shall mean any employee or contractor performing work for LICENSEE'S benefit, for whom LICENSEE has purchased a license to operate THE SOFTWARE. 
+   INTERNAL USE. "INTERNAL USE" shall mean 1.) use of THE SOFTWARE, 2.) development and use of AUTHORIZED EXTENSIONS, and 3.) DISSEMINATION of AUTHORIZED EXTENSIONS by LICENSEE is restricted to LICENSED USERS. 
+   EXTERNAL USE. "EXTERNAL USE" shall mean 1.) use of THE SOFTWARE, 2.) development and use of AUTHORIZED EXTENSIONS, and 3.) DISSEMINATION of AUTHORIZED EXTENSIONS by LICENSEE to LICENSED USERS and to THIRD PARTIES. 
+Any terms not defined by this AGREEMENT shall be interpreted according to their generally accepted definitions. LICENSOR SHALL HAVE THE EXCLUSIVE RIGHT TO PROVIDE DEFINITIONS AS NEEDED TO RENDER THIS AGREEMENT ENFORCEABLE.
+THE AGREEMENT
+1. GRANT OF LICENSE 
+Provided LICENSEE complies with all the terms and conditions set forth by this AGREEMENT, and subject to any restrictions and limitations set forth herein, LICENSOR hereby grants to LICENSEE a limited, non-exclusive, non-transferable, revocable, license to install one (1) copy of THE SOFTWARE on a single computer. The following restrictions apply: 
+A. GRANT OF LICENSE FOR PERSONAL USE. IN THE EVENT LICENSEE DOES NOT PURCHASE FROM LICENSOR AN INTERNAL USE LICENSE OR EXTERNAL USE LICENSE, LICENSEE SHALL HAVE THE RIGHT TO: 
+   A.1. operate THE SOFTWARE for EVALUATION and,
+   A.2. operate THE SOFTWARE for PERSONAL USE and,
+   A.3. operate THE SOFTWARE for EXTERNAL USE provided LICENSEE neither requests nor receives from any THIRD PARTY any COMPENSATION related to the AUTHORIZED EXTENSIONS.
+IF THIS TERM APPLIES, TERM B AND TERM C SHALL NOT APPLY.
+B. GRANT OF LICENSE FOR INTERNAL USE. IN THE EVENT LICENSEE PURCHASES FROM LICENSOR AN INTERNAL USE LICENSE, LICENSEE SHALL HAVE THE RIGHT TO: 
+   B.1. operate THE SOFTWARE for EVALUATION and,
+   B.2. operate THE SOFTWARE for INTERNAL USE and,
+   B.3. DISSEMINATE any AUTHORIZED EXTENSIONS to other LICENSED USERS working for LICENSEE'S benefit.
+IF THIS TERM APPLIES, TERM A AND TERM C SHALL NOT APPLY.
+C. GRANT OF LICENSE FOR EXTERNAL USE. IN THE EVENT LICENSEE PURCHASES FROM LICENSOR AN EXTERNAL USE LICENSE, LICENSEE SHALL HAVE THE RIGHT TO: 
+   C.1. operate THE SOFTWARE for EVALUATION and,
+   C.2. operate THE SOFTWARE for COMMERCIAL USE and,
+   C.3. operate THE SOFTWARE for EXTERNAL USE.
+Provided LICENSEE complies with the terms of this AGREEMENT, LICENSEE shall retain the right to distribute EXTENSIONS even if LICENSEE'S right to use THE SOFTWARE to develop AUTHORIZED EXTENSIONS expires.
+IF THIS TERM APPLIES, TERM A SHALL NOT APPLY AND TERM B SHALL APPLY.
+Notwithstanding any rights granted herein, unless otherwise agreed in writing: 
+   The term of this AGREEMENT is three-hundred-and-sixty-five (365) days subsequent to the date on which LICENSEE is bound by this AGREEMENT.
+   LICENSEE SHALL NOT DISSEMINATE ANY UNAUTHORIZED DERIVATIVE WORK TO ANY THIRD PARTY.
+   THESE OBLIGATIONS SHALL SURVIVE TERMINATION OF THIS AGREEMENT.
+2. RESTRICTIONS 
+LICENSEE SHALL NOT OPERATE THE SOFTWARE FOR COMMERCIAL USE. NOTWITHSTANDING ANY RIGHTS GRANTED HEREIN, LICENSEE SHALL NOT DISSEMINATE ANY UNAUTHORIZED DERIVATIVE WORK TO ANY THIRD PARTY. THESE OBLIGATIONS SHALL SURVIVE TERMINATION OF THIS AGREEMENT. 
+3. RESTRICTIONS 
+THIS AGREEMENT IS NOT AN EXTERNAL USE LICENSE.
+NOTWITHSTANDING ANY RIGHTS GRANTED HEREIN, LICENSEE SHALL NOT DISSEMINATE ANY AUTHORIZED EXTENSION OR UNAUTHORIZED DERIVATIVE WORK TO ANY THIRD PARTY. THESE OBLIGATIONS SHALL SURVIVE TERMINATION OF THIS AGREEMENT. 
+4. RESTRICTIONS 
+NOTWITHSTANDING ANY RIGHTS GRANTED HEREIN, LICENSEE SHALL NOT DISSEMINATE ANY UNAUTHORIZED DERIVATIVE WORK TO ANY THIRD PARTY. THESE OBLIGATIONS SHALL SURVIVE TERMINATION OF THIS AGREEMENT. 
+5. NATURE OF THIS AGREEMENT 
+THE SOFTWARE IS LICENSED, NOT SOLD. 
+6. NO REFUNDS 
+ALL LICENSE SALES ARE FINAL. LICENSOR SHALL NOT HAVE ANY OBLIGATION WHATSOEVER TO PROVIDE LICENSEE WITH A REFUND. 
+7. NO SEPARATION OF COMPONENTS 
+THE SOFTWARE is licensed as a single product for use on a single computer. LICENSEE SHALL NOT SEPARATE THE SOFTWARE INTO ITS COMPONENTS FOR USE ON SEPARATE COMPUTERS. 
+8. BACKUP COPY 
+LICENSEE shall have the right to produce one (1) copy of THE SOFTWARE for backup or archival purposes. LICENSEE shall not transfer this BACKUP to any other person or entity. 
+9. TRADE SECRETS 
+THE SOFTWARE OBJECT CODE CONTAINS VALUABLE TRADE SECRETS. THE SOFTWARE SOURCE CODE IS CONVERTED FROM HUMAN-READABLE CHARACTERS TO MACHINE-READABLE OBJECT CODE ( HEREINAFTER "OBJECT CODE" ) PRIOR TO DISTRIBUTION FOR THE EXPRESS PURPOSE OF PREVENTING UNAUTHORIZED USE OF THE SOFTWARE AND TO PROTECT ANY TRADE SECRETS CONTAINED THEREIN. EXCEPT AS ALLOWED BY LAW, LICENSEE SHALL NOT ATTEMPT TO DERIVE ANY FORM OF SOURCE CODE FOR THE OBJECT CODE THROUGH REVERSE ENGINEERING, DECOMPILING, DISASSEMBLING, DECRYPTING, OR THROUGH ANY OTHER METHOD. ANY SUCH ACTIVITY SHALL CONSTITUTE CIRCUMVENTION OF A TECHNOLOGICAL MEASURE DESIGNED TO PROTECT THE SOFTWARE FROM UNAUTHORIZED USE AND MAY CONSTITUTE A VIOLATION OF UNITED STATES FEDERAL LAW. ANY RELEASE OF LICENSOR'S TRADE SECRETS MAY CAUSE IRREPARABLE HARM TO LICENSOR; THEREFORE IN ANY DISPUTE ARISING-FROM OR RELATED-TO THE TERMS OUTLINED BY THIS SECTION ( "TRADE SECRETS" ), INTERPRETATION SHALL BE CONSTRUED IN FAVOR OF LICENSOR. THESE OBLIGATIONS SHALL SURVIVE TERMINATION OF THIS AGREEMENT. 
+10. OWNERSHIP 
+LICENSOR shall retain all rights, title and ownership of THE SOFTWARE and LICENSEE shall not have any rights of ownership or other proprietary rights to THE SOFTWARE by virtue of this AGREEMENT, except the limited right to use THE SOFTWARE as described by this AGREEMENT. 
+11. NO MODIFICATION 
+LICENSEE shall not make any modifications to the Scenome Shell Executable, dynamically linked libraries ( files ending in ".DLL" ), or object code ( files ending in ".LIB" ) without the prior written consent of LICENSOR. In any event, all recommendations, modifications or derivations made by LICENSEE to THE SOFTWARE shall become the property of LICENSOR and shall be governed by this AGREEMENT. 
+12. NON-DISSEMINATION 
+LICENSEE shall not translate, copy, distribute or otherwise DISSEMINATE THE SOFTWARE, or any portion thereof, to any person or entity without the prior written consent of LICENSOR. 
+13. NO BENCHMARKING 
+LICENSEE SHALL NOT PUBLISH THE RESULTS OF ANY BENCHMARK TESTING RELATED TO THE SOFTWARE. THESE OBLIGATIONS SHALL SURVIVE TERMINATION OF THIS AGREEMENT. 
+14. RENTALS, LEASES, AND SUB-LICENSES 
+LICENSEE shall not under any circumstances whatsoever rent or lease THE SOFTWARE, nor grant to any third party a sub-license to use THE SOFTWARE without the expressed, written permission of LICENSOR. THESE OBLIGATIONS SHALL SURVIVE TERMINATION OF THIS AGREEMENT.
+15. UPGRADES 
+LICENSOR shall not have any obligation to release any UPGRADES. LICENSOR may in its sole discretion cease distribution of THE SOFTWARE at any time without notice. UPGRADES shall be subject to the terms of this AGREEMENT. LICENSOR SHALL NOT HAVE ANY OBLIGATION TO ENSURE FORWARDS OR BACKWARDS COMPATIBILITY, OR ANY OTHER FORM OF COMPATIBILITY, BETWEEN ANY EXISTING VERSION OF THE SOFTWARE AND ANY UPGRADE. 
+16. TECHNICAL SUPPORT 
+LICENSOR shall not have any obligation to provide technical support for THE SOFTWARE. LICENSOR may in its sole discretion elect to charge a fee for providing technical support. Technical support contracts shall be implemented as an extension to this AGREEMENT; as a result, failure to provide to LICENSOR payment for technical support invoices shall constitute a breach of this AGREEMENT.
+17. SECURITY FEATURES 
+LICENSEE shall not under any circumstances whatsoever alter or remove any UNIQUE IDENTIFIER or any other SECURITY FEATURE of THE SOFTWARE. IN THE EVENT LICENSEE TAMPERS WITH ANY UNIQUE IDENTIFIER OR SECURITY FEATURE, LICENSOR EXPRESSLY RESERVES THE RIGHT TO TERMINATE THIS AGREEMENT. 
+18. INFRINGEMENT 
+If, in contravention of the provisions of this AGREEMENT, LICENSEE DISSEMINATES any EXTENSION, or AUTHORIZED EXTENSION, or UNAUTHORIZED DERIVATIVE WORK in violation of this AGREEMENT, LICENSOR may, in its sole discretion, elect to charge LICENSEE a royalty fee ( "ROYALTY" ) of five-thousand-dollars-and-zero-cents United States currency ( $5000.00 US ) for each copy of any infringing EXTENSION, or AUTHORIZED EXTENSION, or UNAUTHORIZED DERIVATIVE WORK DISSEMINATED by LICENSEE; provided, however, nothing herein shall be construed to limit any remedies which LICENSOR may have against LICENSEE for breach of this AGREEMENT. 
+19. RELIABILITY 
+THE SOFTWARE is not reliable enough to operate, whether alone or as part of any system, when failure of such system may result in personal injury or any grave or unrecoverable loss. THE SOFTWARE contains bugs and produces errors and incorrect results under normal use. LICENSEE SHALL NOT OPERATE THE SOFTWARE, WHETHER ALONE OR AS PART OF ANY SYSTEM, WHEN FAILURE OF ANY SUCH SYSTEM MAY RESULT IN PERSONAL INJURY OR ANY GRAVE OR UNRECOVERABLE LOSS TO ANY PERSON OR ENTITY. THESE OBLIGATIONS SHALL SURVIVE TERMINATION OF THIS AGREEMENT. 
+20. THIRD PARTY PRODUCTS, EXTENSIONS, OR ADD-ONS DISCLAIMER 
+LICENSOR EXPRESSLY DISCLAIMS THE FITNESS, SECURITY, SAFETY, OR RELIABILITY OF ANY THIRD-PARTY SOFTWARE. THIRD-PARTY SOFTWARE INCLUDES ANY OF THE FOLLOWING:
+   OPENSCENEGRAPH
+   COLLADA
+   GDAL
+   ZLIB
+   PROJ
+   BCG Control Bar
+   MICROSOFT VISUAL C++ RUNTIME LIBRARIES
+   MICROSOFT MFC RUNTIME LIBRARIES
+LICENSOR MAY NOT HAVE SPECIFIC KNOWLEDGE OF THE INNER-WORKINGS OF ANY THIRD PARTY SOFTWARE.
+21. LIMITED WARRANTY 
+THE LICENSED SOFTWARE IS PROVIDED "AS IS" AND ON A "WITH ALL FAULTS" BASIS WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT. NO ORAL OR WRITTEN ADVICE OR INFORMATION PROVIDED BY LICENSOR SHALL CONSTITUTE A WARRANTY OF ANY KIND WHATSOEVER. LICENSOR SHALL NOT UNDER ANY CIRCUMSTANCES BE LIABLE FOR ANY CLAIM, DAMAGES, INCLUDING, WITHOUT LIMITATION, DAMAGES ARISING FROM ANY LOSS OF DATA, OR LOSS OF PROFITS, OR LOST SAVINGS, OR LOST OPPORTUNITY, EVEN IF LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. LICENSOR SHALL NOT BE LIABLE FOR ANY CLAIM BY ANY THIRD PARTY. IF LICENSOR'S WARRANTY DISCLAIMER OR LIMITATION OF LIABILITY SET FORTH BY THIS AGREEMENT SHALL FOR ANY REASON WHATSOEVER BE HELD UNENFORCEABLE OR INAPPLICABLE, LICENSOR'S TOTAL AGGREGATE LIABILITY SHALL IN NO EVENT EXCEED THE AMOUNT LICENSEE PAID UNDER THIS AGREEMENT.
+This limited warranty grants to LICENSEE specific legal rights. LICENSEE may have other rights which vary by jurisdiction. THESE OBLIGATIONS SHALL SURVIVE TERMINATION OF THIS AGREEMENT.
+22. LIMITATION OF LIABILITY 
+IN NO EVENT SHALL LICENSOR BE LIABLE TO LICENSEE OR TO ANY THIRD PARTY FOR ANY CONSEQUENTIAL, INCIDENTAL, INDIRECT, SPECIAL, OR PUNITIVE DAMAGES, OF ANY KIND, OR ANY DAMAGES WHATSOEVER INCLUDING WITHOUT LIMITATION, THOSE RESULTING FROM LOSS OF USE, DATA, PROFITS, REVENUE OR OPPORTUNITIES, WHETHER OR NOT LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES, AND ON ANY THEORY OF LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OF THE SOFTWARE.
+LICENSOR'S LIABILITY FOR ANY OTHER DAMAGES SHALL IN NO EVENT EXCEED THE AMOUNT LICENSEE PAID UNDER THIS AGREEMENT.
+THIS LIMITATION OF LICENSOR'S LIABILITY SHALL APPLY REGARDLESS OF THE FORM OF ACTION, WHETHER IN CONTRACT OR IN TORT INCLUDING BY NEGLIGENCE OR ANY OTHER BASIS.
+SOME JURISDICTIONS PROHIBIT THE EXCLUSION OR LIMITATION OF LIABILITY FOR CONSEQUENTIAL OR INCIDENTAL DAMAGES, SO THE ABOVE LIMITATIONS MAY NOT APPLY TO LICENSEE.
+THESE OBLIGATIONS SHALL SURVIVE TERMINATION OF THIS AGREEMENT.
+23. INDEMNIFICATION 
+Upon a request by LICENSOR, LICENSEE agrees to defend, indemnify, and hold LICENSOR harmless from all liabilities, claims, and expenses, including attorney's fees, that arise from LICENSEE'S use or misuse of THE SOFTWARE. LICENSOR reserves the right, at LICENSOR'S own expense, to assume the exclusive defense and control of any matter otherwise subject to indemnification by LICENSEE, in which event LICENSEE will cooperate with LICENSOR in asserting any available defenses. 
+24. EXPORT RESTRICTIONS 
+THE UNITED STATES FEDERAL GOVERNMENT HAS PLACED RESTRICTIONS ON ALL PRODUCTS EXPORTED FROM THE UNITED STATES TO ANY FOREIGN JURISDICTION. LICENSEE AGREES TO COMPLY WITH ALL FEDERAL AND LOCAL LAWS AND REGULATIONS RELATED TO EXPORT AND TRADE. LICENSEE shall not download, upload, transfer, export, re-export, nor in any other fashion whatsoever, through or by any other means, provide any part of THE SOFTWARE or underlying technology to any country or jurisdiction subject to a trade embargo by the United States Federal Government, including the following:
+   Afghanistan
+   Cuba
+   Iran
+   Iraq
+   Libya
+   North Korea
+   Serbia
+   Sudan
+   Syria
+LICENSEE SHALL NOT PROVIDE THE SOFTWARE TO ANY INDIVIDUAL OR ENTITY ON THE U.S. TREASURY DEPARTMENT'S "LIST OF SPECIALLY DESIGNATED NATIONALS" OR THE U.S. COMMERCE DEPARTMENT'S "DENIED PARTIES LIST OR ENTITY LIST". PROVIDING THE SOFTWARE TO ANY PERSON OR ENTITY ON THE UNITED STATES TREASURY DEPARTMENT'S "LIST OF SPECIALLY DESIGNATED NATIONALS" OR THE UNITED STATES COMMERCE DEPARTMENT'S "DENIED PARTIES OR ENTITIES LIST" IS A VIOLATION OF UNITED STATES FEDERAL LAW.
+For more information on the United States Export Regulations visit: http://www.bis.doc.gov/.
+25. WEAPONS PROGRAMS 
+LICENSOR'S ONLY CAUSES ARE PEACE AND PROFITS. EXCEPT AS ALLOWED BY UNITED STATES FEDERAL LAW, LICENSEE SHALL NOT UNDER ANY CIRCUMSTANCES WHATSOEVER USE ANY PART OF THE SOFTWARE TO DEVELOP ANY PRODUCT CATEGORIZED AS MUNITIONS BY UNITED STATES FEDERAL LAW.
+26. NOTICE REGARDING OPENSCENEGRAPH 
+THE SOFTWARE includes components manufactured by OpenScenGraph. Robert Osfield requires this notice:
+   OpenSceneGraph. Copyright © 2007 Robert Osfield.
+   http://www.openscenegraph.org/projects/osg/attachment/wiki/Legal/LICENSE.txt
+Visit OpenSceneGraph on the world wide web: http://www.openscenegraph.com/ 
+27. NOTICE REGARDING GDAL 
+THE SOFTWARE includes components manufactured by Frank Warmerdarm. Frank Warmerdam requires this notice: 
+GDAL. Copyright © 2007 Frank Warmerdam 
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
+Visit GDAL on the world wide web. http://www.gdal.org/
+28. NOTICE REGARDING ZLIB 
+THE SOFTWARE includes ZLib, Copyright © 1995-2003 Jean-loup Gailly and Mark Adler. 
+29. NOTICE REGARDING PROJ 
+THE SOFTWARE includes Proj by Gerald Evenden. 
+30. NOTICE REGARDING TEXTURES 
+THE SOFTWARE includes texture images provided by ambientLight at http://www.ambientlight.co.uk, CGTextures at http://www.cgtextures.com/, and R. Reijerse at http://reije081.home.xs4all.nl/skyboxes/. LICENSEE SHALL NOT DISSEMINATE ANY OF THESE TEXTURE IMAGE FILES UNDER ANY CIRCUMSTANCES WHATSOEVER WITHOUT THE EXPRESSED, WRITTEN PERMISSION OF THE AUTHORS ABOVE. 
+31. NOTICE REGARDING ICON IMAGES 
+THE SOFTWARE includes icons provided by BrandSpankingNew at the following web address: http://www.brandspankingnew.net/archive/2006/12/hohoho.html 
+32. NOTICES REGARDING THIS AGREEMENT 
+All notices to a party of this AGREEMENT shall be made in writing. Notices to LICENSOR shall be sent to legal@scenomics.com. Notices to LICENSEE shall be sent to the email address provided by LICENSEE and stored by LICENSOR inside LICENSEE'S USER ACCOUNT database record. It shall be LICENSEE'S responsibility to ensure that LICENSEE'S email address stored in LICENSEE'S USER ACCOUNT is accurate and current. 
+33. SECTION HEADINGS 
+The section headings contained in this AGREEMENT are for reference purposes only and shall not in any way control the meaning or interpretation of this AGREEMENT. 
+34. RESERVATION OF RIGHTS 
+LICENSOR expressly reserves all rights not granted by this AGREEMENT. 
+35. AMENDING THIS AGREEMENT 
+LICENSOR may from time to time amend or change the terms of this AGREEMENT, including changes such as, but not limited to, the following: 1.) amendments or changes to the definition of PERSONAL USE, 2.) adding files to, or removing files from, THE SOFTWARE, 3.) adding or removing fees related to this AGREEMENT. LICENSOR shall notify LICENSEE in writing of such amendments or changes. WRITTEN NOTICES REGARDING CHANGES TO THIS AGREEMENT SHALL BE SENT ELECTRONICALLY TO THE EMAIL ADDRESS OF RECORD PROVIDED TO LICENSOR BY LICENSEE. LICENSEE'S use of THE SOFTWARE after the effective date of any such amendment or change shall constitute LICENSEE'S acceptance of, and agreement to, any amendment or change. 
+36. TERMINATION 
+LICENSEE MAY TERMINATE THIS AGREEMENT AT ANY TIME BY DESTROYING ALL COPIES OF THE SOFTWARE. LICENSOR RESERVES THE RIGHT TO TERMINATE THIS AGREEMENT AT ANY TIME, FOR ANY REASON, INCLUDING BREACH, BY ISSUING WRITTEN NOTICE TO LICENSEE. WRITTEN NOTICE OF TERMINATION SHALL BE SENT ELECTRONICALLY TO THE EMAIL ADDRESS OF RECORD PROVIDED TO LICENSOR BY LICENSEE. UPON TERMINATION OF THIS AGREEMENT LICENSEE SHALL IMMEDIATELY DESTROY ALL COPIES OF THE SOFTWARE. 
+37. SEVERABILITY 
+If any portion of this AGREEMENT is deemed invalid or unenforceable by a court of competent jurisdiction 1.) the remainder of this AGREEMENT shall remain in effect, 2.) LICENSOR shall be allowed to revise the portion deemed invalid or unenforceable as needed to render this AGREEMENT enforceable, and 3.) LICENSEE shall comply with the terms set forth in any such revision. LICENSOR MAY IN ITS SOLE DISCRETION IMPLEMENT THE MINIMUM REVISION REQUIRED TO RENDER THIS AGREEMENT ENFORCEABLE. The failure of either party to enforce any provision of this AGREEMENT shall not be deemed a waiver of that party's right to later enforce that provision or any other provision. 
+38. GOVERNING LAW 
+This AGREEMENT is governed by the laws of the State of Minnesota in the United States of America. EACH PARTY EXPRESSLY CONSENTS TO JURISDICTION AND VENUE IN RAMSEY COUNTY, MINNESOTA, UNITED STATES OF AMERICA. LICENSEE and LICENSOR agree that the statutes and laws of the State of Minnesota shall apply, without regard to the conflicts of laws principles thereof and the United Nations Convention on Contracts for the International Sales of Goods. 
+39. ENTIRE AGREEMENT 
+This AGREEMENT constitutes the entire contract between LICENSOR and LICENSEE. LICENSEE ACKNOWLEDGES THAT IT HAS READ THIS AGREEMENT AND ACCEPTS THE TERMS SET FORTH HEREIN. THIS AGREEMENT IS EXECUTED, WITH GOOD FAITH AND BEST WISHES, BY THE SCENOMICS LLC MEMBERS ON BEHALF OF SCENOMICS LLC, A MINNESOTA LIMITED-LIABILITY COMPANY. 
+

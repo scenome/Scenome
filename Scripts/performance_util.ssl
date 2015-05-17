@@ -1,0 +1,29 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             PERFORMANCE_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements basic performance measurement display.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "message_util.ssl";
+
+library SpaPerformanceUtil;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void MeasureExecutionTime( double p_iStartTicks, double p_iEndTicks, string p_sProfileDescription )
+{
+   string a_sMessage;
+   
+   a_sMessage =   "\nProfile For: " + p_sProfileDescription + "\n" +
+                  "Start Execution Time " + p_iStartTicks + "\n" +
+                  "End Execution Time " + p_iEndTicks + "\n" +
+                  "Total Execution Time Milliseconds " + ( Math.FAbs( p_iEndTicks - p_iStartTicks ) ) + "\n";
+   
+   Console.Message( a_sMessage );
+}

@@ -1,0 +1,1829 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file         :   VALIDATION_UTIL.SSL
+// $author       :   Scenomics
+// $privacy      :   PUBLIC
+// $description  :   This script implements validation utility functions.
+// $legal        :   Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////
+
+import library "application_util.ssl";
+import library "message_util.ssl";
+import library "graph_util.ssl";
+
+library SpaValidationUtil;
+
+///////////////////////////////////////////////////////////////////////////////
+// function
+///////////////////////////////////////////////////////////////////////////////
+
+function void MaybeGenerateStatusMessage( string p_sStatusMessage )
+{
+   if( p_sStatusMessage != "" )
+   {
+      Console.GenerateOutputMessage( p_sStatusMessage, "ERROR" );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+// Is texture size power of 2?
+// Does the cubemap have six faces?
+/*
+function string ValidateTextureSize( Node a_oValidateNode )
+{
+   string a_sStatusMessage;
+   
+   if( a_oValidateNode && a_oValidateNode.IsDerived( Texture ) )
+   {
+      Texture a_oTextureNode = (Texture)a_oValidateNode;
+      string a_sTexturePath = a_oTextureNode.PathToFile;
+      int a_iTextureRenderWidth = a_oTextureNode.RenderWidth;
+      int a_iTextureRenderHeight = a_oTextureNode.RenderHeight;
+      int a_iCubemapFaces = 6;
+
+      // Validate cases:
+      // * 2D Texture
+      // * Cubemap
+      
+      if( a_oTextureNode.TextureType != 1 )
+      {
+         if( a_iTextureRenderWidth == 0 || a_iTextureRenderHeight == 0 )
+         {
+            a_sStatusMessage += GenerateStatusMessage( 1, "!TextureHasValidRenderSize", a_oTextureNode, a_sTexturePath );
+         }
+      }
+
+      if( a_oTextureNode.ArraySize == 1 && a_oTextureNode.TextureType == 0 )
+      {
+         // Validate 2D Texture
+         if( Math.IsPow2( a_iTextureRenderWidth ) && Math.IsPow2( a_iTextureRenderHeight ) )
+         {
+            a_sStatusMessage += GenerateStatusMessage( 0, "TextureIsPow2", a_oTextureNode, a_sTexturePath );
+         }
+         else
+         {
+            a_sStatusMessage += GenerateStatusMessage( 2, "!TextureIsPow2", a_oTextureNode, a_sTexturePath );
+         }
+      }
+      else
+      if( a_oTextureNode.ArraySize == 1 && a_oTextureNode.TextureType == 2 )
+      {
+         // Validate Cubemap
+         int a_iRenderFaces;
+         int a_iRemainder;
+
+         if( a_iTextureRenderHeight > a_iTextureRenderWidth )
+         {
+            a_iRenderFaces = a_iTextureRenderHeight / a_iTextureRenderWidth;
+            a_iRemainder = Math.ModI( a_iTextureRenderHeight, a_iTextureRenderWidth );
+         }
+         else
+         {
+            a_iRenderFaces = a_iTextureRenderHeight / a_iTextureRenderWidth;
+            a_iRemainder = Math.ModI( a_iTextureRenderWidth, a_iTextureRenderHeight );
+         }
+
+         if( a_iRenderFaces == a_iCubemapFaces )
+         {
+            a_sStatusMessage += GenerateStatusMessage( 0, "CubemapHasSixFaces", a_oTextureNode, a_sTexturePath );
+         }
+         else
+         {
+            a_sStatusMessage += GenerateStatusMessage( 2, "!CubemapHasSixFaces", a_oTextureNode, a_sTexturePath );
+         }
+
+         if( a_iRemainder == 0 )
+         {
+            a_sStatusMessage += GenerateStatusMessage( 0, "CubemapHasLegalDimensions", a_oTextureNode, a_sTexturePath );
+         }
+         else
+         {
+            a_sStatusMessage += GenerateStatusMessage( 2, "!CubemapHasLegalDimensions", a_oTextureNode, a_sTexturePath );
+         }
+      }
+
+      return a_sStatusMessage;
+   }
+   return "ERROR IN VALIDATION CODE: Escaping from ValidateTextureSize without returning any message.";
+}
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+/*
+function string ValidateFrameBufferTexturesAreSameSize( Node a_oValidateNode )
+{
+   string a_sStatusMessage;
+   
+   if( a_oValidateNode && a_oValidateNode.IsDerived( Texture ) )
+   {
+      Texture a_oTextureNode = (Texture)a_oValidateNode;
+      FrameBuffer a_oParentFrameBufferNode = (FrameBuffer)a_oTextureNode.Parent();
+
+      if( a_oParentFrameBufferNode.ChildCount > 0 )
+      {
+         for( int i = 0; i < a_oParentFrameBufferNode.ChildCount; ++i )
+         {
+            Texture a_oTextureNodeCurrent = (Texture)a_oParentFrameBufferNode.Children[i];
+            Texture a_oTextureNodeNext;
+
+            if( i != a_oParentFrameBufferNode.ChildCount - 1 )
+            {
+               a_oTextureNodeNext = (Texture)a_oParentFrameBufferNode.Children[i + 1];
+            }
+
+            if( a_oTextureNodeCurrent && a_oTextureNodeNext )
+            {
+               if(   a_oTextureNodeCurrent.RenderWidth != a_oTextureNodeNext.RenderWidth ||
+                     a_oTextureNodeCurrent.RenderHeight != a_oTextureNodeNext.RenderHeight )
+               {
+                  a_sStatusMessage += GenerateStatusMessage( 2, "!BufferTextureSizeTheSame", a_oTextureNode, a_oTextureNode.PathToFile );
+               }
+            }
+         }
+      }
+      return a_sStatusMessage;
+   }
+   return "ERROR IN VALIDATION CODE: Escaping from ValidateFrameBufferTexturesAreSameSize without returning any message.";
+}
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This function traverses the graph and searches for duplicate ID parameters.
+
+function string GraphHasIdentificationErrors( List p_lDatabaseNodes )
+{
+   string a_sStatusMessage;
+   bool a_bFoundErrors;
+   string a_sGraphAddressOfFirstIdentification;
+   auto StrList a_slNodeIdentificationStrings;
+   auto StrList a_slNodeGraphAddress;
+   Node a_oPassThroughNode;
+
+   for( int nodes = 0; nodes < p_lDatabaseNodes.GetCount(); ++nodes )
+   {
+      Node a_oNode = (Node)p_lDatabaseNodes.Get(nodes);
+
+      if( a_oNode.ID != "" )
+      {
+         int a_iFindIndex = a_slNodeIdentificationStrings.Find( a_oNode.ID );
+
+         if( a_iFindIndex == -1 )
+         {
+            a_slNodeIdentificationStrings.Add( a_oNode.ID );
+            a_slNodeGraphAddress.Add( a_oNode.GetPathToNode() );
+         }
+         else
+         {
+            string a_sDuplicate = a_oNode.ID;
+            for( int idStrings = 0; idStrings < a_slNodeIdentificationStrings.GetCount(); ++ idStrings )
+            {
+               string a_sExisting = a_slNodeIdentificationStrings.Get(idStrings);
+
+               if( a_sExisting == a_sDuplicate )
+               {
+                  Node a_oFirstUse = (Node)p_lDatabaseNodes.Get(idStrings);
+                  string a_sFileName = a_oNode.GetModel().Filename;
+                  string a_sOriginalUseOfID = a_slNodeGraphAddress.Get( idStrings );
+                  string a_sCompilerStatusMessage;
+                  a_sCompilerStatusMessage += "Disk Address: " + a_sFileName + "\n";
+                  a_sCompilerStatusMessage += "The <" + a_oNode.GetType().GetTypeName() + "> node named '" + a_oNode.Name + "' has a duplicate identification parameter.\n";
+                  a_sCompilerStatusMessage += "The node ID parameter '" + a_oNode.ID + "' has already been used by the node at the following graph address: " + a_sOriginalUseOfID + ".";
+                  Console.GenerateOutputMessage( a_sCompilerStatusMessage, "ERROR" );
+                  a_bFoundErrors = true;
+                  break;
+               }
+            }
+         }
+      }
+   }
+   return a_bFoundErrors;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetFileNamesFromFileNodes( List p_lFileNodes, StrList p_slAbsoluteFilePaths )
+{
+   for( int references = 0; references < p_lFileNodes.GetCount(); ++references )
+   {
+      Node a_oIsFileNode = (Node)p_lFileNodes.Get( references );
+      if( a_oIsFileNode && a_oIsFileNode.IsDerived( FileNode ) )
+      {
+         FileNode a_oProjectEntry = (FileNode)a_oIsFileNode;
+         if( a_oProjectEntry.FilePath != "" )
+         {
+            string a_sRelativePath = a_oProjectEntry.FilePath;
+            FilePath a_oProjectFilePath = new FilePath;
+            a_oProjectFilePath.SetPath( a_sRelativePath );
+            a_oProjectFilePath.ResolveToModel( Model );
+            a_oProjectFilePath.Canonicalize();
+            p_slAbsoluteFilePaths.Add( a_oProjectFilePath.GetPath() );
+            delete a_oProjectFilePath;
+         }
+      }
+   }
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetFileNamesFromNodes( List p_lFileNodes, StrList p_slAbsoluteFilePaths )
+{
+   for( int references = 0; references < p_lFileNodes.GetCount(); ++references )
+   {
+      Node a_oIsFileNode = (Node)p_lFileNodes.Get( references );
+      if( a_oIsFileNode && a_oIsFileNode.IsDerived( FileConfigNode ) )
+      {
+         FileConfigNode a_oProjectEntry = (FileConfigNode)a_oIsFileNode;
+         auto FilePath a_oFilePath = new FilePath( a_oProjectEntry.GetAbsolutePath() );
+         a_oFilePath.Canonicalize();
+         p_slAbsoluteFilePaths.Add( a_oFilePath.GetPath() );
+      }
+   }
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int ValidateFileExistsOnDisk( List p_lSourceFileNodes,
+   StrList p_slAbsoluteFilePaths, CommandPresentationModuleInfo commandInfo )
+{
+   int a_iFileExists;
+
+   for( int a_iFilePaths = 0; a_iFilePaths < p_slAbsoluteFilePaths.GetCount(); ++a_iFilePaths )
+   {
+      string a_sAbsPath = p_slAbsoluteFilePaths.Get( a_iFilePaths );
+      auto FilePath a_oFilePath = new FilePath( a_sAbsPath );
+      a_oFilePath.Canonicalize();
+      a_sAbsPath = a_oFilePath.GetPath();
+      string a_sFilename = Application.GetStrippedFileName( a_sAbsPath );
+      auto Str a_oFilename = new Str( a_sFilename );
+      if( a_oFilename.Left( 1 ) != "*" )
+      {
+         if( Application.FileExists( a_sAbsPath ) )
+         {
+            commandInfo.Status.SetHint( "Validating file exists: " + a_sAbsPath );
+            a_iFileExists = 1;
+         }
+         else
+         {
+            Node a_oNode = (Node)p_lSourceFileNodes.Get( a_iFilePaths );
+            string a_sMessage  = "The following file does not exist: " + p_slAbsoluteFilePaths.Get( a_iFilePaths ) + "\n";
+            a_sMessage        += "The non-existent file is referenced by the following node: " + a_oNode.GetPathToNode() + "\n";
+            a_sMessage        += "To fix this error, find the node at the above address and make sure it points at a file on the hard disk.";
+            Console.Error( a_sMessage );
+            a_iFileExists = 0;
+            break;
+         }
+      }
+   }
+   
+   if( a_iFileExists == 1 )
+   {
+      commandInfo.Status.SetHint( "\nSuccessfully validated the existence of all referenced files." );
+   }
+
+   return a_iFileExists;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void MaybeAddToResolvedContentPaths( string p_sMaybeAddAbsolutePath,
+   StrList p_slResolvedContentPaths )
+{
+   if( p_slResolvedContentPaths.Find( p_sMaybeAddAbsolutePath ) == -1 )
+   {
+      p_slResolvedContentPaths.Add( p_sMaybeAddAbsolutePath );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetReferencedContentFileNames( Group p_oRoot,
+   StrList p_slReferenceContentFileNames )
+{
+   auto List a_lReferencingNodes;
+   Graph.GetReferencingNodesFromDatabase( p_oRoot, a_lReferencingNodes );
+
+   for( int nodes = 0; nodes < a_lReferencingNodes.GetCount(); ++nodes )
+   {
+      Node a_oNode = (Node)a_lReferencingNodes.Get( nodes );
+
+      if( a_oNode && a_oNode.IsDerived( Texture ) )
+      {
+         auto FilePath a_oFilePath;
+         Texture a_oTexture = (Texture)a_oNode;
+         a_oFilePath.SetPath( a_oTexture.PathToFile );
+         a_oFilePath.ResolveToPath( Application.GetFilePath( a_oNode.GetModel().Filename ) );
+         a_oFilePath.Canonicalize();
+         MaybeAddToResolvedContentPaths( a_oFilePath.GetPath(),
+            p_slReferenceContentFileNames );
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( FileNode ) )
+      {
+         auto FilePath a_oFilePath;
+         FileNode a_oFileNode = (FileNode)a_oNode;
+         a_oFilePath.SetPath( a_oFileNode.FilePath );
+         a_oFilePath.ResolveToPath( Application.GetFilePath( a_oNode.GetModel().Filename ) );
+         a_oFilePath.Canonicalize();
+         MaybeAddToResolvedContentPaths( a_oFilePath.GetPath(),
+            p_slReferenceContentFileNames );
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( Program ) )
+      {
+         Program a_oProgram = (Program)a_oNode;
+         auto StrList a_slShaders;
+         a_oProgram.GetShaders( a_slShaders );
+         for( int shaders = 0; shaders < a_slShaders.GetCount(); ++shaders )
+         {
+            auto FilePath a_oFilePath;
+            a_oFilePath.SetPath( a_slShaders.Get( shaders ) );
+            a_oFilePath.ResolveToPath( Application.GetFilePath( a_oNode.GetModel().Filename ) );
+            a_oFilePath.Canonicalize();
+            MaybeAddToResolvedContentPaths( a_oFilePath.GetPath(),
+               p_slReferenceContentFileNames );
+         }
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( NodeLink ) )
+      {
+         auto FilePath a_oFilePath;
+         NodeLink a_oNodeLink = (NodeLink)a_oNode;
+         a_oFilePath.SetPath( a_oNodeLink.PathToFile );
+         a_oFilePath.ResolveToPath( Application.GetFilePath( a_oNode.GetModel().Filename ) );
+         a_oFilePath.Canonicalize();
+         MaybeAddToResolvedContentPaths( a_oFilePath.GetPath(),
+            p_slReferenceContentFileNames );
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( ScriptNode ) )
+      {
+         auto FilePath a_oFilePath;
+         ScriptNode a_oScriptNode = (ScriptNode)a_oNode;
+         a_oFilePath.SetPath( a_oScriptNode.ScriptFile );
+         a_oFilePath.ResolveToPath( Application.GetFilePath( a_oNode.GetModel().Filename ) );
+         a_oFilePath.Canonicalize();
+         MaybeAddToResolvedContentPaths( a_oFilePath.GetPath(),
+            p_slReferenceContentFileNames );
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( DisplaceModifier ) )
+      {
+         auto FilePath a_oFilePath;
+         DisplaceModifier a_oDisplaceModifier = (DisplaceModifier)a_oNode;
+         a_oFilePath.SetPath( a_oDisplaceModifier.MapFile );
+         a_oFilePath.ResolveToPath( Application.GetFilePath( a_oNode.GetModel().Filename ) );
+         a_oFilePath.Canonicalize();
+         MaybeAddToResolvedContentPaths( a_oFilePath.GetPath(),
+            p_slReferenceContentFileNames );
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( ConfigNode ) )
+      {
+         auto FilePath a_oFilePath;
+         ConfigNode a_oConfigNode = (ConfigNode)a_oNode;
+         a_oFilePath.SetPath( a_oConfigNode.GetAbsolutePath() );
+         a_oFilePath.ResolveToPath( Application.GetFilePath( a_oNode.GetModel().Filename ) );
+         a_oFilePath.Canonicalize();
+         MaybeAddToResolvedContentPaths( a_oFilePath.GetPath(),
+            p_slReferenceContentFileNames );
+      }
+   }
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void GetAllReferencedFiles( Node node, StrList p_slFiles, StrList p_slBoxFiles,
+   bool p_bLocal, CommandPresentationModuleInfo commandInfo )
+{
+   // Gather filenames.
+   string a_sFilename;
+   if( node.IsDerived( NodeLink ) )
+   {
+      NodeLink a_oNodeLink = (NodeLink)node;
+      a_oNodeLink.Load( 1 );
+      if( a_oNodeLink.IsExternal() && a_oNodeLink.GetModel() )
+      {
+         a_sFilename = a_oNodeLink.PathToFile;
+         if( p_bLocal == false )
+         {
+            GetAllReferencedFiles( a_oNodeLink.GetModel(), p_slFiles, p_slBoxFiles,
+               p_bLocal, commandInfo );
+         }
+      }
+   }
+   else
+   if( node.IsDerived( FileNode ) )
+   {
+      FileNode a_oFileNode = (FileNode)node;
+      a_sFilename = a_oFileNode.FilePath;
+   }
+   else
+   if( node.IsDerived( ConfigNode ) )
+   {
+      ConfigNode a_oConfigNode = (ConfigNode)node;
+      if( a_oConfigNode.ExportDisabled == false )
+      {
+         a_sFilename = a_oConfigNode.GetAbsolutePath();
+      }
+   }
+   else
+   if( node.IsDerived( ScriptNode ) )
+   {
+      ScriptNode a_oScriptNode = (ScriptNode)node;
+      a_sFilename = a_oScriptNode.ScriptFile;
+   }
+   else
+   if( node.IsDerived( Program ) )
+   {
+      Program a_oProgram = (Program)node;
+      auto StrList a_slShaders;
+      a_oProgram.GetShaders( a_slShaders );
+      for( int shaders = 0; shaders < a_slShaders.GetCount(); ++shaders )
+      {
+         auto FilePath a_oFilePath = new FilePath( a_slShaders.Get( shaders ) );
+         a_oFilePath.ResolveToModel( node.Parent() );
+         a_oFilePath.Canonicalize();
+
+         // Add the path if it's not already in. This
+         // also helps prevent against circular traversal
+         // because the list of untraversed paths will
+         // eventually be zero.
+         if( p_slFiles.Find( a_oFilePath.GetPath() ) == -1 )
+         {
+            p_slFiles.Add( a_oFilePath.GetPath() );
+         }
+      }
+      // Reset the filename because we added the references above
+      // and we don't need to do it again below.
+      a_sFilename = "";
+   }
+   else
+   if( node.IsDerived( Texture ) )
+   {
+      Texture a_oTexture = (Texture)node;
+      a_sFilename = a_oTexture.PathToFile;
+   }
+
+   // Do the resolve here.
+   if( a_sFilename != "" )
+   {
+      // Only resolve if incoming node
+      // is not Model3D, which is the root.
+      commandInfo.Status.SetHint( "Gathering file: " + a_sFilename );
+
+      if( node.IsDerived( Model3D ) == false )
+      {
+         // Create a FilePath, resolve it, and canonicalize.
+         // Canonicalized paths make it very easy to 
+         // avoid adding duplicates ( without having lots
+         // of extra tests ).
+         auto FilePath a_oFilePath = new FilePath( a_sFilename );
+         a_oFilePath.ResolveToModel( node.Parent() );
+         a_oFilePath.Canonicalize();
+         auto Str a_oHasExtensionSeparator = new Str( a_sFilename );
+
+         // Add only new paths. This is a cheap optimization
+         // that also prevents circular traversal because 
+         // eventually every path will be added.
+         if( a_oHasExtensionSeparator.Find( ".", 0 ) != -1 && p_slFiles.Find( a_oFilePath.GetPath() ) == -1 )
+         {
+            // If the file is a .BOX file, open
+            // the database and traverse it as well.
+            string a_sExtension = Application.GetFileExtension( a_oFilePath.GetPath() );
+            p_slFiles.Add( a_oFilePath.GetPath() );
+
+            if( a_sExtension == "box" )
+            {
+               auto Model3D a_oRemoteDatabase;
+               auto File a_oFile;
+               string a_sAbsPath = a_oFilePath.GetPath();
+               
+               // Add unreferenced BOX files to the list.
+               if( p_slBoxFiles.Find( a_sAbsPath ) == -1 )
+               {
+                  p_slBoxFiles.Add( a_sAbsPath );
+               }
+
+               if( p_bLocal == false )
+               {
+                  if( a_oFile.FileExists( a_sAbsPath ) )
+                  {
+                     a_oRemoteDatabase.OpenFile( a_sAbsPath );
+                     if( a_oRemoteDatabase )
+                     {
+                        GetAllReferencedFiles( a_oRemoteDatabase, p_slFiles, p_slBoxFiles,
+                           p_bLocal, commandInfo );
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   if( node.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)node;
+      if( a_oGroup.ExportDisabled == false )
+      {
+         for( int i = 0; i < a_oGroup.ChildCount; ++i )
+         {
+            GetAllReferencedFiles( a_oGroup.Children[i], p_slFiles, p_slBoxFiles,
+               p_bLocal, commandInfo );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string FindError( string p_sFilePath, StrList p_slLocalFilePaths,
+   StrList p_slAllFilePaths, CommandPresentationModuleInfo commandInfo )
+{
+   string a_sError;
+
+   for( int i = 0; i < p_slLocalFilePaths.GetCount(); ++i )
+   {
+      auto StrList a_slLocalFilenames;
+      auto StrList a_slAllFilenames;
+      auto StrList a_slBoxFiles;
+      string a_sIsBoxFile = p_slLocalFilePaths.Get( i );
+      if( Application.GetFileExtension( a_sIsBoxFile ) == "box" )
+      {
+         auto Model3D a_oRemoteDatabase;
+         a_oRemoteDatabase.OpenFile( a_sIsBoxFile );
+
+         GetAllReferencedFiles( a_oRemoteDatabase, a_slLocalFilenames,
+            a_slBoxFiles, true, commandInfo );
+
+         //Console.Out( a_oRemoteDatabase.Filename );
+         //SpaStrListUtil.Out( a_slLocalFilenames );
+         if( a_slLocalFilenames.Find( p_sFilePath ) != -1 )
+         {
+            a_sError = "The missing file was included by: <" + a_oRemoteDatabase.Filename + ">\n";
+         }
+      }
+   }
+
+   //SpaStrListUtil.Out( a_slLocalFilenames );
+
+   return a_sError;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int ValidateClosure( StrList p_slAllFilePaths, StrList p_slLocalFilePaths,
+   CommandPresentationModuleInfo commandInfo )
+{
+   bool a_bFileSetCloses;
+   if( p_slAllFilePaths.GetCount() == 0 )
+   {
+      a_bFileSetCloses = true;
+   }
+
+   for( int file = 0; file < p_slAllFilePaths.GetCount(); ++file )
+   {
+      string a_sFile = p_slAllFilePaths.Get( file );
+
+      //Console.Message( a_sFile );
+      if( p_slLocalFilePaths.Find( a_sFile ) == -1 && Application.GetFileExtension( a_sFile ) != "" )
+      {
+         string a_sMessage;
+         a_sMessage = "The file named <" + a_sFile + "> is referenced by a file in this project but it is not included here.\n";
+         a_sMessage += FindError( a_sFile, p_slLocalFilePaths, p_slAllFilePaths, commandInfo );
+         a_sMessage += "This project must contain a reference to this file in order to properly validate the entire set.";
+         Console.Error( a_sMessage );
+         a_bFileSetCloses = false;
+         break;
+      }
+      else
+      {
+         /*
+         string a_sMessage = "\nLinking\n";
+         a_sMessage += "Successfully linked " + a_sFile;
+         Console.Message( a_sMessage );
+         */
+         a_bFileSetCloses = true;
+      }
+   }
+   return a_bFileSetCloses;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetAbsolutePath( Node a_oNode, string p_sPathToFile )
+{
+   FilePath a_oContentFilePath = new FilePath;
+   string a_sFilePath;
+   a_oContentFilePath.SetPath( p_sPathToFile );
+   a_oContentFilePath.ResolveToModel( a_oNode.GetModel() );
+   a_oContentFilePath.Canonicalize();
+   a_sFilePath = a_oContentFilePath.GetPath();
+   delete a_oContentFilePath;
+   return a_sFilePath;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetBoxFilesFromList( StrList p_slAbsoluteFilePaths, StrList p_slBoxFileAbsolutePaths )
+{
+   for( int paths = 0; paths < p_slAbsoluteFilePaths.GetCount(); ++paths )
+   {
+      string a_sTemp = p_slAbsoluteFilePaths.Get( paths );
+      if( Application.GetFileExtension( a_sTemp ) == "box" )
+      {
+         p_slBoxFileAbsolutePaths.Add( a_sTemp );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateDerivedType( GraphMemberNode p_oGraphMemberNode, Node p_oDocumentNode )
+{
+   bool a_bValid;
+
+   if( p_oDocumentNode.IsDerived( p_oGraphMemberNode.NodeType() ) )
+   {
+      a_bValid = true;
+   }
+   else
+   {
+      string a_sMessage;
+      a_sMessage += "Document and its specification do not agree. Wrong node type.\n";
+      a_sMessage += "Specification found at: " + p_oGraphMemberNode.GetModel().Filename + "\n";
+      a_sMessage += "The specification node at " + p_oGraphMemberNode.GetPathToNode() +
+         " requires a node derived from type <" + p_oGraphMemberNode.NodeTypeString + ">.\n";
+      a_sMessage += "Found a node of type <" + p_oDocumentNode.GetType().GetTypeName() + ">.\n";
+      Console.Error( a_sMessage );
+      a_bValid = false;
+   }
+
+   return a_bValid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateExactType( GraphMemberNode p_oGraphMemberNode, Node p_oDocumentNode )
+{
+   bool a_bValid;
+
+   if( p_oGraphMemberNode.NodeType() == p_oDocumentNode.GetType() )
+   {
+      a_bValid = true;
+   }
+   else
+   {
+      string a_sMessage;
+      a_sMessage += "Document and its specification do not agree. Wrong node type.\n";
+      a_sMessage += "Specification found at: " + p_oGraphMemberNode.GetModel().Filename + "\n";
+      a_sMessage += "The specification node at " + p_oGraphMemberNode.GetPathToNode() +
+         " requires a node of type <" + p_oGraphMemberNode.NodeTypeString + ">.\n";
+      a_sMessage += "Found a node of type <" + p_oDocumentNode.GetType().GetTypeName() + "> at " +
+         p_oDocumentNode.GetPathToNode() + ".\n";
+      Console.Error( a_sMessage );
+      a_bValid = false;
+   }
+
+   return a_bValid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateSequenceError( StrList p_slAllowedChildTypes,
+   GraphMemberNode p_oGraphMemberNode, Node p_oNode )
+{
+   string a_sMessage;
+   a_sMessage += "Document and its specification do not agree. Illegal type sequence.\n";
+   a_sMessage += "Specification found at: " + p_oGraphMemberNode.GetModel().Filename + "\n";
+   a_sMessage += "Graph Address: " + p_oNode.GetPathToNode() + "\n";
+   a_sMessage += "The node that triggered this error is of type <" + p_oNode.GetType().GetTypeName() + ">\n";
+   a_sMessage += "Allowed child types are as follows: ";
+
+   for( int types = 0; types < p_slAllowedChildTypes.GetCount(); ++types )
+   {
+      a_sMessage += "<" + p_slAllowedChildTypes.Get( types ) + ">";
+
+      if( p_slAllowedChildTypes.GetCount() > 1 && types < p_slAllowedChildTypes.GetCount() - 1 )
+      {
+         a_sMessage += ", ";
+      }
+   }
+
+   Console.Error( a_sMessage );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateChildType( GraphMemberNode p_oGraphMemberNode, Node p_oDocumentNode )
+{
+   bool a_bValid;
+   auto StrList a_slChildTypeStrings;
+
+   if( p_oGraphMemberNode.ChildCount )
+   {
+      for( int types = 0; types < p_oGraphMemberNode.ChildCount; ++types )
+      {
+         Node a_oIsGraphMember = (Node)p_oGraphMemberNode.Children[ types ];
+         if( a_oIsGraphMember && a_oIsGraphMember.IsDerived( GraphMemberNode ) )
+         {
+            GraphMemberNode a_oGraphMemberNode = (GraphMemberNode)a_oIsGraphMember;
+            if( a_oGraphMemberNode.TemplateMode == 1 ) // Child Type
+            {
+               a_slChildTypeStrings.Add( a_oGraphMemberNode.NodeTypeString );
+            }
+         }
+      }
+   }
+
+   if( p_oDocumentNode && p_oDocumentNode.IsDerived( Group ) && a_slChildTypeStrings.GetCount() )
+   {
+      Group a_oDocumentGroup = (Group)p_oDocumentNode;
+      if( a_oDocumentGroup.ChildCount )
+      {
+         // Iterate the group's child nodes, and compare
+         // the type of each child to the set of types.
+         for( int nodes = 0; nodes < a_oDocumentGroup.ChildCount; ++nodes )
+         {
+            bool a_bFoundType;
+            Node a_oChild = (Node)a_oDocumentGroup.Children[ nodes ];
+            for( int strings = 0; strings < a_slChildTypeStrings.GetCount(); ++strings )
+            {
+               auto Type a_oType;
+               auto TypeInformation typeInfo =
+                  a_oType.GetType().FindClassType( a_slChildTypeStrings.Get( strings ) );
+               if( a_oChild.GetType() == typeInfo || a_oChild.GetType().IsDerived( typeInfo ) )
+               {
+                  a_bFoundType = true;
+               }
+            }
+
+            // After running the inner loop, a_bFoundType will either be true or
+            // false. If it's false, generate error.
+            if( a_bFoundType == false )
+            {
+               GenerateSequenceError( a_slChildTypeStrings, p_oGraphMemberNode, a_oChild );
+               a_bValid = a_bFoundType;
+               break;
+            }
+            else
+            {
+               a_bValid = true;
+            }
+         }
+      }
+   }
+   else
+   {
+      a_bValid = true;
+   }
+
+   return a_bValid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int AdvanceQueue( Group p_oParent, Node p_oChild )
+{
+   int a_iChildIndex;
+
+   for( int children = p_oChild.ChildIndex();
+      children < p_oParent.ChildCount; ++children )
+   {
+      Node a_oNode = (Node)p_oParent.Children[ children ];
+      if( a_oNode.IsDerived( p_oChild.GetType() ) == false )
+      {
+         a_iChildIndex = a_oNode.ChildIndex();
+         break;
+      }
+   }
+
+   return a_iChildIndex;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateType( GraphMemberNode p_oGraphMemberNode, Node p_oDocumentNode )
+{
+   bool a_bValid;
+
+   if( p_oGraphMemberNode && p_oDocumentNode )
+   {
+      // If type checking is enabled and a type has been specified.
+      // Check the node's type first because it's the most serious
+      // error after not-existing ( which we have already checked ).
+      if( p_oGraphMemberNode.NodeTypeString != "" )
+      {
+         if( p_oGraphMemberNode.TypeCheckingMode == 1 )
+         {
+            // DERIVED TYPES ARE OKAY
+            a_bValid = ValidateDerivedType( p_oGraphMemberNode, p_oDocumentNode );
+
+            // Return if invalid so we don't keep checking other nodes.
+            if( a_bValid == false )
+            {
+               return a_bValid;
+            }
+         }
+         else
+         if( p_oGraphMemberNode.TypeCheckingMode == 2 )
+         {
+            // TYPES MUST MATCH EXACTLY
+            a_bValid = ValidateExactType( p_oGraphMemberNode, p_oDocumentNode );
+
+            // Return if invalid so we don't keep checking other nodes.
+            if( a_bValid == false )
+            {
+               return a_bValid;
+            }
+         }
+      }
+
+      // Now check the node's child node types and
+      // counts see if they are valid.
+      /*
+      if( p_oGraphMemberNode.ChildCount )
+      {
+         a_bValid = ValidateChildType( p_oGraphMemberNode, p_oDocumentNode );
+      }
+      */
+
+      // Return if invalid so we don't keep checking other nodes.
+      if( a_bValid == false )
+      {
+         return a_bValid;
+      }
+      
+      // DEBUG
+      //Console.Message( p_oDocumentNode.Name + " " + a_bValid );
+   }
+
+   return a_bValid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetTypeRequestIndex( GraphMemberNode p_oGraphMemberNode )
+{
+   if( !p_oGraphMemberNode )
+   {
+      return 0;
+   }
+
+   int a_iTypeRequestIndex;
+   for( int children = 0; children < p_oGraphMemberNode.Parent().ChildCount; ++children )
+   {
+      Node a_oNode = (Node)p_oGraphMemberNode.Parent().Children[ children ];
+      if( a_oNode && a_oNode.IsDerived( GraphMemberNode ) )
+      {
+         GraphMemberNode a_oGraphMemberNode = (GraphMemberNode)a_oNode;
+         if( a_oGraphMemberNode.NodeType() == p_oGraphMemberNode.NodeType() )
+         {
+            ++a_iTypeRequestIndex;
+            if( a_oGraphMemberNode == p_oGraphMemberNode )
+            {
+               break;
+            }
+         }
+      }
+   }
+
+   return a_iTypeRequestIndex;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function Node GetChildTypeByRequestIndex( Group p_oParent, int p_iPriority,
+   GraphMemberNode p_oGraphMemberNode )
+{
+   if( !p_oParent )
+   {
+      return null;
+   }
+
+   int a_iFoundType;
+   Node a_oDocumentNode;
+   int children;
+
+   if( p_oParent.IsDerived( Model3D ) )
+   {
+      children = 1;
+   }
+
+   if( p_oGraphMemberNode.SequenceMode == 0 )
+   {
+      // Find the i-th child of the specified type.
+      for( children; children < p_oParent.ChildCount; ++children )
+      {
+         Node a_oNode = (Node)p_oParent.Children[ children ];
+         if( a_oNode && a_oNode.IsDerived( p_oGraphMemberNode.NodeType() ) )
+         {
+            ++a_iFoundType;
+            if( a_iFoundType == p_iPriority )
+            {
+               a_oDocumentNode = a_oNode;
+            }
+         }
+      }
+   }
+   else
+   {
+      // Find the first node in the i-th sequence of the specified type.
+      int a_iSequenceIndex = 0;
+      for( children; children < p_oParent.ChildCount; ++children )
+      {
+         Node a_oNode = (Node)p_oParent.Children[ children ];
+         if( a_oNode && a_oNode.IsDerived( p_oGraphMemberNode.NodeType() ) )
+         {
+            ++a_iSequenceIndex;
+            if( a_iSequenceIndex == p_iPriority )
+            {
+               a_oDocumentNode = a_oNode;
+               //Console.Message( a_oNode.Name );
+            }
+            else
+            {
+               int a_iIndex = AdvanceQueue( p_oParent, a_oNode );
+               if( a_iIndex > children )
+               {
+                  children = a_iIndex;
+               }
+               //Console.Message( AdvanceQueue( p_oParent, a_oNode ) );
+            }
+         }
+      }
+   }
+
+   return a_oDocumentNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateExplicitlySizedSequence( GraphMemberNode a_oGraphMemberNode, Node a_oDocumentNode )
+{
+   int a_iSequenceLength = a_oGraphMemberNode.SequenceCount;
+   int a_iLength;
+   Group a_oParent = (Group)a_oDocumentNode.Parent();
+   for( int i = a_oDocumentNode.ChildIndex(); i < a_oParent.ChildCount; ++i )
+   {
+      Node a_oNode = (Node)a_oParent.Children[i];
+      if( a_oNode && a_oNode.IsDerived( a_oGraphMemberNode.NodeType() ) )
+      {
+         ++a_iLength;
+      }
+      else
+      {
+         break;
+      }
+   }
+
+   if( a_iLength == a_iSequenceLength )
+   {
+      return true;
+   }
+
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string EnumerateSpec( GraphMemberNode p_oGraphMemberNode )
+{
+   if( p_oGraphMemberNode && p_oGraphMemberNode.Parent().IsDerived( GraphMemberNode ) )
+   {
+      string a_sSpec;
+      a_sSpec += "\n\n";
+      a_sSpec += "Expected the following structure:\n\n";
+      a_sSpec += p_oGraphMemberNode.Parent().Name + "\n";
+      for( int g = 0; g < p_oGraphMemberNode.Parent().ChildCount; ++g )
+      {
+         Node a_oChild = (Node)p_oGraphMemberNode.Parent().Children[g];
+         if( a_oChild && a_oChild.IsDerived( GraphMemberNode ) )
+         {
+            GraphMemberNode a_oGraphMemberNode = (GraphMemberNode)a_oChild;
+            a_sSpec += "   " + a_oGraphMemberNode.Name + " <" + a_oGraphMemberNode.NodeTypeString +">";
+            if( a_oGraphMemberNode.SequenceMode == 1 )
+            {
+               a_sSpec += " [" + a_oGraphMemberNode.SequenceCount + "]";
+            }
+            else
+            if( a_oGraphMemberNode.SequenceMode == 2 )
+            {
+               a_sSpec += " [n]";
+            }
+            a_sSpec += "\n";
+         }
+      }
+      return a_sSpec;
+   }
+   return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int DisplayNodeValidationMessages( Node p_oDatabaseNode, NodeValidationModule p_oNodeValidationModule,
+   NodeValidationModuleInfo p_oNodeValidationModuleInfo, bool p_bDatabaseIsExternal )
+{
+   // Clear the previous results so we don't accumulate error messages from previous nodes.
+   p_oNodeValidationModuleInfo.ClearResults();
+   p_oNodeValidationModuleInfo.SetData( p_oDatabaseNode );
+   p_oNodeValidationModule.Execute( p_oNodeValidationModuleInfo );
+   // Display all the messages.
+   // NodeValidationMessage contains three members:
+   // .Text - Contains the message text.
+   // .MessageType - Contains the message type (Message=0, Warning=1, Error=2, as defined in NodeValidationModule.h)
+   // .Value - A node-specific error code.  These can come from the various per-node error enums that have been defined.
+
+   for( int i = 0; i < p_oNodeValidationModuleInfo.Messages.Length; ++i )
+   {
+      NodeValidationMessage a_oNodeValidationMessage =
+         p_oNodeValidationModuleInfo.Messages[i];
+
+      string a_sMessageType;
+      if( a_oNodeValidationMessage.MessageType == 0 )
+      {
+         a_sMessageType = "\nMESSAGE";
+      }
+      else
+      if( a_oNodeValidationMessage.MessageType == 1 )
+      {
+         a_sMessageType = "\nWARNING";
+      }
+      else
+      if( a_oNodeValidationMessage.MessageType == 2 )
+      {
+         a_sMessageType = "\nERROR";
+      }
+
+      string a_sDatabaseFrameOfReference;
+      if( p_bDatabaseIsExternal == false )
+      {
+         a_sDatabaseFrameOfReference = "Local Database\n";
+      }
+      else
+      {
+         a_sDatabaseFrameOfReference = "Remote Database\n";
+      }
+
+      string a_sMessage = 
+         "Scope: " + a_sDatabaseFrameOfReference +
+         "Disk Address: " + p_oDatabaseNode.GetModel().Filename + "\n" +
+         "Graph Address: " + p_oDatabaseNode.GetPathToNode() + "\n" +
+         "Message: " + a_oNodeValidationMessage.Text +
+         "\nInternal Error Code: " +
+         a_oNodeValidationMessage.Value + "\n";
+
+      Console.Error( a_sMessage );
+      return a_oNodeValidationMessage.Value;
+   }
+
+   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetNodeErrors( bool p_bDatabaseIsExternal, List p_lNodes )
+{
+   int a_iHasErrors;
+   ModuleRegistry globalMods = ModuleRegistry.GetGlobalModules();
+   auto NodeValidationModuleInfo a_oNodeValidationInfo;
+
+   // Set GenerateMessages to true to signal the validation module(s)
+   // that we want output messages.
+   a_oNodeValidationInfo.GenerateMessages = true;
+
+   // Iterate the selection looking for validation modules for each node.
+   // If we find a module, execute it for the node and print the results.
+   for( int nodes = 0; nodes < p_lNodes.GetCount(); ++nodes )
+   {
+      Node a_oDatabaseNode = (Node)p_lNodes.Get( nodes );
+      if( a_oDatabaseNode && a_oDatabaseNode.IsDerived( NodeLink ) )
+      {
+         NodeLink a_oNodeLink = (NodeLink)a_oDatabaseNode;
+         a_oNodeLink.Load( 1 );
+         Node a_oLinkTarget = (Node)a_oNodeLink.Node;
+         if( a_oLinkTarget )
+         {
+            continue;
+         }
+         //Console.Out( "->" + a_oLinkTarget.GetModel().Filename );
+      }
+      else
+      if( a_oDatabaseNode && a_oDatabaseNode.IsDerived( Program ) && p_bDatabaseIsExternal )
+      {
+         // Skip because we can't validate unless the node is rendered.
+         continue;
+      }
+      else
+      if( a_oDatabaseNode && a_oDatabaseNode.IsDerived( UniformBufferBindNode ) && p_bDatabaseIsExternal )
+      {
+         // Skip because we can't validate unless the node is rendered.
+         continue;
+      }
+
+      TypeInformation type = a_oDatabaseNode.GetType();
+      NodeValidationModule a_oNodeValidationModule =
+         (NodeValidationModule)globalMods.GetClassModuleByType( type, NodeValidationModule );
+      
+      if( a_oNodeValidationModule )
+      {
+         //Console.Message( "Iteration: " + nodes + "  " + a_iHasErrors );
+         a_iHasErrors = DisplayNodeValidationMessages( a_oDatabaseNode,
+            a_oNodeValidationModule, a_oNodeValidationInfo, p_bDatabaseIsExternal );
+      }
+      else
+      if( a_oDatabaseNode.Class != "" )
+      {
+         // Find a validation module by seeing
+         // if the node's Class parameter has
+         // matches a validator type.
+         auto Type a_oType;
+         auto TypeInformation a_oTypeInfo =
+            a_oType.GetType().FindClassType( a_oDatabaseNode.Class );
+         if( a_oTypeInfo )
+         {
+            a_oNodeValidationModule =
+               (NodeValidationModule)globalMods.GetClassModuleByType( type, NodeValidationModule );
+
+            a_iHasErrors = DisplayNodeValidationMessages( a_oDatabaseNode,
+               a_oNodeValidationModule, a_oNodeValidationInfo, p_bDatabaseIsExternal );
+         }
+      }
+
+      if( a_iHasErrors )
+      {
+         break;
+      }
+   }
+
+   return a_iHasErrors;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateExplicitSequence( GraphMemberNode p_oGraphMemberNode, Node p_oDocumentNode )
+{
+   Group a_oParent = (Group)p_oDocumentNode.Parent();
+               
+   // Include the first node in the sequence, which we have already found.
+   int a_iSequenceCount;
+   for( int i = p_oDocumentNode.ChildIndex(); i < p_oDocumentNode.Parent().ChildCount; ++i )
+   {
+      Node a_oNode = (Node)p_oDocumentNode.Parent().Children[i];
+      if( a_oNode && a_oNode.IsDerived( p_oGraphMemberNode.NodeType() ) )
+      {
+         ++a_iSequenceCount;
+      }
+      else
+      {
+         break;
+      }
+   }
+
+   if( a_iSequenceCount != p_oGraphMemberNode.SequenceCount )
+   {
+      string a_sMessage = "Document and its specification do not agree. Illegal length of explicitly sized sequence!\n";
+      a_sMessage += "Specification found at: " + p_oGraphMemberNode.GetModel().Filename + ".\n";
+      a_sMessage += "Node at start of sequence: " + p_oDocumentNode.GetPathToNode() + ".\n";
+      a_sMessage += "The specification requires a sequence of [" + p_oGraphMemberNode.SequenceCount +
+      "] node(s) of type <" + p_oGraphMemberNode.NodeTypeString + ">.\n";
+      a_sMessage += "Found a sequence of [" + a_iSequenceCount +
+      "] node(s) of type <" + p_oGraphMemberNode.NodeTypeString + ">.";
+      Console.Error( a_sMessage );
+      return false;
+   }
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateExistenceError( GraphMemberNode p_oGraphMemberNode )
+{
+   string a_sMessage;
+   a_sMessage += "Specification for this document found at: " + p_oGraphMemberNode.GetModel().Filename + "\n";
+   a_sMessage += "Document and its specification do not agree. Nodes are missing from this document.\n";
+   a_sMessage += "Expected a node of type <" + p_oGraphMemberNode.NodeTypeString + "> named '" + p_oGraphMemberNode.Name + "'.\n";
+   int a_iTypeRequestIndex = GetTypeRequestIndex( p_oGraphMemberNode );
+   a_sMessage += "Expected node should be the: " + a_iTypeRequestIndex + "-th child of type <" + p_oGraphMemberNode.NodeTypeString + ">.\n";
+   a_sMessage += "NOTE: Do not confuse child index with type request index. For example, the 1-th type request of type <Group> could be at child index 0.\n";
+   a_sMessage += "Expected node should have the following graph address: " + p_oGraphMemberNode.GetPathToNode();
+   a_sMessage += EnumerateSpec( p_oGraphMemberNode );
+   Console.Error( a_sMessage );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateEntryPoints( GraphMemberNode p_oGraphMemberNode, Group p_oDocumentNode )
+{
+   bool a_bValid = true;
+   // Validate indices.
+   if( p_oGraphMemberNode.ChildCount == 0 )
+   {
+      return true;
+   }
+
+   int a_iDocumentChildIndex; //p_oGraphMemberNode.ChildCount
+   for( int children = 0; children < p_oGraphMemberNode.ChildCount; ++children )
+   {
+      Node a_oChild = (Node)p_oGraphMemberNode.Children[ children ];
+      if( a_oChild && a_oChild.IsDerived( GraphMemberNode ) )
+      {
+         GraphMemberNode a_oGraphMemberNode = (GraphMemberNode)a_oChild;
+         Node a_oDocumentNode = (Node)p_oDocumentNode.Children[ a_iDocumentChildIndex ];
+
+         if( a_oGraphMemberNode.SequenceMode == 0 )
+         {
+            //Console.Message( "SequenceMode 0 " + a_oGraphMemberNode.Name + "-" + a_oDocumentNode.Name + " " + a_iDocumentChildIndex );
+            a_bValid = ValidateType( a_oGraphMemberNode, a_oDocumentNode );
+            if( a_bValid == false )
+            {
+               break;
+            }
+            ++a_iDocumentChildIndex;
+         }
+         else
+         if( a_oGraphMemberNode.SequenceMode == 1 )
+         {
+            //Console.Message( "SequenceMode 1 " + a_oGraphMemberNode.Name + " " + a_oDocumentNode.Name + " " + a_iDocumentChildIndex );
+            a_bValid = ValidateType( a_oGraphMemberNode, a_oDocumentNode );
+            a_iDocumentChildIndex += a_oGraphMemberNode.SequenceCount;
+            if( a_bValid == false )
+            {
+               break;
+            }
+         }
+         else
+         if( a_oGraphMemberNode.SequenceMode == 2 )
+         {
+            //Console.Message( "SequenceMode 2 " + a_oGraphMemberNode.Name + " " + a_oDocumentNode.Name + " " + a_iDocumentChildIndex );
+            a_bValid = ValidateType( a_oGraphMemberNode, a_oDocumentNode );
+            a_iDocumentChildIndex = AdvanceQueue( p_oDocumentNode, a_oDocumentNode );
+            if( a_bValid == false )
+            {
+               break;
+            }
+         }
+      }
+   }
+
+   return a_bValid;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void ValidateDocumentWithSchema( Model3D p_oDocument3D, Node p_oSpecification, List p_lValidated, ref bool p_bValid )
+{
+   if( !p_bValid )
+   {
+      return;
+   }
+
+   if( p_oSpecification.IsDerived( GraphMemberNode ) )
+   {
+      GraphMemberNode a_oGraphMemberNode = (GraphMemberNode)p_oSpecification;
+
+      // Validate the existence and type of any nodes that
+      // are statically-declared in the specification. There
+      // will always be at least one statically-declared node.
+      if( a_oGraphMemberNode.TemplateMode == 2 )
+      {
+         string a_sPathToNode = p_oSpecification.GetPathToNode();
+         Node a_oDocumentNode = (Node)p_oDocument3D.GetTypedNodeByPath( a_sPathToNode, Node );
+
+         if( a_oDocumentNode )
+         {
+            p_bValid = ValidateType( a_oGraphMemberNode, a_oDocumentNode );
+            if( p_bValid == false )
+            {
+               return;
+            }
+
+            if( a_oGraphMemberNode.NodeType().IsDerived( Group ) && a_oDocumentNode.IsDerived( Group ) )
+            {
+               p_bValid = ValidateEntryPoints( a_oGraphMemberNode, (Group)a_oDocumentNode );
+               if( p_bValid == false )
+               {
+                  return;
+               }
+            }
+
+            // If the GraphMemberNode has a child count, check and see
+            // if there are restrictions on child type.
+            if( a_oGraphMemberNode.ChildCount && a_oDocumentNode )
+            {
+               p_bValid = ValidateChildType( a_oGraphMemberNode, a_oDocumentNode );
+               if( p_bValid == false )
+               {
+                  return;
+               }
+            }
+         }
+         else
+         {
+            GenerateExistenceError( a_oGraphMemberNode );
+            p_bValid = false;
+            return;
+         }
+      }
+
+      // Validate explicit sequence existence and range.
+      if( a_oGraphMemberNode.SequenceMode == 1 )
+      {
+         Node a_oParent = (Node)a_oGraphMemberNode.Parent();
+         Group a_oDocumentParent;
+         Node a_oDocumentNode;
+         if( a_oParent && a_oParent.IsDerived( Group ) )
+         {
+            Group a_oGraphParent = (Group)a_oParent;
+            string a_sPathToNode = a_oGraphParent.GetPathToNode();
+            a_oDocumentParent = (Group)p_oDocument3D.GetTypedNodeByPath( a_sPathToNode, Node );
+         }
+         int a_iTypeRequestIndex = GetTypeRequestIndex( a_oGraphMemberNode );
+         Node a_oNode = GetChildTypeByRequestIndex( a_oDocumentParent, a_iTypeRequestIndex, a_oGraphMemberNode );
+
+         if( a_oNode )
+         {
+            a_oDocumentNode = a_oNode;
+         }
+         else
+         {
+            string a_sMessage;
+            a_sMessage += "Document and its specification do not agree. Nodes are missing from the document.\n";
+            a_sMessage += "Specification found at: " + a_oGraphMemberNode.GetModel().Filename + "\n";
+
+            a_sMessage += "Expected an explicitly sized sequence of [" + a_oGraphMemberNode.SequenceCount + "] nodes of type <" +
+               a_oGraphMemberNode.NodeTypeString + ">.";
+            a_sMessage += EnumerateSpec( a_oGraphMemberNode );
+            Console.Error( a_sMessage );
+            p_bValid = false;
+            return;
+         }
+
+         if( a_oDocumentNode )
+         {
+            p_bValid = ValidateExplicitSequence( a_oGraphMemberNode, a_oDocumentNode );
+            if( p_bValid == false )
+            {
+               return;
+            }
+         }
+      }
+      else
+      if( a_oGraphMemberNode.SequenceMode == 2 )
+      {
+         Node a_oParent = (Node)a_oGraphMemberNode.Parent();
+         Group a_oDocumentParent;
+         if( a_oParent && a_oParent.IsDerived( GraphMemberNode ) )
+         {
+            GraphMemberNode a_oGraphParent = (GraphMemberNode)a_oParent;
+            string a_sPathToNode = a_oGraphParent.GetPathToNode();
+            a_oDocumentParent = (Group)p_oDocument3D.GetTypedNodeByPath( a_sPathToNode, Node );
+         }
+         int a_iTypeRequestIndex = GetTypeRequestIndex( a_oGraphMemberNode );
+         Node a_oNode = GetChildTypeByRequestIndex( a_oDocumentParent, a_iTypeRequestIndex, a_oGraphMemberNode );
+
+         if( a_oNode )
+         {
+            if( a_oNode.ChildIndex() > a_oGraphMemberNode.ChildIndex() )
+            {
+               string a_sMessage;
+               a_sMessage += "Document and its specification do not agree. Nodes are missing from the document.\n";
+               a_sMessage += "Specification found at: " + a_oGraphMemberNode.GetModel().Filename + "\n";
+               a_sMessage += "Expected an implicitly sized sequence of [n] nodes of type <" + a_oGraphMemberNode.NodeTypeString + ">.\n";
+               a_sMessage += "The specification node requiring this sequence is: '" + a_oGraphMemberNode.Name + "'";
+               a_sMessage += EnumerateSpec( a_oGraphMemberNode );
+               Console.Error( a_sMessage );
+               p_bValid = false;
+               return;
+            }
+         }
+      }
+   }
+
+   if( p_oSpecification.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)p_oSpecification;
+
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         ValidateDocumentWithSchema( p_oDocument3D, a_oGroup.Children[i], p_lValidated, p_bValid );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function int ValidateGraphStructure( Model3D p_oModel3D, bool p_bIsExternalDatabase, ref string p_sMessage )
+{
+   // This validation technique compares the active document to a
+   // user-defined specification document that contains a minor form
+   // of the graph. Validation relies on simple notions from algebraic graph
+   // theory that are repeatedly applied to create robust validation.
+
+   // Check and see if the active document has a 
+   // graph that can be used to validate it. To
+   // do this, use the document's root node .Class
+   // parameter to create a filename.
+   bool a_bValidated = true;
+   string a_sValidationFile =
+      Application.GetApplicationDocumentsPath() + "validation\\" + p_oModel3D.Class + ".box";
+
+   // Canonicalize model and validation file paths to
+   // make sure we can compare them below.
+   auto FilePath a_oValidationFilePath = new FilePath( a_sValidationFile );
+   a_oValidationFilePath.Canonicalize();
+   a_sValidationFile = a_oValidationFilePath.GetPath();
+   auto FilePath a_oModelFilePath = new FilePath( Model.Filename );
+   a_oModelFilePath.Canonicalize();
+
+   int a_iFoundErrors;
+   string a_sNoValidation =
+      "This database does not require structural validation.\n";
+   string a_sSameModel =
+      "Skipping validation. There is no need to validate the 'validation database' with itself: " + p_oModel3D.Filename +  "\n";
+
+   auto File a_oFile;
+   a_oFile.Filename = a_sValidationFile;
+
+   // Check that we're not trying to validate the validation database ( because we can't
+   // validate a file with itself since all graphs are isomorphic to themselves ).
+   if( a_oValidationFilePath.GetPath() != a_oModelFilePath.GetPath() &&
+      p_oModel3D.Filename != a_oValidationFilePath.GetPath() )
+   {
+      // Do validation if the active document has a specification.
+      if( a_oFile.FileExists( a_sValidationFile ) )
+      {
+         auto Model3D a_oSpecDatabase;
+         a_oSpecDatabase.OpenFile( a_sValidationFile );
+         bool a_bDatabaseIsExternal = true;
+
+         // Get the nodes from the specification database.
+         auto List a_lSpecificationNodes;
+         Graph.GetNodesFromDatabase( a_oSpecDatabase, a_lSpecificationNodes, Node );
+
+         // Validate parameters of nodes in the specification database.
+         if( GetNodeErrors( a_bDatabaseIsExternal, a_lSpecificationNodes ) )
+         {
+            return false;
+         }
+
+         auto List a_lValidated;
+         ValidateDocumentWithSchema( p_oModel3D, a_oSpecDatabase, a_lValidated, a_bValidated );
+         if( a_bValidated == false )
+         {
+            return false;
+         }
+         p_sMessage += "Successfully validated document by schematic comparison using the schema at: " +
+            a_oSpecDatabase.Filename + "\n";
+      }
+      else
+      {
+         p_sMessage += a_sNoValidation;
+         return true;
+      }
+   }
+   else
+   {
+      p_sMessage += a_sSameModel;
+
+      // Do validation if the active document has a specification.
+      auto List a_lDatabaseNodes;
+      Graph.GetNodesFromDatabase( Model, a_lDatabaseNodes, Node );
+
+      // Validate parameters of nodes in the specification database.
+      bool a_bDatabaseIsExternal = true;
+      if( GetNodeErrors( a_bDatabaseIsExternal, a_lDatabaseNodes ) )
+      {
+         return false;
+      }
+
+      return true;
+   }
+
+   return a_bValidated;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateGraph( Model3D p_oModel, bool p_bActiveDocument )
+{
+   bool a_bValid = true;
+   bool a_bInvalid = false;
+
+   // Begin performance profiling here.
+   //int a_iStartTickCount = Math.FAbs( Time.GetTickCount() );
+
+   string a_sMessage = "\nValidating <" + p_oModel.Filename + ">\n";
+
+   // Set the external flag. This doesn't matter
+   // in terms of how validation works, it's just
+   // used to provide information to the user about
+   // which database is being validated.
+   bool a_bDatabaseIsExternal = false;
+   if( Model.Filename != p_oModel.Filename )
+   {
+      a_bDatabaseIsExternal = true;
+   }
+
+   // Validate the model's structure by comparing it to the reference database.
+   // The reference database is a minor form of the graph. See http://en.wikipedia.org/wiki/Graph_minor
+   // Return if this test fails and allow the user to make corrections.
+
+   if( ValidateGraphStructure( p_oModel, a_bDatabaseIsExternal, a_sMessage ) == 0 )
+   {
+      return a_bInvalid;
+   }
+
+   // The database's structure is valid.
+   // Validate the current database nodes.
+   bool a_bCurrentDatabaseIsValid;
+   auto List a_lDatabaseNodes;
+   Graph.GetNodesFromDatabase( p_oModel, a_lDatabaseNodes, Node );
+
+   // DEBUG
+   //SpaListUtil.SendToOutput( a_lDatabaseNodes );
+
+   if( GetNodeErrors( a_bDatabaseIsExternal, a_lDatabaseNodes ) == false )
+   {
+      if( SpaValidationUtil.GraphHasIdentificationErrors( a_lDatabaseNodes ) == false )
+      {
+         a_bCurrentDatabaseIsValid = true;
+         a_sMessage += "Successfully validated graph node parameters.";
+         if( p_bActiveDocument == false )
+         {
+            a_sMessage += "\n";
+         }
+
+         Console.Out( a_sMessage );
+      }
+      else
+      {
+         return a_bInvalid;
+      }
+   }
+   else
+   {
+      return a_bInvalid;
+   }
+
+   // Display performance information.
+   //int a_iEndTickCount = Math.FAbs( Time.GetTickCount() );
+   //SpaPerformanceUtil.MeasureExecutionTime( a_iStartTickCount, a_iEndTickCount, "Macro: HierarchyValidateContents()" );
+
+   return a_bValid;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateModelList( StrList p_slModelFilePaths,CommandPresentationModuleInfo commandInfo )
+{
+   bool a_bValid;
+
+   for( int models = 0; models < p_slModelFilePaths.GetCount(); ++models )
+   {
+      string a_sFilename = p_slModelFilePaths.Get( models );
+      auto Model3D a_oRemoteModel;
+      a_oRemoteModel.OpenFile( a_sFilename );
+
+      if( a_oRemoteModel )
+      {
+         if( ValidateGraph( a_oRemoteModel, false ) == false )
+         {
+            a_bValid = false;
+            break;
+         }
+         else
+         {
+            a_bValid = true;
+         }
+      }
+   }
+
+   return a_bValid;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function bool AddShimsToDocument( FilePath p_oDocumentPath )
+{
+   auto TextFile a_oHtmlDoc;
+   string a_sHtmlDocument;
+   if( a_oHtmlDoc.Open( p_oDocumentPath.GetPath(), 1 ) )
+   {
+      //Console.Out( "Opened for shim insertion: " + p_oDocumentPath.GetPath() );
+      a_sHtmlDocument += "<xml>\n";
+      while( !a_oHtmlDoc.IsEndOfFile() )
+      {
+         a_sHtmlDocument += a_oHtmlDoc.ReadLine() + "\n";
+      }
+      a_sHtmlDocument += "</xml>\n";
+      a_oHtmlDoc.Close();
+
+      //Console.Out( a_sHtmlDocument );
+
+      if( a_oHtmlDoc.Open( p_oDocumentPath.GetPath(), 0 ) )
+      {
+         a_oHtmlDoc.Write( a_sHtmlDocument );
+         a_oHtmlDoc.Close();
+         //Console.Out( "Closing after shim insertion: " + p_oDocumentPath.GetPath() + " " + a_oHtmlDoc.Close() );
+      }
+      else
+      {
+         string a_sMessage = "Unable to open the following document so it can be written with shims: " + p_oDocumentPath.GetPath();
+         Console.Assert( a_sMessage );
+         return false;
+      }
+   }
+   else
+   {
+      string a_sMessage = "Unable to open the following document: " + p_oDocumentPath.GetPath();
+      Console.Assert( a_sMessage );
+      return false;
+   }
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function bool RemoveShimsFromDocument( FilePath p_oDocumentPath )
+{
+   auto TextFile a_oDocumentToRestore;
+   bool a_bDocumentAccessFailed;
+
+   if( a_oDocumentToRestore.Open( p_oDocumentPath.GetPath(), 1 ) )
+   {
+      // Re-generate the document, but do not include the shim code.
+      string a_sBuffer;
+      string a_sDocument;
+      while( !a_oDocumentToRestore.IsEndOfFile() )
+      {
+         a_sBuffer = a_oDocumentToRestore.ReadLine() + "\n";
+         if( a_sBuffer != "<xml>\n" && a_sBuffer != "</xml>\n" )
+         {
+            a_sDocument += a_sBuffer;
+         }
+      }
+      a_oDocumentToRestore.Close();
+
+      // Open for writing and save the document in its previous state.
+      if( a_oDocumentToRestore.Open( p_oDocumentPath.GetPath(), 0 ) )
+      {
+         a_oDocumentToRestore.Write( a_sDocument );
+         a_oDocumentToRestore.Close();
+      }
+      else
+      {
+         a_bDocumentAccessFailed = true;
+         string a_sMessage = "Unable to save the restored document: " + p_oDocumentPath.GetPath();
+         Console.Assert( a_sMessage );
+      }
+   }
+   else
+   {
+      string a_sMessage = "Unable to open and restore the following document: " + p_oDocumentPath.GetPath();
+      Console.Assert( a_sMessage );
+      a_bDocumentAccessFailed = true;
+   }
+
+   if( a_bDocumentAccessFailed )
+   {
+      return false;
+   }
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function bool EnumerateXmlDocumentErrors( TextFile p_oXmlDocument, FilePath p_oDocumentPath, List p_lErrorDetails )
+{
+   string a_sErrorMessage;
+   for( int a_nError = 0; a_nError < p_lErrorDetails.GetCount(); ++a_nError )
+   {
+      XmlError a_oError = (XmlError)p_lErrorDetails.Get( a_nError );
+      a_sErrorMessage += a_oError.GetFormattedError() + "\n";
+   }
+   p_oXmlDocument.Close();
+   // Restore the document to its previous state.
+   RemoveShimsFromDocument( p_oDocumentPath );
+   Console.Error( a_sErrorMessage );
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateXmlDocument( FilePath p_oDocumentPath )
+{
+   auto List a_lErrorDetails;
+
+   // Read the document and shim it if necessary.
+   // Shimming = adding <xml> / </xml> to the start / end of the document.
+   if( !AddShimsToDocument( p_oDocumentPath ) )
+   {
+      return false;
+   }
+
+   // To disable validation, set a_bValidate to 'false'.
+   bool a_bValidate = true;
+   if( a_bValidate )
+   {
+      auto TextFile a_oValidateDoc;
+      auto IXmlNode a_oDom = a_oValidateDoc.OpenXml( p_oDocumentPath.GetPath(), true, a_lErrorDetails );
+      if( a_lErrorDetails.GetCount() )
+      {
+         return EnumerateXmlDocumentErrors( a_oValidateDoc, p_oDocumentPath, a_lErrorDetails );
+      }
+      else
+      {
+         a_oValidateDoc.Close();
+      }
+   }
+
+   if( !RemoveShimsFromDocument( p_oDocumentPath ) )
+   {
+      return false;
+   }
+
+   return true;
+}

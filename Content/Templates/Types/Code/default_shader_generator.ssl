@@ -1,0 +1,92 @@
+bool bGenerateShader = true;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// This function generates shader code for all shader stages specified by the program node.
+
+function void GenerateShaderCode( ScriptNode p_oScriptNode, RenderInfo render )
+{
+   // Validate the graph structure against the specification.
+   /*
+   if( !SpaGenerateShaderUtil.ValidateGraph( Model ) )
+   {
+      Console.Out( "Unable to generate shader code because graph structure is invalid." );      
+      return;
+   }
+   */
+
+   Console.ClearOutputWindow();
+
+   // Begin performance profiling here.
+   int a_iStartTickCount = Math.FAbs( Time.GetTickCount() );
+
+   // Iterate the ScriptNode children and collect the ShaderSourceNodes;
+   for( int children = 0; children < p_oScriptNode.ChildCount; ++children )
+   {
+      Node a_oChild = (Node)p_oScriptNode.Children[ children ];
+      if( a_oChild && a_oChild.IsDerived( ShaderSourceNode ) )
+      {
+         ShaderSourceNode a_oShaderSourceNode = (ShaderSourceNode)a_oChild;
+         if( a_oShaderSourceNode.Visible )
+         {
+            // Generate code.
+            string a_sCode = SpaGenerateShaderUtil.GenerateCode( a_oShaderSourceNode );
+
+            // Save to disk.
+            auto FilePath a_oSource = new FilePath( a_oShaderSourceNode.FilePath );
+            a_oSource.ResolveToModel( a_oShaderSourceNode );
+            SpaGenerateShaderUtil.WriteFileToDisk( a_oSource.GetPath(), a_sCode );
+         }
+      }
+   }
+
+   // Display performance information.
+   int a_iEndTickCount = Math.FAbs( Time.GetTickCount() );
+   SpaPerformanceUtil.MeasureExecutionTime( a_iStartTickCount, a_iEndTickCount, "Function: GenerateShaderCode()" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateShader_OnNotify( ScriptNode p_oScriptNode, int changeType, Node notifyNode )
+{
+   // For debugging
+   //Log.DebugString( "Script <" + notifyNode.GetPathToNode() + ">" + " observed change via OnNotify( " + changeType + ", " + notifyNode.Name + " )\n" );
+   bGenerateShader = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GenerateShader( ScriptNode p_oScriptNode, RenderInfo render )
+{
+   if( !bGenerateShader )
+   {
+      return 1;
+   }
+   
+   GenerateShaderCode( p_oScriptNode, render );
+	bGenerateShader = false;
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GenerateShader_OnModelChanged( Node p_oScriptNode, int index, int element, int changeType, Node node )
+{
+   // If the user is just selecting something, or the change
+   // is related to a ModelView, do not update the shader.
+   // We are only concerned with data updates.
+   if( changeType == 8 || element == 0x20000000 )
+   {
+      return 0;
+   }
+   bGenerateShader = true;
+   return 1;
+}

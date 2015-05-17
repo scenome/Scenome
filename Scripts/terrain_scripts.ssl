@@ -1,0 +1,1413 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             TERRAIN_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements commands for working with meshes that have been projected into UTM or LCC coordinate space.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "message_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateOutputMessage( string p_sMessage, string p_sDatabaseName, string p_sMessageType )
+{
+   string a_sLeader = "";
+   string a_sDatabaseNotFound                                             = a_sLeader + "Could not find the requested database. Please check that the following file exists: " + p_sDatabaseName + ".\n";
+   string a_sChangingProjectionMayRequireMuchCleanup                    = a_sLeader + "Changing the projection may require extensive clean up!\n";
+   string a_sProjectionModifierMeshHasNoModifiersToChangeProjection1    = a_sLeader + "The mesh referenced by the projection modifier does not contain required modifiers to change the projection.\n";
+   string a_sModifierNotChildOfMeshNode1                                = a_sLeader + "The selected modifier is not a child of a mesh node.\n";
+   string a_sProjectionModifierMeshHasNoModifiersToChangeProjection2    = a_sLeader + "The mesh referenced by the projection modifier does not contain required modifiers to change the projection.\n";
+   string a_sModifierNotChildOfMeshNode2                                = a_sLeader + "The selected modifier is not a child of a mesh node.\n";
+   string a_sProjectionModifierMeshHasNoModifiersToChangeProjection3    = a_sLeader + "The mesh referenced by the projection modifier does not contain required modifiers to change the projection.\n";
+   string a_sModifierNotChildOfMeshNode3                                = a_sLeader + "The selected modifier is not a child of a mesh node.\n";
+   string a_sProjectionModifierMeshHasNoModifiersToChangeProjection4    = a_sLeader + "The mesh referenced by the projection modifier does not contain required modifiers to change the projection.\n";
+   string a_sModifierNotChildOfMeshNode4                                = a_sLeader + "The selected modifier is not a child of a mesh node.\n";
+   string a_sMeshNotFound1                                              = a_sLeader + "Mesh not found.\n";
+   string a_sRectangleGeometryModifierNotFound                          = a_sLeader + "RectangleGeometryModifier not found.\n";
+   string a_sMeshNotFound2                                              = a_sLeader + "Mesh not found.\n";
+   string a_sRequiredModifiersNotFound                                  = a_sLeader + "Required modifiers not found.\n";
+   string a_sMeshNotFound3                                              = a_sLeader + "Mesh not found.\n";
+
+   Console.GenerateOutputMessageHeader( p_sMessageType );
+
+   if( p_sMessage == "ChangingProjectionMayRequireMuchCleanup" )                     { Console.Message( a_sChangingProjectionMayRequireMuchCleanup );                 }
+   if( p_sMessage == "ProjectionModifierMeshHasNoModifiersToChangeProjection1" )     { Console.Message( a_sProjectionModifierMeshHasNoModifiersToChangeProjection1 ); }
+   if( p_sMessage == "ModifierNotChildOfMeshNode1" )                                 { Console.Message( a_sModifierNotChildOfMeshNode1 );                             }
+   if( p_sMessage == "ProjectionModifierMeshHasNoModifiersToChangeProjection2" )     { Console.Message( a_sProjectionModifierMeshHasNoModifiersToChangeProjection2 ); }
+   if( p_sMessage == "ModifierNotChildOfMeshNode2" )                                 { Console.Message( a_sModifierNotChildOfMeshNode2 );                             }
+   if( p_sMessage == "ProjectionModifierMeshHasNoModifiersToChangeProjection3" )     { Console.Message( a_sProjectionModifierMeshHasNoModifiersToChangeProjection3 ); }
+   if( p_sMessage == "ModifierNotChildOfMeshNode3" )                                 { Console.Message( a_sModifierNotChildOfMeshNode3 );                             }
+   if( p_sMessage == "ProjectionModifierMeshHasNoModifiersToChangeProjection4" )     { Console.Message( a_sProjectionModifierMeshHasNoModifiersToChangeProjection4 ); }
+   if( p_sMessage == "ModifierNotChildOfMeshNode4" )                                 { Console.Message( a_sModifierNotChildOfMeshNode4 );                             }
+   if( p_sMessage == "MeshNotFound1" )                                               { Console.Message( a_sMeshNotFound1 );                                           }
+   if( p_sMessage == "RectangleGeometryModifierNotFound" )                           { Console.Message( a_sRectangleGeometryModifierNotFound );                       }
+   if( p_sMessage == "MeshNotFound2" )                                               { Console.Message( a_sMeshNotFound2 );                                           }
+   if( p_sMessage == "RequiredModifiersNotFound" )                                   { Console.Message( a_sRequiredModifiersNotFound );                               }
+   if( p_sMessage == "MeshNotFound3" )                                               { Console.Message( a_sMeshNotFound3 );                                           }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void HandleTerrainOptionsModifierOnUpdate( CommandPresentationModuleInfo commandInfo, string commandHint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, TerrainOptionsModifier, commandHint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Update the UI state for commands that only depend on an ExportOptionsModifier node being selected.
+
+function void HandleExportOptionsModifierOnUpdate( CommandPresentationModuleInfo commandInfo, string commandHint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ExportOptionsModifier, commandHint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Update the UI state for commands that only depend on a RectangleGeometryModifier node being selected.
+
+function void RectangleGeometryModifierOnUpdate( CommandPresentationModuleInfo commandInfo, string commandHint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, RectangleGeometryModifier, commandHint );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Update the UI state for commands that only depend on a GeographicProjectionModifier node being selected.
+
+function void GeographicProjectionModifierOnUpdate( CommandPresentationModuleInfo commandInfo, string commandHint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ProjectionModifier, commandHint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Update the UI state for commands that only depend on a GeographicTextureModifier node being selected.
+
+function void GeographicTextureModifierOnUpdate( CommandPresentationModuleInfo commandInfo, string commandHint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, GeographicTextureModifier, commandHint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetProjectionLatLongAndFindMesh( ParametricMesh mesh, RectangleGeometryModifier geometry,
+   GeographicProjectionModifier projectGeometry, GeographicTextureModifier projectTextures )
+{
+   // Create modifiers that deal with projecting geometry and textures.
+    
+    GeographicProjectionModifier a_oProjectGeometry = (GeographicProjectionModifier)Model.EditNode( projectGeometry );
+    GeographicTextureModifier a_oProjectTextures = (GeographicTextureModifier)Model.EditNode( projectTextures );
+
+   // Create Vec objects for the four corners of the projected region.
+   Vec a_vUpperLeft = new Vec;
+   Vec a_vUpperRight = new Vec;
+   Vec a_vLowerLeft = new Vec;
+   Vec a_vLowerRight = new Vec;
+
+   Vec a_vMinTileExtent = new Vec;
+   Vec a_vMaxTileExtent = new Vec;
+
+   // Determine the range across latitude and longitude.
+   double rangeX = ( geometry.XMax - geometry.XMin );
+   double rangeY = ( geometry.YMax - geometry.YMin );
+
+   // Pass the two original corners ( in latitude and longitude ) to the Vec.
+   a_vLowerLeft.X = geometry.XMin;
+   a_vLowerLeft.Y = geometry.YMin;
+   a_vUpperRight.X = geometry.XMin + rangeX;
+   a_vUpperRight.Y = geometry.YMin + rangeY;
+
+   // Derive the opposite corners for the two original corners. This gives us, in latitude and longitude, the four corners of the projected region.
+   a_vUpperLeft.X = a_vLowerLeft.X;
+   a_vUpperLeft.Y = a_vUpperRight.Y;
+   a_vLowerRight.X = a_vUpperRight.X;
+   a_vLowerRight.Y = a_vLowerLeft.Y;
+
+   // Project the corners from latitude/longitude to either UniversalTransverseMercator or LambertConformalConic.
+   // The current projection mode of the GeographicProjectionModifier determines the projection.
+   a_oProjectGeometry.ForwardProject( a_vUpperLeft );
+   a_oProjectGeometry.ForwardProject( a_vUpperRight );
+   a_oProjectGeometry.ForwardProject( a_vLowerLeft );
+   a_oProjectGeometry.ForwardProject( a_vLowerRight );
+
+   // There are eight possible values. Determine the four minimum and maximum projected coordinates.
+   double a_dMinLatitude  = Math.MinD( a_vLowerLeft.Y, a_vLowerRight.Y );
+   double a_dMaxLatitude  = Math.MaxD( a_vUpperLeft.Y, a_vUpperRight.Y );
+   double a_dMinLongitude = Math.MinD( a_vLowerLeft.X, a_vUpperLeft.X );
+   double a_dMaxLongitude = Math.MaxD( a_vUpperRight.X, a_vLowerRight.X );
+
+   // Assign these values to the modifiers, or assign latitude/longitude values to the modifiers
+   // depending on whether or not the "ValuesAreProjected" parameter is true or false.
+   for( int c = 0; c < mesh.ChildCount; ++c )
+   {
+      Node child = (Node)((ParametricMesh)mesh).Children[ c ];
+      if( child.IsDerived ( GeographicTextureModifier ) )
+      {
+         if( a_oProjectTextures.ValuesAreProjected == true )
+         {
+            a_oProjectTextures.MinimumLatitude = a_dMinLatitude;
+            a_oProjectTextures.MaximumLatitude = a_dMaxLatitude;
+            a_oProjectTextures.MinimumLongitude = a_dMinLongitude;
+            a_oProjectTextures.MaximumLongitude = a_dMaxLongitude;
+         }
+         else
+         {
+            a_oProjectTextures.MinimumLatitude = geometry.YMin;
+            a_oProjectTextures.MaximumLatitude = geometry.YMax;
+            a_oProjectTextures.MinimumLongitude = geometry.XMin;
+            a_oProjectTextures.MaximumLongitude = geometry.XMax;
+         }
+      }
+   }
+
+   // Calculate center values from the new extents.
+   Vec min = new Vec;
+   Vec max = new Vec;
+   min.X = a_dMinLongitude;
+   min.Y = a_dMinLatitude;
+   max.X = a_dMaxLongitude;
+   max.Y = a_dMaxLatitude;
+
+   double width = max.X - min.X;
+   double height = max.Y - min.Y;
+   double minY = min.Y;
+   double minZ = min.Z;
+   double diagonal = Math.Sqrt( width * width + height * height );
+
+   min.Blend( max, 0.5 );
+
+   double center_x = min.X;
+   double center_y = min.Y;
+   double center_z = min.Z;
+
+   //((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( center_x + " " + center_y );
+
+   delete min;
+   delete max;
+
+   // Modify the worksheet projection, clip planes, zoom, and camera position.
+   Matrix gTransform = mesh.GetTransform();
+
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.Orientation.X = 0.0;
+   a_oView.Orientation.Y = 0.0;
+   a_oView.Orientation.Z = 0.0;
+
+   a_oView.SetTop();
+   a_oView.NearClip = -1000000.0;
+   a_oView.FarClip = 1000000.0;
+   a_oView.Zoom = diagonal / 2.0;
+
+   a_oView.Position.X =  center_x;
+   a_oView.Position.Y =  center_y;
+   a_oView.Position.Z =  center_z + ( diagonal / 2.0 );
+
+   a_oView.Orientation.Y = gTransform.Orientation[1];
+   a_oView.Orientation.Z = gTransform.Orientation[2];
+
+   delete a_vUpperLeft;
+   delete a_vUpperRight;
+   delete a_vLowerLeft;
+   delete a_vLowerRight;
+
+   delete a_vMinTileExtent;
+   delete a_vMaxTileExtent;
+
+   // The million-dollar statement group!
+   ((Group)mesh).InvalidateExtent();
+
+   mesh.InvalidateMesh();
+   mesh.GenerateMesh();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetPathLowResolutionImagery_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the path for the low resolution imagery folder." );
+}
+
+macro TerrainOptionsModifierSetPathLowResolutionImagery()
+[Category="Terrain Commands", Guid="{1F91FB0F-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( TerrainOptionsModifier ) )
+      {
+         TerrainOptionsModifier modifier = (TerrainOptionsModifier)Model.EditNode( node );
+         modifier.TextureFile = ".\\low_resolution_processed_imagery";
+         modifier.TileTextureDirectory = ".\\high_resolution_processed_imagery";
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetPathHighResolutionImagery_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the path for the high resolution imagery folder." );
+}
+
+macro TerrainOptionsModifierSetPathHighResolutionImagery()
+[Category="Terrain Commands", Guid="{1F91FB10-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( TerrainOptionsModifier ) )
+      {
+         TerrainOptionsModifier modifier = (TerrainOptionsModifier)Model.EditNode( node );
+         modifier.TextureFile = ".\\high_resolution_processed_imagery";
+         modifier.TileTextureDirectory = ".\\high_resolution_processed_imagery";
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExportOptionsModifierSetOutputLevelOfDetailCount1_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleExportOptionsModifierOnUpdate( commandInfo, "Create terrain with a single level-of-detail." );
+}
+
+macro ExportOptionsModifierSetOutputLevelOfDetailCount1()
+[Category="Terrain Commands", Guid="{1F91FA9E-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\terrain_options_modifier_set_one_lod.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ExportOptionsModifier ) )
+      {
+         ExportOptionsModifier modifier = (ExportOptionsModifier)Model.EditNode( node );
+         modifier.LODCount = 1;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExportOptionsModifierSetOutputLevelOfDetailCount2_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleExportOptionsModifierOnUpdate( commandInfo, "Create terrain with two levels-of-detail." );
+}
+
+macro ExportOptionsModifierSetOutputLevelOfDetailCount2()
+[Category="Terrain Commands", Guid="{1F91FA9F-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\terrain_options_modifier_set_two_lod.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ExportOptionsModifier ) )
+      {
+         ExportOptionsModifier modifier = (ExportOptionsModifier)Model.EditNode( node );
+         modifier.LODCount = 2;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExportOptionsModifierSetOutputLevelOfDetailCount3_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleExportOptionsModifierOnUpdate( commandInfo, "Create terrain with three levels-of-detail." );
+}
+
+macro ExportOptionsModifierSetOutputLevelOfDetailCount3()
+[Category="Terrain Commands", Guid="{1F91FAA0-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\terrain_options_modifier_set_three_lod.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ExportOptionsModifier ) )
+      {
+         ExportOptionsModifier modifier = (ExportOptionsModifier)Model.EditNode( node );
+         modifier.LODCount = 3;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExportOptionsModifierSetOutputTessellation4x4_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleExportOptionsModifierOnUpdate( commandInfo, "Create individual terrain chunks with an initial tessellation of 4x4." );
+}
+
+macro ExportOptionsModifierSetOutputTessellation4x4()
+[Category="Terrain Commands", Guid="{1F91FAA1-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\terrain_options_modifier_set_output_tessellation_four.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ExportOptionsModifier ) )
+      {
+         ExportOptionsModifier modifier = (ExportOptionsModifier)Model.EditNode( node );
+         modifier.TileTessellationX = 4;
+         modifier.TileTessellationY = 4;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExportOptionsModifierSetOutputTessellation16x16_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleExportOptionsModifierOnUpdate( commandInfo, "Create individual terrain chunks with an initial tessellation of 16x16." );
+}
+
+macro ExportOptionsModifierSetOutputTessellation16x16()
+[Category="Terrain Commands", Guid="{1F91FAA2-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\terrain_options_modifier_set_output_tessellation_sixteen.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ExportOptionsModifier ) )
+      {
+         ExportOptionsModifier modifier = (ExportOptionsModifier)Model.EditNode( node );
+         modifier.TileTessellationX = 16;
+         modifier.TileTessellationY = 16;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExportOptionsModifierSetOutputTessellation32x32_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleExportOptionsModifierOnUpdate( commandInfo, "Create individual terrain chunks with an initial tessellation of 32x32." );
+}
+
+macro ExportOptionsModifierSetOutputTessellation32x32()
+[Category="Terrain Commands", Guid="{1F91FACB-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\terrain_options_modifier_set_output_tessellation_thirty_two.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      
+      if( node.IsDerived( ExportOptionsModifier ) )
+      {
+         ExportOptionsModifier modifier = (ExportOptionsModifier)Model.EditNode( node );
+         modifier.TileTessellationX = 30;
+         modifier.TileTessellationY = 30;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExportOptionsModifierCalculateSimplificationPercents_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleExportOptionsModifierOnUpdate( commandInfo, "Calculate simplification percents when ExportOptionsModifier specifies multiple levels-of-detail." );
+}
+
+macro ExportOptionsModifierCalculateSimplificationPercents()
+[Category="Terrain Commands", Guid="{1F91FAAE-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\simplify_set_custom_percent.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ExportOptionsModifier ) )
+      {
+         ExportOptionsModifier modifier = (ExportOptionsModifier)Model.EditNode( node );
+         if( modifier.LODCount > 1 )
+         {
+            int simplify = 0;
+            int simplifyIncrement = 100 / ( modifier.LODCount + 1 );
+
+            for( int lod = 0; lod < modifier.LODCount; ++lod )
+            {
+               modifier.SimplifyPercentages[lod] = simplify;
+               simplify += simplifyIncrement;
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeographicProjectionModifierSetUniversalTransverseMercator_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   GeographicProjectionModifierOnUpdate( commandInfo, "Set the projection to Universal Transverse Mercator ( UTM )." );
+}
+
+macro GeographicProjectionModifierSetUniversalTransverseMercator()
+[Category="Terrain Commands", Guid="{1F91FAA5-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_projection_utm.bmp"]
+{
+   GenerateOutputMessage( "ChangingProjectionMayRequireMuchCleanup", "", "WARN" );
+   
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      // Check if the node is derived from a projection modifier.
+      if( node.IsDerived( ProjectionModifier ) )
+      {
+         // Find the modifier's parent node and check if the parent is a ParametricMesh.
+         // We are going to use other modifiers in the stack to edit the projection, and
+         // we must have a mesh to do this.
+         Node parentNode = node.Parent();
+
+         if( parentNode.IsDerived( ParametricMesh) )
+         {
+            ParametricMesh parametricMesh = (ParametricMesh)parentNode;
+
+            RectangleGeometryModifier findGeometry = (RectangleGeometryModifier)parametricMesh.GetChildByType( RectangleGeometryModifier );
+            GeographicProjectionModifier projectGeometry = (GeographicProjectionModifier)parametricMesh.GetChildByType( GeographicProjectionModifier);
+            GeographicTextureModifier projectTextures = (GeographicTextureModifier)parametricMesh.GetChildByType( GeographicTextureModifier);
+
+            if( !findGeometry || !projectGeometry || !projectTextures )
+            {
+               GenerateOutputMessage( "ProjectionModifierMeshHasNoModifiersToChangeProjection", "", "ERROR" );
+               return;
+            }
+
+            // Calculate the UTM zone.
+            int a_iZone = ( findGeometry.XMin + ( findGeometry.XMax - findGeometry.XMin ) / 2 + 180 ) / 6 + 1;
+
+            // Iterate the mesh children and find modifiers that handle geographic projection of geometry and textures.
+            for( int c = 0; c < parametricMesh.ChildCount; ++c )
+            {
+               Node child = (Node)((ParametricMesh)parametricMesh).Children[ c ];
+               if( child.IsDerived ( GeographicProjectionModifier ) )
+               {
+                  GeographicProjectionModifier a_oGeographicProjectionModifier = (GeographicProjectionModifier)child;
+                  a_oGeographicProjectionModifier.SetProjectionUniversalTransverseMercator();
+                  a_oGeographicProjectionModifier.SetDatumWGS84();
+                  a_oGeographicProjectionModifier.UTMZone = a_iZone;
+               }
+               if( child.IsDerived ( GeographicTextureModifier ) )
+               {
+                  GeographicTextureModifier a_oGeographicTextureModifier = (GeographicTextureModifier)child;
+                  a_oGeographicTextureModifier.SetProjectionUniversalTransverseMercator();
+                  a_oGeographicTextureModifier.SetDatumWGS84();
+                  a_oGeographicTextureModifier.UTMZone = a_iZone;
+               }
+               parametricMesh.InvalidateMesh();
+               parametricMesh.GenerateMesh();
+            }
+            SetProjectionLatLongAndFindMesh( parametricMesh, findGeometry, projectGeometry, projectTextures );
+         }
+         else
+         {
+            // Fail. The modifier isn't the child of a mesh. Assume the modifier is invalid.
+            GenerateOutputMessage( "ModifierNotChildOfMeshNode1", "", "ERROR" );
+            return;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeographicProjectionModifierSetLambertConformalConic_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   GeographicProjectionModifierOnUpdate( commandInfo, "Set the projection to Lambert Conformal Conic ( LCC )." );
+}
+
+macro GeographicProjectionModifierSetLambertConformalConic()
+[Category="Terrain Commands", Guid="{1F91FAA6-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_projection_lambert.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      
+      // Check if the node is derived from a projection modifier.
+      if( node.IsDerived( ProjectionModifier ) )
+      {
+         // Find the modifier's parent node and check if the parent is a ParametricMesh.
+         // We are going to use other modifiers in the stack to edit the projection, and
+         // we must have a mesh to do this.
+         Node parentNode = node.Parent();
+
+         if( parentNode.IsDerived( ParametricMesh) )
+         {
+            ParametricMesh parametricMesh = (ParametricMesh)parentNode;
+
+            RectangleGeometryModifier findGeometry = (RectangleGeometryModifier)parametricMesh.GetChildByType( RectangleGeometryModifier );
+            GeographicProjectionModifier projectGeometry = (GeographicProjectionModifier)parametricMesh.GetChildByType( GeographicProjectionModifier);
+            GeographicTextureModifier projectTextures = (GeographicTextureModifier)parametricMesh.GetChildByType( GeographicTextureModifier);
+
+            if( !findGeometry || !projectGeometry || !projectTextures )
+            {
+               GenerateOutputMessage( "ProjectionModifierMeshHasNoModifiersToChangeProjection2", "", "ERROR" );
+               return;
+            }
+
+            // Iterate the mesh children and find modifiers that handle geographic projection of geometry and textures.
+            for( int c = 0; c < parametricMesh.ChildCount; ++c )
+            {
+               Node child = (Node)((ParametricMesh)parametricMesh).Children[ c ];
+               if( child.IsDerived ( ProjectionModifier ) )
+               {
+                  ProjectionModifier a_oProjectionModifier = (ProjectionModifier)child;
+                  a_oProjectionModifier.SetProjectionLambertConformalConic();
+                  a_oProjectionModifier.SetDatumGRS1980();
+                  a_oProjectionModifier.FirstStandardParallel = 45;
+                  a_oProjectionModifier.SecondStandardParallel = 49;
+                  a_oProjectionModifier.CentralMeridian = -109.5;
+                  a_oProjectionModifier.OriginLatitude = 44.25;
+                  a_oProjectionModifier.Easting = 600000;
+                  a_oProjectionModifier.Northing = 0;
+               }
+            }
+            SetProjectionLatLongAndFindMesh( parametricMesh, findGeometry, projectGeometry, projectTextures );
+         }
+         else
+         {
+            // Fail. The modifier isn't the child of a mesh. Assume the modifier is invalid.
+            GenerateOutputMessage( "ModifierNotChildOfMeshNode2", "", "ERROR" );
+            return;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeographicProjectionModifierSetRobinson_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   GeographicProjectionModifierOnUpdate( commandInfo, "Set the projection to Robinson." );
+   // Robinson! Fetch me a drink!
+}
+
+macro GeographicProjectionModifierSetRobinson()
+[Category="Terrain Commands", Guid="{1F91FAC6-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_projection_robinson.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      
+      if( node.IsDerived( ProjectionModifier ) )
+      {
+         ProjectionModifier modifier = (ProjectionModifier)Model.EditNode( node );
+         modifier.SetProjectionRobinson();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeographicProjectionModifierConfigureLambertForMontana_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   GeographicProjectionModifierOnUpdate( commandInfo, "Configure Lambert Conformal Conic projection parameters for the Montana State Plane coordinate system." );
+}
+
+macro GeographicProjectionModifierConfigureLambertForMontana()
+[Category="Terrain Commands", Guid="{1F91FAA8-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\configure_lambert_conformal_conic_for_north_america.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      // Check if the node is derived from a projection modifier.
+      if( node.IsDerived( ProjectionModifier ) )
+      {
+         // Find the modifier's parent node and check if the parent is a ParametricMesh.
+         // We are going to use other modifiers in the stack to edit the projection, and
+         // we must have a mesh to do this.
+         Node parentNode = node.Parent();
+
+         if( parentNode.IsDerived( ParametricMesh) )
+         {
+            ParametricMesh parametricMesh = (ParametricMesh)parentNode;
+            RectangleGeometryModifier findGeometry = (RectangleGeometryModifier)parametricMesh.GetChildByType( RectangleGeometryModifier );
+            GeographicProjectionModifier projectGeometry = (GeographicProjectionModifier)parametricMesh.GetChildByType( GeographicProjectionModifier);
+            GeographicTextureModifier projectTextures = (GeographicTextureModifier)parametricMesh.GetChildByType( GeographicTextureModifier);
+
+            if( !findGeometry || !projectGeometry || !projectTextures )
+            {
+               GenerateOutputMessage( "ProjectionModifierMeshHasNoModifiersToChangeProjection3", "", "ERROR" );
+               return;
+            }
+
+            // Iterate the mesh children and find modifiers that handle geographic projection of geometry and textures.
+            for( int c = 0; c < parametricMesh.ChildCount; ++c )
+            {
+               Node child = (Node)((ParametricMesh)parametricMesh).Children[ c ];
+               if( child.IsDerived ( ProjectionModifier ) )
+               {
+                  ProjectionModifier a_oProjectionModifier = (ProjectionModifier)child;
+                  a_oProjectionModifier.SetProjectionLambertConformalConic();
+                  a_oProjectionModifier.SetDatumGRS1980();
+                  a_oProjectionModifier.FirstStandardParallel = 45;
+                  a_oProjectionModifier.SecondStandardParallel = 49;
+                  a_oProjectionModifier.CentralMeridian = -109.5;
+                  a_oProjectionModifier.OriginLatitude = 44.25;
+                  a_oProjectionModifier.Easting = 600000;
+                  a_oProjectionModifier.Northing = 0;
+               }
+            }
+            SetProjectionLatLongAndFindMesh( parametricMesh, findGeometry, projectGeometry, projectTextures );
+         }
+         else
+         {
+            // Fail. The modifier isn't the child of a mesh. Assume the modifier is invalid.
+            GenerateOutputMessage( "ModifierNotChildOfMeshNode3", "", "ERROR" );
+            return;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeographicProjectionModifierConfigureLambertForMassachusetts_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   GeographicProjectionModifierOnUpdate( commandInfo, "Configure Lambert Conformal Conic projection parameters for the Massachusetts State Plane coordinate system." );
+}
+
+macro GeographicProjectionModifierConfigureLambertForMassachusetts()
+[Category="Terrain Commands", Guid="{1F91FB11-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\configure_lambert_conformal_conic_for_north_america.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      
+      // Check if the node is derived from a projection modifier.
+      if( node.IsDerived( ProjectionModifier ) )
+      {
+         // Find the modifier's parent node and check if the parent is a ParametricMesh.
+         // We are going to use other modifiers in the stack to edit the projection, and
+         // we must have a mesh to do this.
+         Node parentNode = node.Parent();
+
+         if( parentNode.IsDerived( ParametricMesh) )
+         {
+            ParametricMesh parametricMesh = (ParametricMesh)parentNode;
+            RectangleGeometryModifier findGeometry = (RectangleGeometryModifier)parametricMesh.GetChildByType( RectangleGeometryModifier );
+            GeographicProjectionModifier projectGeometry = (GeographicProjectionModifier)parametricMesh.GetChildByType( GeographicProjectionModifier);
+            GeographicTextureModifier projectTextures = (GeographicTextureModifier)parametricMesh.GetChildByType( GeographicTextureModifier);
+
+            if( !findGeometry || !projectGeometry || !projectTextures )
+            {
+               GenerateOutputMessage( "ProjectionModifierMeshHasNoModifiersToChangeProjection4", "", "ERROR" );
+               return;
+            }
+
+            // Iterate the mesh children and find modifiers that handle geographic projection of geometry and textures.
+            for( int c = 0; c < parametricMesh.ChildCount; ++c )
+            {
+               Node child = (Node)((ParametricMesh)parametricMesh).Children[ c ];
+               if( child.IsDerived ( ProjectionModifier ) )
+               {
+                  ProjectionModifier modifier = (ProjectionModifier)Model.EditNode( node );
+                  modifier.SetProjectionLambertConformalConic();
+                  modifier.SetDatumGRS1980();
+                  modifier.FirstStandardParallel = 41.71666666667;
+                  modifier.SecondStandardParallel = 42.68333333333;
+                  modifier.CentralMeridian = -71.5;
+                  modifier.OriginLatitude = 41; // Also called "Reference Latitude"
+                  modifier.Easting = 200000;
+                  modifier.Northing = 750000;
+               }
+            }
+            SetProjectionLatLongAndFindMesh( parametricMesh, findGeometry, projectGeometry, projectTextures );
+         }
+         else
+         {
+            // Fail. The modifier isn't the child of a mesh. Assume the modifier is invalid.
+            GenerateOutputMessage( "ModifierNotChildOfMeshNode4", "", "ERROR" );
+            return;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeographicProjectionModifierSetDatumWGS84_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   GeographicProjectionModifierOnUpdate( commandInfo, "Set the geographic projection modifier to use the WGS84 datum." );
+}
+
+macro GeographicProjectionModifierSetDatumWGS84()
+[Category="Terrain Commands", Guid="{1F91FAA9-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_datum.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ProjectionModifier ) )
+      {
+         ProjectionModifier modifier = (ProjectionModifier)Model.EditNode( node );
+         modifier.SetDatumWGS84();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeographicProjectionModifierSetDatumWGS72_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   GeographicProjectionModifierOnUpdate( commandInfo, "Set the geographic projection modifier to use the WGS72 datum." );
+}
+
+macro GeographicProjectionModifierSetDatumWGS72()
+[Category="Terrain Commands", Guid="{1F91FAAA-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_datum.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ProjectionModifier ) )
+      {
+         ProjectionModifier modifier = (ProjectionModifier)Model.EditNode( node );
+         modifier.SetDatumWGS72();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeographicProjectionModifierSetDatumBessel_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   GeographicProjectionModifierOnUpdate( commandInfo, "Set the geographic projection modifier to use the Bessel datum." );
+}
+
+macro GeographicProjectionModifierSetDatumBessel()
+[Category="Terrain Commands", Guid="{1F91FAAB-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_datum.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ProjectionModifier ) )
+      {
+         ProjectionModifier modifier = (ProjectionModifier)Model.EditNode( node );
+         modifier.SetDatumBessel();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeographicProjectionModifierSetDatumClarke1866_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   GeographicProjectionModifierOnUpdate( commandInfo, "Set the geographic projection modifier to use the Clarke 1866 datum." );
+}
+
+macro GeographicProjectionModifierSetDatumClarke1866()
+[Category="Terrain Commands", Guid="{1F91FAAC-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_datum.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ProjectionModifier ) )
+      {
+         ProjectionModifier modifier = (ProjectionModifier)Model.EditNode( node );
+         modifier.SetDatumClarke1866();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeographicProjectionModifierSetDatumClarke1880_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   GeographicProjectionModifierOnUpdate( commandInfo, "Set the geographic projection modifier to use the Clarke 1880 datum." );
+}
+
+macro GeographicProjectionModifierSetDatumClarke1880()
+[Category="Terrain Commands", Guid="{1F91FAC5-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_datum.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ProjectionModifier ) )
+      {
+         ProjectionModifier modifier = (ProjectionModifier)Model.EditNode( node );
+         modifier.SetDatumClarke1880();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeographicProjectionModifierSetDatumGRS1980_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   GeographicProjectionModifierOnUpdate( commandInfo, "Set the geographic projection modifier to use the GRS 1980 datum." );
+}
+
+macro GeographicProjectionModifierSetDatumGRS1980()
+[Category="Terrain Commands", Guid="{1F91FB0D-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_datum.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ProjectionModifier ) )
+      {
+         ProjectionModifier modifier = (ProjectionModifier)Model.EditNode( node );
+         modifier.SetDatumGRS1980();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void DisplayUniversalTransverseMercatorZoneInOutputEditor_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   RectangleGeometryModifierOnUpdate( commandInfo, "Display the correct UTM zone for the terrain." );
+}
+
+macro DisplayUniversalTransverseMercatorZoneInOutputEditor()
+[Category="Terrain Commands", Guid="{1F91F987-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   OutputViewEditor a_oOutputViewEditor = (OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" );
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( RectangleGeometryModifier ) )
+      {
+         RectangleGeometryModifier modifier = (RectangleGeometryModifier)Model.EditNode( node );
+         int zone = ( modifier.XMin + ( modifier.XMax - modifier.XMin ) / 2 + 180 ) / 6 + 1;
+         a_oOutputViewEditor.LogString( "UTM Zone: " + zone );
+      }
+   }
+   a_oOutputViewEditor.Activate();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void DisplayCentralMeridianInOutputEditor_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   RectangleGeometryModifierOnUpdate( commandInfo, "Display the central meridian of the terrain in the output editor." );
+}
+
+macro DisplayCentralMeridianInOutputEditor()
+[Category="Terrain Commands", Guid="{1F91FAC9-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   OutputViewEditor a_oOutputViewEditor = (OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" );
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( RectangleGeometryModifier ) )
+      {
+         RectangleGeometryModifier modifier = (RectangleGeometryModifier)Model.EditNode( node );
+         double zone = ( modifier.XMin + ( modifier.XMax - modifier.XMin ) / 2 );
+         a_oOutputViewEditor.LogString( "Central Meridian: " + zone );
+      }
+   }
+   a_oOutputViewEditor.Activate();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierModifierDisableTextureDirectory_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Disable texture functionality for the preview mesh and output terrain." );
+}
+
+macro TerrainOptionsModifierModifierDisableTextureDirectory()
+[Category="Terrain Commands", Guid="{1F91FB0A-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( TerrainOptionsModifier ) )
+      {
+         TerrainOptionsModifier to_modifier = ( TerrainOptionsModifier ) node;
+         to_modifier.UseTextureFile = !to_modifier.UseTextureFile;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro ConfigurePlanarProjectTextureFromRectangleGeometryModifier()
+[Category="Modifier Commands", Guid="{EE863998-0DC8-4D1A-9AF4-4196D848E11E}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( PlanarProjectTextureModifier ) )
+      {
+         Node a_oMesh = node.Parent();
+         if( !a_oMesh.IsDerived( ParametricMesh ) )
+         {
+            GenerateOutputMessage( "MeshNotFound", "", "ERROR" );
+            continue;
+         }
+
+         RectangleGeometryModifier a_oRectangle = (RectangleGeometryModifier)a_oMesh.GetChildByType( RectangleGeometryModifier );
+         PlanarProjectTextureModifier a_oPlanar = (PlanarProjectTextureModifier)Model.EditNode( node );
+
+         if( a_oRectangle )
+         {
+            // Determine the width and height of the RectangleGeometryModifier on X and Y.
+
+            double a_dWidthX = Math.FAbs( a_oRectangle.XMin - a_oRectangle.XMax );
+            double a_dHeightY = Math.FAbs( a_oRectangle.YMin - a_oRectangle.YMax );
+
+            // Set the origin of the PlanarProjectTextureModifier to the minimum boundaries of the mesh.
+            a_oPlanar.Origin[0] = a_oRectangle.XMin;
+            a_oPlanar.Origin[1] = a_oRectangle.YMin;
+            
+            // Set the width axis of the PlanarProjectTextureModifier to the maximum boundaries of the RectangleGeometryModifier.
+            a_oPlanar.SAxis[0] = a_oRectangle.XMin + a_dWidthX;
+            a_oPlanar.SAxis[1] = a_oRectangle.YMin;
+
+            // Set the height axis of the PlanarProjectTextureModifier to the maximum boundaries of the RectangleGeometryModifier.
+            a_oPlanar.TAxis[0] = a_oRectangle.XMin;
+            a_oPlanar.TAxis[1] = a_oRectangle.YMin + a_dHeightY;
+         }
+         else
+         {
+            GenerateOutputMessage( "RectangleGeometryModifierNotFound", "", "ERROR" );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro ConfigurePlanarProjectTextureFromMeshExtents()
+[Category="Modifier Commands", Guid="{B424D299-4289-4FC4-841F-CEAC6296760B}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( PlanarProjectTextureModifier ) )
+      {
+         Node parent = node.Parent();
+         PlanarProjectTextureModifier a_oPlanar = (PlanarProjectTextureModifier)node;
+         PlanarProjectTextureModifier a_oEditPlanar = (PlanarProjectTextureModifier)Model.EditNode( a_oPlanar );
+
+         if( parent && parent.IsDerived( ParametricMesh ) )
+         {
+            ParametricMesh mesh = (ParametricMesh)parent;
+            // Determine the width and height of the mesh on X and Y.
+            
+            double a_dWidthX = Math.FAbs( ( mesh.BoundMin[0] - mesh.BoundMax[0] ) );
+            double a_dHeightY = Math.FAbs( ( mesh.BoundMin[1] - mesh.BoundMax[1] ) );
+
+            // Set the origin of the PlanarProjectTextureModifier to the minimum boundaries of the mesh.
+            a_oEditPlanar.Origin[0] = mesh.BoundMin[0];
+            a_oEditPlanar.Origin[1] = mesh.BoundMin[1];
+
+            // Set the width axis of the PlanarProjectTextureModifier to the maximum boundaries of the mesh.
+            a_oEditPlanar.SAxis[0] = mesh.BoundMin[0] + a_dWidthX;
+            a_oEditPlanar.SAxis[1] = mesh.BoundMin[1];
+
+            // Set the height axis of the PlanarProjectTextureModifier to the maximum boundaries of the mesh.
+            a_oEditPlanar.TAxis[0] = mesh.BoundMin[0];
+            a_oEditPlanar.TAxis[1] = mesh.BoundMin[1] + a_dHeightY;
+         }
+         else
+         {
+            GenerateOutputMessage( "MeshNotFound2", "", "ERROR" );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ConfigureGeographicTextureFromRectangleGeometryModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   GeographicTextureModifierOnUpdate( commandInfo, "Align the GeographicTextureModifier with the RectangleGeometryModifier" );
+}
+
+macro ConfigureGeographicTextureFromRectangleGeometryModifier()
+[Category="Modifier Commands", Guid="{EB2534F6-642A-47E5-81C4-73A3D28079C0}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( GeographicTextureModifier ) )
+      {
+         Node mesh = node.Parent();
+         RectangleGeometryModifier findGeometry = (RectangleGeometryModifier)mesh.GetChildByType( RectangleGeometryModifier );
+         GeographicTextureModifier a_oGeographic = (GeographicTextureModifier)Model.EditNode( node );
+
+         if( findGeometry && a_oGeographic )
+         {
+            // Set the origin of the GeographicTextureModifier to the minimum boundaries of the RectangleGeometryModifier.
+            a_oGeographic.ValuesAreProjected = false;
+            a_oGeographic.MinimumLatitude = findGeometry.YMin;
+            a_oGeographic.MaximumLatitude = findGeometry.YMax;
+            a_oGeographic.MinimumLongitude = findGeometry.XMin;
+            a_oGeographic.MaximumLongitude = findGeometry.XMax;
+         }
+         else
+         {
+            GenerateOutputMessage( "RequiredModifiersNotFound", "", "ERROR" );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ConfigureGeographicTextureProjectionFromMeshExtents_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   GeographicTextureModifierOnUpdate( commandInfo, "Align the GeographicTextureModifier with the parent mesh's world-space extents." );
+}
+
+macro ConfigureGeographicTextureProjectionFromMeshExtents()
+[Category="Modifier Commands", Guid="{4B4601B8-BB68-45DE-9678-61E20380881B}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   // Iterate the selection. Use 'Model.GetSelectCount()' to make sure our for() loop doesn't iterate more than the number of selected items.
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      // Construct a node from the select buffer.
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      // Do some work if the node is derived from the type 'GeographicTextureModifier'.
+      if( node.IsDerived( GeographicTextureModifier ) )
+      {
+         // Construct the node's parent.
+         Node parent = node.Parent();
+
+         // Construct an object we can modify. Use EditNode to make sure it enters the undo system.
+         GeographicTextureModifier a_oGeographic = (GeographicTextureModifier)Model.EditNode( node );
+
+         // Do some work if the parent is derived from the 'ParametricMesh'.
+         if( parent && parent.IsDerived( ParametricMesh ) )
+         {
+            // Construct a mesh object so we can read its extent values.
+            ParametricMesh mesh = (ParametricMesh)parent;
+            
+            // Set the GeographicTextureModifier 'ValuesAreProjected' parameter to true.
+            a_oGeographic.ValuesAreProjected = 1;
+
+            // Set the GeographicTextureModifier to the boundaries of the Mesh.
+            a_oGeographic.MinimumLatitude = mesh.BoundMin[1];
+            a_oGeographic.MaximumLatitude = mesh.BoundMax[1];
+            a_oGeographic.MinimumLongitude = mesh.BoundMin[0];
+            a_oGeographic.MaximumLongitude = mesh.BoundMax[0];
+         }
+         else
+         {
+            // Warn the user that the GeographicTextureModifier's parent is not a mesh node.
+            GenerateOutputMessage( "MeshNotFound3", "", "ERROR" );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Alters the projection for any relevant modifiers in the mesh construction 
+// history and centers the camera on the mesh.
+
+function void ProjectParametricMesh( ParametricMesh mesh, RectangleGeometryModifier geometry,
+   GeographicProjectionModifier projectGeometry, GeographicTextureModifier projectTextures )
+{
+   // Calculate the centroid of the group bounding box in WCS by
+   // forward-projecting the RectangleGeometryModifier latitude/longitude coordinates.
+   if( projectGeometry.GetProjection() == 0 )
+   {
+      Vec upperLeft = new Vec;
+      Vec upperRight = new Vec;
+      Vec lowerLeft = new Vec;
+      Vec lowerRight = new Vec;
+
+      Vec minTileExtent = new Vec;
+      Vec maxTileExtent = new Vec;
+
+      double rangeX = ( geometry.XMax - geometry.XMin );
+      double rangeY = ( geometry.YMax - geometry.YMin );
+
+      lowerLeft.X = geometry.XMin;
+      lowerLeft.Y = geometry.YMin;
+      upperRight.X = geometry.XMin + rangeX;
+      upperRight.Y = geometry.YMin + rangeY;
+
+      // Swap the parameter values to determine the correct extent values.
+      upperLeft.X = lowerLeft.X;
+      upperLeft.Y = upperRight.Y;
+      lowerRight.X = upperRight.X;
+      lowerRight.Y = lowerLeft.Y;
+
+      // Project the corners.
+      projectGeometry.ForwardProject( upperLeft );
+      projectGeometry.ForwardProject( upperRight );
+      projectGeometry.ForwardProject( lowerLeft );
+      projectGeometry.ForwardProject( lowerRight );
+
+      minTileExtent.Assign( upperLeft );
+      minTileExtent.Minimize( lowerLeft );
+      maxTileExtent.Assign( upperRight );
+      maxTileExtent.Maximize( lowerRight );
+
+      mesh.BoundMin[0] = minTileExtent.X;
+      mesh.BoundMin[1] = minTileExtent.Y;
+      mesh.BoundMax[0] = maxTileExtent.X;
+      mesh.BoundMax[1] = maxTileExtent.Y;
+
+      for( int c = 0; c < mesh.ChildCount; ++c )
+      {
+         Node child = (Node)((ParametricMesh)mesh).Children[ c ];
+         if( child.IsDerived ( GeographicTextureModifier ) )
+         {
+            if( projectTextures.ValuesAreProjected == true )
+            {
+               projectTextures.MinimumLatitude = minTileExtent.X;
+               projectTextures.MaximumLatitude = minTileExtent.Y;
+               projectTextures.MinimumLongitude = maxTileExtent.X;
+               projectTextures.MaximumLongitude = maxTileExtent.Y;
+            }
+            else
+            if( projectTextures.ValuesAreProjected == false )
+            {
+               projectTextures.MinimumLatitude = geometry.YMin;
+               projectTextures.MaximumLatitude = geometry.YMax;
+               projectTextures.MinimumLongitude = geometry.XMin;
+               projectTextures.MaximumLongitude = geometry.XMax;
+            }
+         }
+      }
+
+      // Calculate center values from the new extents.
+      Vec min = new Vec;
+      Vec max = new Vec;
+      min.X = minTileExtent.X;
+      min.Y = minTileExtent.Y;
+      max.X = maxTileExtent.X;
+      max.Y = maxTileExtent.Y;
+
+      double width = max.X - min.X;
+      double height = max.Y - min.Y;
+      double minY = min.Y;
+      double minZ = min.Z;
+      double diagonal = Math.Sqrt( width * width + height * height );
+
+      min.Blend( max, 0.5 );
+
+      double center_x = min.X;
+      double center_y = min.Y;
+      double center_z = min.Z;
+      //((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( center_x + " " + center_y );
+
+      delete min;
+      delete max;
+
+      // Modify the worksheet projection, clip planes, zoom, and camera position.
+      Matrix gTransform = mesh.GetTransform();
+      ModelView a_oView = Model.ActiveView;
+
+      a_oView.Orientation.X = 0.0;
+      a_oView.Orientation.Y = 0.0;
+      a_oView.Orientation.Z = 0.0;
+      
+      a_oView.SetTop();
+      a_oView.NearClip = -1000000.0;
+      a_oView.FarClip = 1000000.0;
+      a_oView.Zoom = diagonal / 2.0;
+
+      a_oView.Position.X =  center_x;
+      a_oView.Position.Y =  center_y;
+      a_oView.Position.Z =  center_z + ( diagonal / 2.0 );
+
+      a_oView.Orientation.Y = gTransform.Orientation[1];
+      a_oView.Orientation.Z = gTransform.Orientation[2];
+
+      delete upperLeft;
+      delete upperRight;
+      delete lowerLeft;
+      delete lowerRight;
+      
+      delete minTileExtent;
+      delete maxTileExtent;
+   }
+
+   if( projectGeometry.GetProjection() == 1 )
+   {
+      Vec upperLeft = new Vec;
+      Vec upperRight = new Vec;
+      Vec lowerLeft = new Vec;
+      Vec lowerRight = new Vec;
+
+      Vec minTileExtent = new Vec;
+      Vec maxTileExtent = new Vec;
+
+      double rangeX = ( geometry.XMax - geometry.XMin );
+      double rangeY = ( geometry.YMax - geometry.YMin );
+
+      lowerLeft.X = geometry.XMin;
+      lowerLeft.Y = geometry.YMin;
+      upperRight.X = geometry.XMin + rangeX;
+      upperRight.Y = geometry.YMin + rangeY;
+
+      // Swap the parameter values to determine the correct extent values.
+      upperLeft.X = lowerLeft.X;
+      upperLeft.Y = upperRight.Y;
+      lowerRight.X = upperRight.X;
+      lowerRight.Y = lowerLeft.Y;
+
+      // Project the corn.
+      projectGeometry.ForwardProject( upperLeft );
+      projectGeometry.ForwardProject( upperRight );
+      projectGeometry.ForwardProject( lowerLeft );
+      projectGeometry.ForwardProject( lowerRight );
+
+      minTileExtent.Assign( upperLeft );
+      minTileExtent.Minimize( lowerLeft );
+      maxTileExtent.Assign( upperRight );
+      maxTileExtent.Maximize( lowerRight );
+
+      for( int c = 0; c < mesh.ChildCount; ++c )
+      {
+         Node child = (Node)((ParametricMesh)mesh).Children[ c ];
+         if( child.IsDerived ( GeographicTextureModifier ) )
+         {
+            if( projectTextures.ValuesAreProjected == true )
+            {
+               projectTextures.MinimumLatitude = minTileExtent.X;
+               projectTextures.MaximumLatitude = minTileExtent.Y;
+               projectTextures.MinimumLongitude = maxTileExtent.X;
+               projectTextures.MaximumLongitude = maxTileExtent.Y;
+            }
+            else
+            if( projectTextures.ValuesAreProjected == false )
+            {
+               projectTextures.MinimumLatitude = geometry.YMin;
+               projectTextures.MaximumLatitude = geometry.YMax;
+               projectTextures.MinimumLongitude = geometry.XMin;
+               projectTextures.MaximumLongitude = geometry.XMax;
+            }
+         }
+      }
+
+      // Calculate center values from the new extents.
+      Vec min = new Vec;
+      Vec max = new Vec;
+      min.X = minTileExtent.X;
+      min.Y = minTileExtent.Y;
+      max.X = maxTileExtent.X;
+      max.Y = maxTileExtent.Y;
+
+      double width = max.X - min.X;
+      double height = max.Y - min.Y;
+      double minY = min.Y;
+      double minZ = min.Z;
+      double diagonal = Math.Sqrt( width * width + height * height );
+
+      min.Blend( max, 0.5 );
+
+      double center_x = min.X;
+      double center_y = min.Y;
+      double center_z = min.Z;
+      //((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( center_x + " " + center_y );
+
+      delete min;
+      delete max;
+
+      // Modify the worksheet projection, clip planes, zoom, and camera position.
+      Matrix gTransform = mesh.GetTransform();
+      ModelView a_oView = Model.ActiveView;
+
+      a_oView.Orientation.X = 0.0;
+      a_oView.Orientation.Y = 0.0;
+      a_oView.Orientation.Z = 0.0;
+      
+      a_oView.SetTop();
+      a_oView.NearClip = -1000000.0;
+      a_oView.FarClip = 1000000.0;
+      a_oView.Zoom = diagonal / 2.0;
+
+      a_oView.Position.X =  center_x;
+      a_oView.Position.Y =  center_y;
+      a_oView.Position.Z =  center_z + ( diagonal / 2.0 );
+
+      a_oView.Orientation.Y = gTransform.Orientation[1];
+      a_oView.Orientation.Z = gTransform.Orientation[2];
+
+      delete upperLeft;
+      delete upperRight;
+      delete lowerLeft;
+      delete lowerRight;
+      
+      delete minTileExtent;
+      delete maxTileExtent;
+   }
+}

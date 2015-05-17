@@ -1,0 +1,12 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file         :	GLSL_UTIL.SSL                      
+// $author       :	Scenomics                                
+// $privacy      :	PUBLIC                                   
+// $description  :	This script implements common functions for nodes.
+// $legal        :   Reserved * r_rLegal                      
+//
+// Copyright 2004-2013 Scenomics LLC. All Rights Reserved.
+
+////////////////////////////////////////////////////////////////////////////
+
+// DEPRECATED MJR, January 18th, 2013. Deprecated because the new shader architecture replaces all the features previously herein.

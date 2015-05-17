@@ -1,0 +1,196 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file         :   MATH_UTIL.SSL
+// $author       :   Scenomics
+// $privacy      :   PUBLIC
+// $description  :   This script implements basic math functions.
+// $legal        :   Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+
+////////////////////////////////////////////////////////////////////////////
+
+library SpaMathUtil;
+
+bool debugLog;
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function int GetNextHighestMultiple( int p_iIndex, int p_iMultiplier )
+{
+   int a_iNextHighestMultiple;
+   
+   if( Math.ModI( p_iIndex, p_iMultiplier ) != 0 )
+   {
+      while( Math.ModI( p_iIndex, p_iMultiplier ) != 0 )
+      {
+         ++p_iIndex;
+      }
+   }
+   else
+   {
+      a_iNextHighestMultiple = p_iIndex;
+   }
+
+   return a_iNextHighestMultiple;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function int GetDimensionXFromComposite( int p_iCompositeDimension )
+{
+   if(   p_iCompositeDimension == 22 ||
+         p_iCompositeDimension == 23 ||
+         p_iCompositeDimension == 24 )
+   {
+      return 2;
+   }
+   else
+   if(   p_iCompositeDimension == 32 ||
+         p_iCompositeDimension == 33 ||
+         p_iCompositeDimension == 34 )
+   {
+      return 3;
+   }
+   else
+   if(   p_iCompositeDimension == 42 ||
+         p_iCompositeDimension == 43 ||
+         p_iCompositeDimension == 44 )
+   {
+      return 4;
+   }
+
+   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function int GetDimensionYFromComposite( int p_iCompositeDimension )
+{
+   if(   p_iCompositeDimension == 22 ||
+         p_iCompositeDimension == 32 ||
+         p_iCompositeDimension == 42 )
+   {
+      return 2;
+   }
+   else
+   if(   p_iCompositeDimension == 23 ||
+         p_iCompositeDimension == 33 ||
+         p_iCompositeDimension == 43 )
+   {
+      return 3;
+   }
+   else
+   if(   p_iCompositeDimension == 24 ||
+         p_iCompositeDimension == 34 ||
+         p_iCompositeDimension == 44 )
+   {
+      return 4;
+   }
+
+   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function double GetPitch(ref Vec p_rvV)
+{
+   return Math.Atan2( p_rvV.Z,
+      Math.Sqrt( p_rvV.Y * p_rvV.Y + p_rvV.X * p_rvV.X ) ) * (180 / Math.PI());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool TestIntersection( Vec vA, Vec vB, Vec vC, Vec vD, Vec vIntersect, bool p_bForwardOnly )
+{
+   if( debugLog )
+   {
+      ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( "A: " + vA.X + " " + vA.Y + " " + vA.Z );
+      ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( "B: " + vB.X + " " + vB.Y + " " + vB.Z );
+      ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( "C: " + vC.X + " " + vC.Y + " " + vC.Z );
+      ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( "D: " + vD.X + " " + vD.Y + " " + vD.Z );
+   }
+
+   Vec vAB = new Vec;
+   vAB.Assign( vB );
+   vAB.Subtract( vA );
+   vAB.Normalize();
+   Vec vNormalAB = new Vec( -vAB.Y, vAB.X, 0.0 );
+
+   Vec vCA = new Vec;
+   vCA.Assign( vC );
+   vCA.Subtract( vA );
+   vCA.Z = 0.0;
+   Vec vDA = new Vec;
+   vDA.Assign( vD );
+   vDA.Subtract( vA );
+   vDA.Z = 0.0;
+
+   double a_fDP = vNormalAB.Dot( vCA );
+   double a_fDQ = vNormalAB.Dot( vDA );
+
+   a_fDQ -= a_fDP;
+   if( Math.FAbs( a_fDQ ) < 1.0e-3 )
+   {
+      // The tangents are too close to parallel.
+      if( debugLog )
+      {
+         ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( "Parallel" );
+      }
+      delete vAB;
+      delete vCA;
+      delete vDA;
+      return false;
+   }
+
+   double time = -a_fDP / a_fDQ;
+   if( p_bForwardOnly && time < -1.0e-3 )
+   {
+      // The tangents are divergent.
+      if( debugLog )
+      {
+         ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( "Divergent: " + time );
+      }
+      delete vAB;
+      delete vCA;
+      delete vDA;
+      return false;
+   }
+
+   vIntersect.BlendAB( vC, vD, time );
+
+   if( debugLog )
+   {
+      ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( "Intersect: " + vIntersect.X + " " + vIntersect.Y + " " + vIntersect.Z );
+      ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( " Time: " + time );
+   }
+
+   return true;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function int GetDistanceBetweenNodes( Model3D a_oRoot, Node p_oNodeA, Node p_oNodeB )
+{
+   if( p_oNodeA && p_oNodeB && a_oRoot.IsDerived( Model3D ) )
+   {
+      int a_iDistanceA = p_oNodeA.GetDistanceFromRoot( a_oRoot );
+      int a_iDistanceB = p_oNodeB.GetDistanceFromRoot( a_oRoot );
+
+      return (int)( Math.FAbs( a_iDistanceA - a_iDistanceB ) - 1 );
+   }
+
+   return 0;
+}

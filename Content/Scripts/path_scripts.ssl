@@ -1,0 +1,1035 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             PATH_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements commands for modifying path nodes.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "graph_util.ssl";
+import library "message_util.ssl";
+import library "node_util.ssl";
+
+bool debugLog = false;
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveResetMaterialIndex_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Reset material index" );
+}
+
+macro CurveResetMaterialIndex()
+[Category="Curve Commands",Guid="{D457739F-8176-4ABC-952D-78125D506DF1}",Image=".\\icons\\curve_reset_material_index.bmp"]
+{
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNode = Model.GetSelectedNode( m ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         Path path = (Path)Model.EditNode( selNode );
+        
+         int startPointIndex = 0;
+         for( int seg = 0; seg < path.SegmentCount; ++seg )
+         {
+            path.SegmentMaterial[seg] = 0;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveReversePointWinding_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Reverse point winding" );
+}
+
+macro CurveReversePointWinding()
+[Category="Curve Commands",Guid="{E5653900-F7E8-42D0-8A41-285C1990C5D4}",Image=".\\icons\\curve_reverse_winding.bmp"]
+{
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNode = Model.GetSelectedNode( m ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         Path p = (Path)Model.EditNode( selNode );
+         Graph.ReverseCurve ( p );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveBevelPoints_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Bevel the selected points" );
+}
+
+macro CurveBevelPoints()
+[Category="Curve Commands",Guid="{1F9220B4-F612-46D4-A453-4B81096121A9}",Image=".\\icons\\curve_bevel_points.bmp"]
+{
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      NodeSelect selNodeSelect = Model.GetSelectedNode( m );
+      if( selNodeSelect.IsDerived( PathVertexSelect ) )
+      {
+         PathVertexSelect pathVertexSel = (PathVertexSelect)selNodeSelect;
+         PathVertexSelect editSelect = (PathVertexSelect)Model.EditSelect( selNodeSelect );
+         Path editPath = (Path)Model.EditNode( selNodeSelect.GetNode() );
+
+         int realVertexIndex = 1;
+         for( int vert = 1; vert < editPath.PointCount - 1; ++vert )
+         {
+            if( pathVertexSel.IsVertexSelected( vert ) )
+            {
+               int segment = editPath.PointIndexToSegment( realVertexIndex );
+               if( segment > 0 && segment < editPath.SegmentCount &&
+                   editPath.GetSegmentStyle( segment - 1 ) == 0 &&
+                   editPath.GetSegmentStyle( segment ) == 0 )
+               {
+                  // Split the previous and next segment, leaving 50% of
+                  // the combined existing length for the new segment.
+                  editPath.SplitSegment( segment - 1, 0.75 );
+                  editPath.SplitSegment( segment + 1, 0.25 );
+
+                  // Make sure new vertices are selected.
+                  editSelect.SetVertexSelected( realVertexIndex, true );
+                  editSelect.SetVertexSelected( realVertexIndex + 1, true );
+
+                  editPath.DeleteSegment( segment + 1 );
+                  ++realVertexIndex;
+               }
+            }
+            ++realVertexIndex;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveBlendLinearSegment_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Blend between the selected linear segments with a Bezier segment" );
+}
+
+macro CurveBlendLinearSegment()
+[Category="Curve Commands",Guid="{1F9220B5-F612-46D4-A453-4B81096121A9}",Image=".\\icons\\curve_blend_linear_segment.bmp"]
+{
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNodeSelect = Model.GetSelectedNode( m );
+      if( selNodeSelect.IsDerived( PathSelect ) )
+      {
+         // Operate on selected segments or a whole selected path.
+         PathSegmentSelect pathSegmentSel;
+         if( selNodeSelect.IsDerived( PathSegmentSelect ) )
+         {
+            pathSegmentSel = (PathSegmentSelect)selNodeSelect;
+         }
+
+         Path editPath = (Path)Model.EditNode( selNodeSelect.GetNode() );
+
+         for( int seg = 0; seg < editPath.SegmentCount; ++seg )
+         {
+            if( !pathSegmentSel || pathSegmentSel.IsSegmentSelected( seg ) )
+            {
+               // When we operate on selected segments, we will switch them to
+               // bezier.  When we operate on a whole path, we do not switch segments
+               // to bezier, we only fix segments that are already bezier.
+               if( !pathSegmentSel && editPath.GetSegmentStyle( seg ) == 0 )
+               {
+                  continue;
+               }
+               // Use half the length of the linear segment to set the lengths
+               // of each bezier tangent.  Get length before we switch it to bezier.
+               double segmentLen = editPath.GetSegmentLength( seg );
+               // Now switch to bezier so we can edit the tangents.
+               editPath.SetSegmentStyle( seg, 1 );
+               if( editPath.TessellationDepth[seg] < 4 )
+               {
+                  // If the original linear curve tessellation depth is less than 4 fragments,
+                  // increase the tessellation depth so the fitted curve is easily visible.
+                  editPath.TessellationDepth[seg] = 16;
+               }
+
+               int segmentStart = editPath.GetSegmentStartIndex( seg );
+               if( seg > 0 )
+               {
+                  int rayStartIndex = -1;
+                  int rayEndIndex   = -1;
+                  if( editPath.GetSegmentStyle( seg - 1 ) == 0 )
+                  {
+                     // Set tangent in the direction of the ray defined by the previous segment.
+                     rayStartIndex = editPath.GetSegmentStartIndex( seg - 1 );
+                     rayEndIndex   = editPath.GetSegmentEndIndex( seg - 1 );
+                  }
+                  else
+                  {
+                     // Set tangent in the direction opposite the previous segment's end tangent.
+                     rayStartIndex = editPath.GetSegmentEndIndex( seg - 1 ) - 1;
+                     rayEndIndex   = editPath.GetSegmentEndIndex( seg - 1 );
+                  }
+                  Vec rayStart = editPath.GetPoint( rayStartIndex );
+                  Vec rayEnd = editPath.GetPoint( rayEndIndex );
+                  Graph.SetPathBevelTangent( editPath, segmentStart + 1, segmentLen / 2.0, rayStart, rayEnd );
+               }
+               if( seg + 1 < editPath.SegmentCount )
+               {
+                  int rayStartIndex = -1;
+                  int rayEndIndex   = -1;
+                  if( editPath.GetSegmentStyle( seg + 1 ) == 0 )
+                  {
+                     // Set tangent in the direction of the ray defined by the next segment.
+                     rayStartIndex = editPath.GetSegmentEndIndex( seg + 1 );
+                     rayEndIndex = editPath.GetSegmentStartIndex( seg + 1 );
+                  }
+                  else
+                  {
+                     // Set tangent in the direction opposite the next segment's start tangent.
+                     rayStartIndex  = editPath.GetSegmentStartIndex( seg + 1 ) + 1;
+                     rayEndIndex    = editPath.GetSegmentStartIndex( seg + 1 );
+                  }
+                  Vec rayStart = editPath.GetPoint( rayStartIndex );
+                  Vec rayEnd = editPath.GetPoint( rayEndIndex );
+                  Graph.SetPathBevelTangent( editPath, segmentStart + 2, segmentLen / 2.0, rayStart, rayEnd );
+               }
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveCreatePaletteGroup_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Create a palette group for the selected curves" );
+}
+
+macro CurveCreatePaletteGroup()
+[Category="Curve Commands",Guid="{49D1C6C2-B7CE-4CB2-BDB3-FCDA77AD658B}",Image=".\\icons\\curve_create_palette_group.bmp"]
+{
+   // Allocate a new group and set its name.
+   Group paletteGroup = new Group;
+   paletteGroup.Name = "CurvePaletteGroup";
+
+   // Allocate a material and set its name/ID color.
+   Material curveMaterial = new Material;
+   curveMaterial.Name = "NewMaterialNode";
+   curveMaterial.IDColor.SetRGB( 255, 215, 0 );
+
+   // Use the parent of the first selected node when we find it.
+   Group getParent;
+
+   // Iterate the curves. Set each curve PaletteLink to 'paletteGroup'.
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNode = Model.GetSelectedNode( m ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         if( !getParent )
+         {
+            getParent = selNode.Parent();
+         }
+
+         Path editPath = (Path)Model.EditNode( selNode );
+         editPath.PaletteLink = paletteGroup;
+      }
+   }
+
+   if( getParent )
+   {
+      // Add the nodes to the scene graph.
+      SpaNodeUtil.AddNode( paletteGroup, getParent );
+      SpaNodeUtil.AddNode( curveMaterial, paletteGroup );
+   }
+   else
+   {
+      delete paletteGroup;
+      delete curveMaterial;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveUse1MeterTiling_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Use 1 meter texture tiling" );
+}
+
+macro CurveUse1MeterTiling()
+[Category="Curve Commands",Guid="{BD958FCC-DD07-4EC3-8370-0758DFF35239}",Image=".\\icons\\apply_texture_coordinates_to_curve.bmp"]
+{
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNode = Model.GetSelectedNode( m ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         Path p = (Path)Model.EditNode( selNode );
+         Graph.SetPathTextureTiling ( p, 1 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveUse2MeterTiling_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Use 2 meter texture tiling" );
+}
+
+macro CurveUse2MeterTiling()
+[Category="Curve Commands",Guid="{6C03FD89-9BE8-4422-AFB7-80CE83D17877}",Image=".\\icons\\apply_texture_coordinates_to_curve.bmp"]
+{
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNode = Model.GetSelectedNode( m ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         Path p = (Path)Model.EditNode( selNode );
+         Graph.SetPathTextureTiling ( p, 2 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveUse4MeterTiling_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Use 4 meter texture tiling" );
+}
+
+macro CurveUse4MeterTiling()
+[Category="Curve Commands",Guid="{2E07396E-5CAC-4FEE-9AF3-E4AFABEFE960}",Image=".\\icons\\apply_texture_coordinates_to_curve.bmp"]
+{
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNode = Model.GetSelectedNode( m ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         Path p = (Path)Model.EditNode( selNode );
+         Graph.SetPathTextureTiling ( p, 4 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveUse5MeterTiling_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Use 5 meter texture tiling" );
+}
+
+macro CurveUse5MeterTiling()
+[Category="Curve Commands",Guid="{833B072F-5A86-4048-BC2D-9CAE6C0FADAB}",Image=".\\icons\\apply_texture_coordinates_to_curve.bmp"]
+{
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNode = Model.GetSelectedNode( m ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         Path p = (Path)Model.EditNode( selNode );
+         Graph.SetPathTextureTiling ( p, 5 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveUse8MeterTiling_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Use 8 meter texture tiling" );
+}
+
+macro CurveUse8MeterTiling()
+[Category="Curve Commands",Guid="{4C0685C8-9C3E-49F8-8686-9327160C7618}",Image=".\\icons\\apply_texture_coordinates_to_curve.bmp"]
+{
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNode = Model.GetSelectedNode( m ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         Path p = (Path)Model.EditNode( selNode );
+         Graph.SetPathTextureTiling ( p, 8 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveUse12MeterTiling_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Use 12 meter texture tiling" );
+}
+
+macro CurveUse12MeterTiling()
+[Category="Curve Commands",Guid="{E98EDAC7-767E-4988-9D58-AB9ED9DFF657}",Image=".\\icons\\apply_texture_coordinates_to_curve.bmp"]
+{
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNode = Model.GetSelectedNode( m ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         Path p = (Path)Model.EditNode( selNode );
+         Graph.SetPathTextureTiling ( p, 12 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveUse20MeterTiling_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Use 20 meter texture tiling" );
+}
+
+macro CurveUse20MeterTiling()
+[Category="Curve Commands",Guid="{26822006-0A7A-4982-9D4F-627AA11B811A}",Image=".\\icons\\apply_texture_coordinates_to_curve.bmp"]
+{
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNode = Model.GetSelectedNode( m ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         Path p = (Path)Model.EditNode( selNode );
+         Graph.SetPathTextureTiling ( p, 20 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveDecreaseTangentLength_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Decrease tangent handle length." );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveIncreaseTangentLength_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Increase tangent handle length." );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurvePushPointOppositeTangent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Move the point opposite the tangent handle away from the handle." );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurvePullPointOppositeTangent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Move the point opposite the tangent handle toward the tangent handle." );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro CurveIncreaseTangentLength()
+[Category="Curve Commands", Guid="{8CB79D05-AD2D-478F-975D-E9550142F3B7}", Image=".\\icons\\curve_increase_tangent_length.bmp"]
+{
+   for( int selPath = 0; selPath < Model.GetSelectCount(); ++selPath )
+   {
+      Node selNode = Model.GetSelectedNode( selPath ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         // Increase tangent length.
+         Graph.TransformSelectedPathTangents( (PathSelect)Model.GetSelectedNode( selPath ), 1.05, false );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+ 
+macro CurveDecreaseTangentLength()
+[Category="Curve Commands", Guid="{8217397E-6A0A-46D9-902C-90CC0B5B9F71}", Image=".\\icons\\curve_decrease_tangent_length.bmp"]
+{
+   for( int selPath = 0; selPath < Model.GetSelectCount(); ++selPath )
+   {
+      Node selNode = Model.GetSelectedNode( selPath ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         // Decrease tangent length.
+         Graph.TransformSelectedPathTangents( (PathSelect)Model.GetSelectedNode( selPath ), 0.95, false );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro CurvePushPointOppositeTangent()
+[Category="Curve Commands", Guid="{201D0390-3202-48E1-871A-7424A7DAF82C}", Image=".\\icons\\curve_push_point_opposite_tangent.bmp"]
+{
+   for( int selPath = 0; selPath < Model.GetSelectCount(); ++selPath )
+   {
+      Node selNode = Model.GetSelectedNode( selPath ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         // Shrink the tangents.
+         Graph.TransformSelectedPathTangents( (PathSelect)Model.GetSelectedNode( selPath ), 1.05, true );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro CurvePullPointOppositeTangent()
+[Category="Curve Commands", Guid="{79A1B516-5350-43D5-B2B8-175D093D61E3}", Image=".\\icons\\curve_pull_point_opposite_tangent.bmp"]
+{
+   for( int selPath = 0; selPath < Model.GetSelectCount(); ++selPath )
+   {
+      Node selNode = Model.GetSelectedNode( selPath ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         // Shrink the tangents.
+         Graph.TransformSelectedPathTangents( (PathSelect)Model.GetSelectedNode( selPath ), 0.95, true );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveSetTessellation1_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Set segment tessellation depth to 1" );
+}
+
+macro CurveSetTessellation1()
+[Category="Curve Commands", Guid="{2BEB29AC-8401-41B2-9BC7-260D0B71C10A}", Image=".\\icons\\curve_apply_tessellation.bmp"]
+{
+   Graph.CurveSetSelectionTessellation( 1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveSetTessellation2_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Set segment tessellation depth to 2" );
+}
+
+macro CurveSetTessellation2()
+[Category="Curve Commands", Guid="{858C6862-9A79-470C-B0AF-24338B406AC4}", Image=".\\icons\\curve_apply_tessellation.bmp"]
+{
+   Graph.CurveSetSelectionTessellation( 2 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveSetTessellation3_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Set segment tessellation depth to 3" );
+}
+
+macro CurveSetTessellation3()
+[Category="Curve Commands", Guid="{4DF6276C-8530-4904-8C58-0FC8496996DB}", Image=".\\icons\\curve_apply_tessellation.bmp"]
+{
+   Graph.CurveSetSelectionTessellation( 3 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveSetTessellation4_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Set segment tessellation depth to 4" );
+}
+
+macro CurveSetTessellation4()
+[Category="Curve Commands", Guid="{ED300B83-3938-43EE-AEC2-23E6338567DD}", Image=".\\icons\\curve_apply_tessellation.bmp"]
+{
+   Graph.CurveSetSelectionTessellation( 4 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveSetTessellation8_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Set segment tessellation depth to 8" );
+}
+
+macro CurveSetTessellation8()
+[Category="Curve Commands", Guid="{31B9E20A-F9B3-4972-8055-74A829AA1B81}", Image=".\\icons\\curve_apply_tessellation.bmp"]
+{
+   Graph.CurveSetSelectionTessellation( 8 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveSetTessellation16_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Set segment tessellation depth to 16" );
+}
+
+macro CurveSetTessellation16()
+[Category="Curve Commands", Guid="{69B3D0AC-7D26-49A7-9825-907A72BD6605}", Image=".\\icons\\curve_apply_tessellation.bmp"]
+{
+   Graph.CurveSetSelectionTessellation( 16 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveSetTessellation32_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Set segment tessellation depth to 32" );
+}
+
+macro CurveSetTessellation32()
+[Category="Curve Commands", Guid="{D2E23A64-43E5-438F-B696-81470C056E5B}", Image=".\\icons\\curve_apply_tessellation.bmp"]
+{
+   Graph.CurveSetSelectionTessellation( 32 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveSetTessellationTo1UnitPerFragment_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Set segment tessellation depth to 1 fragment for every 1 unit of length" );
+}
+
+macro CurveSetTessellationTo1UnitPerFragment()
+[Category="Curve Commands", Guid="{3F1E5BA3-1520-49BA-9351-6AAD19155E16}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.SetPathTessellationByItsLength( 1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveSetTessellationTo4UnitsPerFragment_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Set segment tessellation depth to 1 fragment for every 4 units of length" );
+}
+
+macro CurveSetTessellationTo4UnitsPerFragment()
+[Category="Curve Commands", Guid="{3A8B6FF5-EAAA-4512-AE2D-C7FE17475ED6}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.SetPathTessellationByItsLength( 4 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveSetTessellationTo8UnitsPerFragment_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Set segment tessellation depth to 1 fragment for every 8 units of length" );
+}
+
+macro CurveSetTessellationTo8UnitsPerFragment()
+[Category="Curve Commands", Guid="{8785CCC7-638B-4841-90BA-046F8E10C004}",Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.SetPathTessellationByItsLength( 8 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveSetTessellationTo16UnitsPerFragment_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Set segment tessellation depth to 1 fragment for every 16 units of length" );
+}
+
+macro CurveSetTessellationTo16UnitsPerFragment()
+[Category="Curve Commands", Guid="{8EF449A0-67B7-4203-A3CE-D2ED9B8735C6}",Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.SetPathTessellationByItsLength( 16 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveSetTessellationTo32UnitsPerFragment_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Path, "Set segment tessellation depth to 1 fragment for every 32 units of length" );
+}
+
+macro CurveSetTessellationTo32UnitsPerFragment()
+[Category="Curve Commands", Guid="{0EF44056-7ED5-4E22-8573-1E15196EE629}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.SetPathTessellationByItsLength( 32 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro CurveFitSelectedTangentsToCircle()
+[Category="Curve Commands", Guid="{1F92209B-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\curve_fit_selected_tangents_to_circle.bmp"]
+{
+   for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+   {
+      NodeSelect nodeSel = Model.GetSelectedNode( sel );
+      if( nodeSel.IsDerived( PathSelect ) )
+      {
+         Graph.FitSelectedCurveTangentsToCircle( (PathSelect)nodeSel );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveCreateSweepRelationship_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   bool enabled = Model.GetSelectCount() == 2 && Model.GetSelectBuffer().IsNodeTypeSelectedExclusive( Path );
+   //if( enabled )
+   //{
+   //   enabled = Model.GetSelectedNode( 0 ).GetNode().IsDerived( Path );
+   //   enabled = enabled && Model.GetSelectedNode( 1 ).GetNode().IsDerived( Path );
+   //}
+
+   string hint = "Create sweep relationship between curves";
+   if( !enabled )
+   {
+      hint += ": to enable this command, select two Path nodes";
+   }
+
+   commandInfo.SetEnabled( enabled );
+   commandInfo.Status.SetHint( hint );
+}
+
+macro CurveCreateSweepRelationship()
+[Category="Curve Commands",Guid="{8F84E3F0-97BA-4AE3-A468-D3691EBD76E7}",Image=".\\icons\\create_sweep.bmp"]
+{
+   int selectCount = Model.GetSelectCount();
+
+   if( selectCount == 2 )
+   {
+      // Validate the selection. Must be two paths. Order is unimportant.
+
+      Node railCurve = Model.GetSelectedNode( 0 ).GetNode();
+      Node crossCurve = Model.GetSelectedNode( 1 ).GetNode();
+
+      if( railCurve.IsDerived( Path ) && crossCurve.IsDerived( Path ) )
+      {
+         Path editRail = (Path)Model.EditNode( railCurve );
+         Path editCross = (Path)Model.EditNode( crossCurve );
+
+         // Allocate some nodes and add them to the database.
+         Group railParent = railCurve.Parent();
+         
+         Group masterGroup = new Group;
+         masterGroup.Name = "Sweep";
+
+         Group progroup = new Group;
+         progroup.Name = "Programs";
+         
+         Program program = new Program;
+         program.Name = "Program";
+         
+         Group texgroup = new Group;
+         texgroup.Name = "Textures";
+         
+         Texture texture = new Texture;
+         texture.Name = "Texture";
+         texture.External = 1;
+         
+         Group pGroup = new Group;
+         pGroup.Name = "Materials";
+         
+         editRail.PaletteLink = pGroup;
+         editCross.PaletteLink = pGroup;
+
+         Model.SetActivePalette( (Group)pGroup );
+
+         Group railGroup = new Group;
+         railGroup.Name = "Rail Curves";
+         Model.SetActiveParent ( (Group)railGroup );
+
+         Group crossGroup = new Group;
+         crossGroup.Name = "Cross Section Curves";
+
+         Material material = new Material;
+         material.Name = "Material";
+         material.IDColor.SetRGB( 255, 215, 0 );
+         material.TextureLink = texgroup;
+         material.Program = program;
+
+         Model.SetActiveMaterial ( (Material)material );
+
+         ParametricMesh mesh = new ParametricMesh;
+         mesh.Name = "Mesh";
+         mesh.PaletteLink = pGroup;
+
+         SweepGeometryModifier modifier = new SweepGeometryModifier;
+         modifier.Name = "SweepGeometryModifier";
+         modifier.Material = material;
+         modifier.Rails = railGroup;
+         modifier.CrossSections = crossGroup;
+
+         DissolveTriangleEdgesModifier quad_modifier = new DissolveTriangleEdgesModifier;
+         quad_modifier.Name = "QuadrilateralizeSweepGeometry";
+
+         AddChannelModifier act_modifier = new AddChannelModifier;
+         
+         act_modifier.Name = "TextureAttributesChannelModifier";
+         act_modifier.Attribute = 3;
+         act_modifier.Dimension = 2;
+         
+         AddChannelModifier acn_modifier = new AddChannelModifier;
+
+         acn_modifier.Name = "NormalAttributesChannelModifier";
+         acn_modifier.Attribute = 1;
+         acn_modifier.Dimension = 3;
+
+         AddChannelModifier acc_modifier = new AddChannelModifier;
+
+         acc_modifier.Name = "ColorAttributesChannelModifier";
+         acc_modifier.Attribute = 2;
+         acc_modifier.Dimension = 4;
+
+         SpaNodeUtil.AddNode ( masterGroup, (Group)railParent );
+         SpaNodeUtil.AddNode( progroup, (Group)masterGroup );
+         SpaNodeUtil.AddNode( program, (Group)progroup );
+         SpaNodeUtil.AddNode( texgroup, (Group)masterGroup );
+         SpaNodeUtil.AddNode( texture, (Group)texgroup );
+         SpaNodeUtil.AddNode( pGroup, (Group)masterGroup );
+
+         Model.AddNode ( material, pGroup, -1 );
+         SpaNodeUtil.AddNode( mesh, (Group)masterGroup );
+
+         Model.AddNode ( modifier, mesh, -1 );
+         Model.AddNode ( quad_modifier, mesh, -1 );
+         Model.AddNode ( acc_modifier, mesh, 0 );
+         Model.AddNode ( acn_modifier, mesh, 0 );
+         Model.AddNode ( act_modifier, mesh, 0 );
+
+         SpaNodeUtil.AddNode( railGroup, (Group)masterGroup );
+         SpaNodeUtil.AddNode( crossGroup, (Group)masterGroup );
+
+         Model.Select( masterGroup );
+
+         Model.ParentNode( railCurve, railGroup, -1 );
+         Model.ParentNode( crossCurve, crossGroup, -1 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveCreateLoftRelationship_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   bool enabled = Model.GetSelectCount() >= 2 && Model.GetSelectBuffer().IsNodeTypeSelectedExclusive( Path );
+
+   string hint = "Create loft relationship between curves";
+   if( !enabled )
+   {
+      hint += ": to enable this command, select two or more Path nodes";
+   }
+
+   commandInfo.SetEnabled( enabled );
+   commandInfo.Status.SetHint( hint );
+}
+
+macro CurveCreateLoftRelationship()
+[Category="Curve Commands",Guid="{7828EE2A-A657-435F-95D9-282A220C9FC3}",Image=".\\icons\\create_loft.bmp"]
+{
+   int selectCount = Model.GetSelectCount();
+
+   if( selectCount < 2 )
+   {
+      // Send shipment of fail!
+      Console.Error( "You must have more than one curve selected to invoke this command." );
+      return;
+   }
+
+   // Allocate a new group and set its name.
+   Group containerGroup = new Group;
+   containerGroup.Name = "Loft";
+
+   // Allocate a new group and set its name.
+   Group progroup = new Group;
+   progroup.Name = "Programs";
+
+   // Allocate a new program and set its name.
+   Program program = new Program;
+   program.Name = "Program";
+
+   // Allocate a new group and set its name.
+   Group texgroup = new Group;
+   texgroup.Name = "Textures";
+
+   // Allocate a new texture and configure its name and external.
+   Texture texture = new Texture;
+   texture.Name = "Texture";
+   texture.External = 1;
+
+   // Allocate a new group and set its name.
+   Group paletteGroup = new Group;
+   paletteGroup.Name = "Materials";
+
+   // Allocate a material and set its name, ID color, and palette.
+   Material curveMaterial = new Material;
+   curveMaterial.Name = "Material";
+   curveMaterial.IDColor.SetRGB( 255, 215, 0 );
+   curveMaterial.TextureLink = texgroup;
+   curveMaterial.Program = program;
+
+   // Allocate a cross section group and set its name.
+   Group loftCrossGroup = new Group;
+   loftCrossGroup.Name = "Cross Section Curves";
+
+   // Allocate a mesh and set its palette group and name.
+   ParametricMesh loftMesh = new ParametricMesh;
+   loftMesh.Name = "Mesh";
+   loftMesh.PaletteGroup = paletteGroup;
+
+   // Allocate a LoftModifier and set its name and cross-section group.
+   LoftGeometryModifier loftModifier = new LoftGeometryModifier;
+   loftModifier.Name = "LoftGeometryModifier";
+   loftModifier.CrossSections = loftCrossGroup;
+
+   AddChannelModifier act_modifier = new AddChannelModifier;
+   act_modifier.Name = "TextureAttributesChannelModifier";
+   act_modifier.Attribute = 3;
+   act_modifier.Dimension = 2;
+
+   AddChannelModifier acn_modifier = new AddChannelModifier;
+   acn_modifier.Name = "NormalAttributesChannelModifier";
+   acn_modifier.Attribute = 1;
+   acn_modifier.Dimension = 3;
+
+   AddChannelModifier acc_modifier = new AddChannelModifier;
+   acc_modifier.Name = "ColorAttributesChannelModifier";
+   acc_modifier.Attribute = 2;
+   acc_modifier.Dimension = 4;
+
+   // Use the parent of the first selected node when we find it.
+   Node getParent;
+
+   // Iterate the curves. Set each curve PaletteLink to 'paletteGroup'.
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNode = Model.GetSelectedNode( m ).GetNode();
+      if( selNode.IsDerived( Path ) )
+      {
+         if( !getParent )
+         {
+            getParent = selNode.Parent();
+         }
+
+         Path editPath = (Path)Model.EditNode( selNode );
+         editPath.PaletteLink = paletteGroup;
+         Model.ParentNode( selNode, loftCrossGroup, -1 );
+      }
+   }
+
+   if( !getParent )
+   {
+      getParent = Model;
+   }
+
+   if( Model.GetActiveParent() )
+   {
+      // Get the active parent.
+      Group parentGroup = Model.GetActiveParent();
+      
+      // Add the nodes to the scene graph.
+      SpaNodeUtil.AddNode( containerGroup, (Group)parentGroup );
+      SpaNodeUtil.AddNode( progroup, (Group)containerGroup );
+      SpaNodeUtil.AddNode( program, (Group)progroup );
+      SpaNodeUtil.AddNode( texgroup, (Group)containerGroup );
+      SpaNodeUtil.AddNode( texture, (Group)texgroup );
+      SpaNodeUtil.AddNode( paletteGroup, (Group)containerGroup );
+      Model.AddNode( curveMaterial, (Group)paletteGroup, -1 );
+
+      SpaNodeUtil.AddNode( loftMesh, (Group)containerGroup );
+
+      Model.AddNode( loftModifier, loftMesh, -1 );
+      Model.AddNode( acc_modifier, loftMesh, 0 );
+      Model.AddNode( acn_modifier, loftMesh, 0 );
+      Model.AddNode( act_modifier, loftMesh, 0 );
+
+      SpaNodeUtil.AddNode( loftCrossGroup, (Group)containerGroup );
+
+      Model.Select( containerGroup );
+   }
+   else
+   {
+      // Get the parent of the first selected node.
+      Group parentGroup = getParent.Parent();
+
+      // Add the nodes to the scene graph.
+      SpaNodeUtil.AddNode( containerGroup, (Group)parentGroup );
+      SpaNodeUtil.AddNode( paletteGroup, (Group)containerGroup );
+      Model.AddNode( curveMaterial, (Group)paletteGroup, -1 );
+
+      SpaNodeUtil.AddNode( loftMesh, (Group)containerGroup );
+
+      Model.AddNode( loftModifier, loftMesh, -1 );
+      Model.AddNode( acc_modifier, loftMesh, 0 );
+      Model.AddNode( acn_modifier, loftMesh, 0 );
+      Model.AddNode( act_modifier, loftMesh, 0 );
+
+      SpaNodeUtil.AddNode( loftCrossGroup, (Group)containerGroup );
+
+      Model.Select( containerGroup );
+   }
+}

@@ -1,0 +1,1736 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             VARIABLE_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements basic graph utility functions.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "graph_util.ssl";
+import library "message_util.ssl";
+import library "select_util.ssl";
+import library "str_list_util.ssl";
+import library "template_util.ssl";
+
+library SpaVariableUtil;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetCodeObjects(
+
+   int p_nGlslVersion,
+   Node p_oNode,
+   TypeInformation p_oRootType,
+   Node p_oSelNode,
+   VariableExpressionNode p_oCurrentFunctionDeclaration,
+   bool p_bInFunctionDeclaration,
+   ref bool p_bTraversedSelection,
+   bool p_bFilterGlobals,
+   List p_lNodes,
+   List p_lNodeLinks,
+   TypeInfoArray p_oTypes,
+   ref bool p_bTraverseInto,
+   int p_nCurrentIndent,
+   IntArray p_aiIndent,
+   IntArray p_aiGlobalIndices
+
+   )
+{
+   if( p_oSelNode && p_oNode == p_oSelNode )
+   {
+      p_bTraversedSelection = true;
+   }
+
+   if( !p_bTraversedSelection )
+   {
+      for( int i = 0; i < p_oTypes.Count; ++i )
+      {
+         TypeInformation a_oTypeInformation =
+            (TypeInformation)p_oTypes.Objects[ i ];
+         if( p_oNode && p_oNode.IsDerived( a_oTypeInformation ) )
+         {
+            if( p_oNode.IsDerived( StructNode ) )
+            {
+               StructNode a_oStructNode = (StructNode)p_oNode;
+               if( a_oStructNode.Block.BlockInstanceName != "" )
+               {
+                  p_aiGlobalIndices.Add( p_lNodes.GetCount() );
+                  p_lNodes.AddRef( p_oNode );
+                  p_aiIndent.Add(  p_nCurrentIndent );
+                  break;
+               }
+            }
+            else
+            {
+               p_aiGlobalIndices.Add( p_lNodes.GetCount() );
+               p_lNodes.AddRef( p_oNode );
+               p_aiIndent.Add(  p_nCurrentIndent );
+               break;
+            }
+         }
+      }
+   }
+
+   if( p_oNode.IsDerived( StructInstanceNode ) )
+   {
+      StructInstanceNode a_oStructInstanceNode = (StructInstanceNode)p_oNode;
+      Node a_oNode = (Node)a_oStructInstanceNode.FindStructDeclaration();
+      if( a_oNode )
+      {
+         p_oNode = a_oNode;
+         ++p_nCurrentIndent;
+      }
+   }
+   else
+   if( p_oNode.IsDerived( NodeLink ) )
+   {
+      // A NodeLink might refer to the
+      // same node, so make sure that we
+      // only traverse each NodeLink
+      // target once. We can check this
+      // by testing to see if the NodeLink
+      // node target is in p_lNodeLinks.
+      bool a_bTraverseLink;
+      NodeLink a_oLink = (NodeLink)p_oNode;
+      auto FilePath a_oLinkPath = new FilePath( a_oLink.PathToFile );
+      a_oLinkPath.Canonicalize();
+      string a_sFilename = a_oLinkPath.GetFileName();
+
+      if( p_bFilterGlobals )
+      {
+         if( a_oLink.Visible && a_oLink.Load( 1 ) )
+         {
+            Node a_oNode = (Node)a_oLink.Node;
+            if( a_oNode && p_lNodeLinks.In( a_oNode ) == 0 )
+            {
+               p_lNodeLinks.AddRef( a_oNode );
+               p_oNode = a_oNode;
+               p_bTraverseInto = true;
+            }
+         }
+      }
+      else
+      {
+         if( a_oLink.Visible && a_oLink.Load( 1 ) && a_sFilename != "spa_globals.box" )
+         {
+            Node a_oNode = (Node)a_oLink.Node;
+            if( a_oNode && p_lNodeLinks.In( a_oNode ) == 0 )
+            {
+               p_lNodeLinks.AddRef( a_oNode );
+               p_oNode = a_oNode;
+               p_bTraverseInto = true;
+            }
+         }
+      }
+   }
+   else
+   if( p_oNode.IsDerived( StructNode ) )
+   {
+      StructNode a_oStructNode = (StructNode)p_oNode;
+      if( a_oStructNode.Block.BlockInstanceName != "" )
+      {
+         ++p_nCurrentIndent;
+         p_bTraverseInto = true;
+      }
+      else
+      {
+         p_bTraverseInto = false;
+      }
+   }
+   else
+   if( p_oNode.IsDerived( InterfaceBlockNode ) )
+   {
+      ++p_nCurrentIndent;
+      p_bTraverseInto = true;
+   }
+   else
+   if( p_oNode.IsDerived( UniformBufferNode ) )
+   {
+      ++p_nCurrentIndent;
+      p_bTraverseInto = true;
+   }
+   else
+   if( p_oNode.IsDerived( ShaderBufferNode ) )
+   {
+      ++p_nCurrentIndent;
+      p_bTraverseInto = true;
+   }
+   else
+   if( p_oNode.IsDerived( MainFunctionNode ) )
+   {
+      p_nCurrentIndent = 0;
+      p_bTraverseInto = true;
+   }
+   else
+   if( p_oNode.IsDerived( ShaderDeclarationNode ) )
+   {
+      p_nCurrentIndent = 0;
+      p_bTraverseInto = true;
+   }
+   else
+   if( p_oNode.IsDerived( ShaderImportNode ) )
+   {
+      ShaderImportNode a_oShaderImportNode =
+         (ShaderImportNode)p_oNode;
+      p_oNode = (Node)a_oShaderImportNode.GetDataSource( 0 );
+      p_nCurrentIndent = 0;
+      p_bTraverseInto = true;
+   }
+   else
+   if( p_oNode.IsDerived( UniformBufferBindNode ) )
+   {
+      p_bTraverseInto = false;
+   }
+   else
+   if( p_oNode.IsDerived( VariableExpressionNode ) )
+   {
+      VariableExpressionNode a_oVariableExpressionNode =
+         (VariableExpressionNode)p_oNode;
+
+      if(   p_bInFunctionDeclaration &&
+            a_oVariableExpressionNode.IsFunctionDeclaration() )
+      {
+         if( a_oVariableExpressionNode == p_oCurrentFunctionDeclaration )
+         {
+            p_nCurrentIndent = 0;
+            p_bTraverseInto = true;
+         }
+         else
+         {
+            p_bTraverseInto = false;
+         }
+      }
+      else
+      {
+         p_bTraverseInto = false;
+      }
+   }
+   else
+   if( p_oNode.IsDerived( InitializationNode ) )
+   {
+      p_bTraverseInto = true;
+   }
+   else
+   if( p_oNode.IsDerived( ConditionNode ) )
+   {
+      p_bTraverseInto = true;
+   }
+   else
+   if( p_oNode.IsDerived( LoopNode ) )
+   {
+      p_bTraverseInto = true;
+   }
+   else
+   if( p_oNode.IsDerived( IteratorNode ) )
+   {
+      p_bTraverseInto = true;
+   }
+   else
+   if( p_oNode.IsDerived( DeclarationNode ) )
+   {
+      DeclarationNode a_oDeclarationNode =
+         (DeclarationNode)p_oNode;
+      if(   a_oDeclarationNode.Parent().IsDerived( StatementBlockNode ) ||
+            a_oDeclarationNode.Parent().IsDerived( MainFunctionNode ) )
+      {
+         p_bTraverseInto = true;
+      }
+   }
+   else
+   if( p_oNode.IsDerived( ExpressionNode ) )
+   {
+      ExpressionNode a_oExpressionNode =
+         (ExpressionNode)p_oNode;
+      if(   a_oExpressionNode.Parent().IsDerived( StatementBlockNode ) ||
+            a_oExpressionNode.Parent().IsDerived( MainFunctionNode ) )
+      {
+         p_bTraverseInto = true;
+      }
+   }
+   else
+   if( p_oNode.IsDerived( StatementBlockNode ) )
+   {
+      p_bTraverseInto = true;
+   }
+   else
+   if( p_oNode.IsDerived( ShaderVersionNode ) )
+   {
+      ShaderVersionNode a_oShaderVersionNode =
+         (ShaderVersionNode)p_oNode;
+
+      if( a_oShaderVersionNode.ChildCount )
+      {
+         string a_sGlslVersion = p_nGlslVersion;
+         if( a_sGlslVersion == a_oShaderVersionNode.GetVersionString() )
+         {
+            p_bTraverseInto = true;
+         }
+         else
+         {
+            p_bTraverseInto = false;
+         }
+      }
+   }
+   else
+   if( p_oNode.IsDerived( ShaderSourceNode ) )
+   {
+      ShaderSourceNode a_oShaderSourceNode =
+         (ShaderSourceNode)p_oNode;
+
+      if( p_oNode.GetType() == p_oRootType )
+      {
+         p_bTraverseInto = true;
+      }
+      else
+      {
+         p_bTraverseInto = false;
+      }
+   }
+
+   if( p_oNode.IsDerived( Group ) && p_bTraverseInto )
+   {
+      Group a_oGroup = (Group)p_oNode;
+
+      for( int j = 0; j < a_oGroup.ChildCount; ++j )
+      {
+         GetCodeObjects(
+            p_nGlslVersion,
+            a_oGroup.Children[j],
+            p_oRootType,
+            p_oSelNode,
+            p_oCurrentFunctionDeclaration,
+            p_bInFunctionDeclaration,
+            p_bTraversedSelection,
+            p_bFilterGlobals,
+            p_lNodes,
+            p_lNodeLinks,
+            p_oTypes,
+            p_bTraverseInto,
+            p_nCurrentIndent,
+            p_aiIndent,
+            p_aiGlobalIndices );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetNodeStorageQualifier( Node p_oNode )
+{
+   auto GlslQualifierManager a_oManager;
+   QualifierList a_oQualifierList;
+   a_oQualifierList = a_oManager.GetQualifierList( p_oNode );
+   int a_nQualifier;
+   if( a_oQualifierList )
+   {
+      return a_oManager.GetStorageQualifier( a_oQualifierList );
+   }
+
+   // Convert the storage qualifier to the binding type.
+   if( a_nQualifier == Enum.GLSL_Qualifier_Const() )
+   {
+      return Enum.Binding_Constant();
+   }
+   else
+   if( a_nQualifier == Enum.GLSL_Qualifier_Uniform() )
+   {
+      return Enum.Binding_Uniform();
+   }
+   else
+   if( a_nQualifier == Enum.GLSL_Qualifier_Buffer() )
+   {
+      return Enum.Binding_Buffer();
+   }
+   else
+   if( a_nQualifier == Enum.GLSL_Qualifier_In() )
+   {
+      return Enum.GLSL_Qualifier_In();
+   }
+   else
+   if( a_nQualifier == Enum.GLSL_Qualifier_Out() )
+   {
+      return Enum.Binding_Output();
+   }
+   else
+   if( a_nQualifier == Enum.GLSL_Qualifier_Attribute() )
+   {
+      return Enum.Binding_Attribute();
+   }
+   else
+   if( a_nQualifier == Enum.GLSL_Qualifier_Varying() )
+   {
+      return Enum.Binding_Varying();
+   }
+
+   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SortByStorageQualifier(
+
+   List p_lDeclaredObjects,
+   List p_lSortedObjects,
+   int p_nStorageQualifier,
+   ref int p_nCurrentStorageQualifier,
+   IntArray p_aiIndent,
+   IntArray p_aiTargetIndent,
+   IntArray p_aiGlobalIndices,
+   IntArray p_aiSortedIndices
+
+   )
+{
+   for( int i = 0; i < p_lDeclaredObjects.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lDeclaredObjects.Get( i );
+
+      if( p_aiIndent.Objects[ i ] == 0 )
+      {
+         p_nCurrentStorageQualifier = GetNodeStorageQualifier( a_oNode );
+      }
+
+      if( p_nCurrentStorageQualifier == p_nStorageQualifier )
+      {
+         p_lSortedObjects.AddRef( a_oNode );
+         p_aiTargetIndent.Add( p_aiIndent.Objects[ i ] );
+         p_aiSortedIndices.Add( p_aiGlobalIndices.Objects[ i ] );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SortByType(
+
+   List p_lDeclaredObjects,
+   List p_lSortedObjects,
+   TypeInfoArray p_aoTypes,
+   ref int p_nCurrentStorageQualifier,
+   IntArray p_aiIndent,
+   IntArray p_aiTargetIndent,
+   IntArray p_aiGlobalIndices,
+   IntArray p_aiSortedIndices
+
+   )
+{
+   for( int i = 0; i < p_lDeclaredObjects.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lDeclaredObjects.Get( i );
+
+      for( int j = 0; j < p_aoTypes.Count; ++j )
+      {
+         if( a_oNode && a_oNode.IsDerived( p_aoTypes.Objects[ j ] ) )
+         {
+            p_lSortedObjects.AddRef( a_oNode );
+            p_aiTargetIndent.Add( p_aiIndent.Objects[ i ] );
+            p_aiSortedIndices.Add( p_aiGlobalIndices.Objects[ i ] );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SortGlobalObjects(
+
+   List p_lDeclaredObjects,
+   List p_lSortedObjects,
+   IntArray p_aiIndent,
+   IntArray p_aiTargetIndent,
+   IntArray p_aiGlobalIndices,
+   IntArray p_aiSortedIndices
+
+   )
+{
+   for( int i = 0; i < p_lDeclaredObjects.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lDeclaredObjects.Get( i );
+      auto FilePath a_oIsGlobalsPath = new FilePath( a_oNode.GetModel().Filename );
+      a_oIsGlobalsPath.Canonicalize();
+
+      if( a_oIsGlobalsPath.GetFileName() == "spa_globals.box" )
+      {
+         p_lSortedObjects.AddRef( a_oNode );
+         p_aiTargetIndent.Add( p_aiIndent.Objects[ i ] );
+         p_aiSortedIndices.Add( p_aiGlobalIndices.Objects[ i ] );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool EvaluateCount(
+
+   ExpressionInfo p_oExpressionInfo,
+   ExpressionInfo p_oVariableInfo
+
+   )
+{
+   if(   p_oExpressionInfo.ArrayCount == 0 ||
+         p_oExpressionInfo.ArrayCount == p_oVariableInfo.ArrayCount )
+   {
+      return true;
+   }
+
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool EvaluateRowCount(
+
+   ExpressionInfo p_oExpressionInfo,
+   ExpressionInfo p_oVariableInfo
+
+   )
+{
+   if( p_oVariableInfo.Rows >= p_oExpressionInfo.Rows )
+   {
+      return true;
+   }
+
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool EvaluateRowArrayCount(
+
+   ExpressionInfo p_oExpressionInfo,
+   ExpressionInfo p_oVariableInfo
+
+   )
+{
+   if(   p_oVariableInfo.Rows == p_oExpressionInfo.Rows &&
+         p_oVariableInfo.ArrayCount == p_oExpressionInfo.ArrayCount )
+   {
+      return true;
+   }
+
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool MatchReadable( Node p_oSelNode, VariableNode p_oVariableNode )
+{
+   if( !p_oSelNode || !p_oVariableNode )
+   {
+      return false;
+   }
+
+   // Prevent self-initialization.
+   // This occurs when the VariableNode is
+   // 'in scope' of the expression, but
+   // is connected via a BinaryOperatorNode.
+
+   // VariableNode BinaryOperatorNode VectorExpressionNode
+   // vec4 v       =                  vec4( 1.0 );
+
+   // We should not allow 'v' to be selectable as
+   // a data source for VectorExpressionNode.
+   if( p_oSelNode.IsDerived( VariableExpressionNode ) )
+   {
+      VariableExpressionNode a_oVariableExpressionNode =
+         (VariableExpressionNode)p_oSelNode;
+      Node a_oOpposite = (Node)a_oVariableExpressionNode.GetOppositeExpression();
+      if( a_oOpposite == (Node)p_oVariableNode )
+      {
+         return false;
+      }
+   }
+
+   auto ExpressionInfo a_oExpressionInfo;
+   auto ExpressionInfo a_oVariableInfo;
+   p_oVariableNode.GetParams( a_oVariableInfo );
+
+   if(   p_oSelNode.IsDerived( MatrixExpressionNode ) ||
+         p_oSelNode.IsDerived( MatrixArrayExpressionNode ) )
+   {
+      VariableExpressionNode a_oVariableExpressionNode =
+         (VariableExpressionNode)p_oSelNode;
+      a_oVariableExpressionNode.GetParams( a_oExpressionInfo );
+
+      if( p_oVariableNode.IsScalarType() )
+      {
+         return true;
+      }
+      else
+      if( p_oVariableNode.IsVectorType() )
+      {
+         p_oVariableNode.GetParams( a_oVariableInfo );
+         int a_nVectorDimension = a_oVariableInfo.Rows;
+         int a_nCols = a_oExpressionInfo.Cols;
+         int a_nRows = a_oExpressionInfo.Rows;
+
+         bool a_bEquivalent = a_nVectorDimension == a_nRows ||
+            a_nVectorDimension == a_nCols ||
+            a_nVectorDimension == a_nCols * a_nRows;
+
+         int a_nCombinedRemainder = Math.ModI( a_nCols * a_nRows, a_nVectorDimension );
+
+         if( a_bEquivalent || a_nCombinedRemainder == 0 )
+         {
+            return true;
+         }
+         else
+         {
+            return false;
+         }
+      }
+      else
+      if( p_oVariableNode.IsMatrixType() )
+      {
+         return true;
+      }
+   }
+   else
+   if(   p_oSelNode.IsDerived( BooleanArrayExpressionNode ) &&
+         p_oVariableNode.IsDerived( BooleanArrayNode ) )
+   {
+      return EvaluateCount( a_oExpressionInfo, a_oVariableInfo );
+   }
+   else
+   if(   p_oSelNode.IsDerived( BooleanVectorArrayExpressionNode ) &&
+         p_oVariableNode.IsDerived( BooleanVectorArrayNode ) )
+   {
+      return EvaluateCount( a_oExpressionInfo, a_oVariableInfo );
+   }
+   else
+   if(   p_oSelNode.IsDerived( FloatArrayExpressionNode ) &&
+         p_oVariableNode.IsDerived( FloatArrayNode ) )
+   {
+      return EvaluateCount( a_oExpressionInfo, a_oVariableInfo );
+   }
+   else
+   if(   p_oSelNode.IsDerived( IntegerArrayExpressionNode ) &&
+         p_oVariableNode.IsDerived( IntegerArrayNode ) )
+   {
+      return EvaluateCount( a_oExpressionInfo, a_oVariableInfo );
+   }
+   else
+   if(   p_oSelNode.IsDerived( UnsignedIntegerArrayExpressionNode ) &&
+         p_oVariableNode.IsDerived( UnsignedIntegerArrayNode ) )
+   {
+      return EvaluateCount( a_oExpressionInfo, a_oVariableInfo );
+   }
+   else
+   if(   p_oSelNode.IsDerived( VectorArrayExpressionNode ) &&
+         p_oVariableNode.IsDerived( VectorArrayNode ) )
+   {
+      return EvaluateCount( a_oExpressionInfo, a_oVariableInfo );
+   }
+   else
+   if( p_oSelNode.IsDerived( SamplerExpressionNode ) )
+   {
+      SamplerExpressionNode a_oSamplerExpressionNode =
+         (SamplerExpressionNode)p_oSelNode;
+      if( p_oVariableNode.IsDerived( SamplerNode ) )
+      {
+         SamplerNode a_oSamplerNode = (SamplerNode)p_oVariableNode;
+         if( a_oSamplerNode.SamplerType == a_oSamplerExpressionNode.SamplerType )
+         {
+            return true;
+         }
+      }
+      else
+      {
+         return false;
+      }
+   }
+   else
+   if( p_oSelNode.IsDerived( StructExpressionNode ) && p_oVariableNode.IsDerived( StructInstanceNode ) )
+   {
+      StructExpressionNode a_oStructExpressionNode = (StructExpressionNode)p_oSelNode;
+      StructInstanceNode a_oStructInstanceNode = (StructInstanceNode)p_oVariableNode;
+      a_oStructExpressionNode.GetParams( a_oExpressionInfo );
+      a_oStructInstanceNode.GetParams( a_oVariableInfo );
+
+      // If the StructExpressionNode is on the left side and
+      // a StructInstanceNode is on the right side, only allow
+      // this StructExpressioNode data source to be set if the
+      // StructInstanceNode data source has been selected.
+      Node a_oIsOppositeExpression = (Node)a_oStructExpressionNode.GetOppositeExpression();
+      StructInstanceNode a_oOpposite;
+
+      if( a_oIsOppositeExpression && a_oIsOppositeExpression.IsDerived( StructInstanceNode ) )
+      {
+         a_oOpposite = (StructInstanceNode)a_oIsOppositeExpression;
+         if( !( a_oOpposite.FindStructDeclaration() ) )
+         {
+            return false;
+         }
+      }
+
+      if( a_oStructExpressionNode.IsArray )
+      {
+         if(   a_oExpressionInfo.StructType == a_oVariableInfo.StructType &&
+               a_oExpressionInfo.ArrayCount == a_oVariableInfo.ArrayCount )
+         {
+            if( a_oOpposite && a_oStructInstanceNode != a_oOpposite )
+            {
+               return true;
+            }
+         }
+      }
+      else
+      {
+         // Allow the user to select any valid struct instance if the expression doesn't specify any struct type.
+         // We don't even care if the expression already has a struct instance data source, because we'll change it.
+         // Otherwise, only present struct instances that match the specified type.
+         if( a_oStructExpressionNode.StructTypeName == "" )
+         {
+            return true;
+         }
+         else
+         {
+            if( a_oStructInstanceNode.FindStructDeclaration() )
+            {
+               StructNode a_oStructNode = (StructNode)a_oStructInstanceNode.FindStructDeclaration();
+               if( a_oStructExpressionNode.StructTypeName == a_oStructNode.Block.BlockName )
+               {
+                  return true;
+               }
+            }
+         }
+      }
+
+      return false;
+   }
+   else
+   if(   !( p_oSelNode.IsDerived( SamplerExpressionNode ) ) &&
+         p_oVariableNode.IsDerived( SamplerNode ) )
+   {
+      return false;
+   }
+   else
+   if(   p_oSelNode.IsDerived( StructExpressionNode ) == false &&
+         p_oVariableNode.IsDerived( StructInstanceNode ) == false )
+   {
+      return true;
+   }
+
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool MatchWriteable( Node p_oSelNode, VariableNode p_oVariableNode )
+{
+   auto ExpressionInfo a_oVariableInfo;
+   auto ExpressionInfo a_oExpressionInfo;
+
+   if( p_oSelNode.IsDerived( VariableExpressionNode ) )
+   {
+      VariableExpressionNode a_oVariableExpressionNode = (VariableExpressionNode)p_oSelNode;
+      a_oVariableExpressionNode.GetParams( a_oExpressionInfo );
+      p_oVariableNode.GetParams( a_oVariableInfo );
+   }
+
+   if(   p_oSelNode.IsDerived( VectorExpressionNode ) &&
+         p_oVariableNode.IsDerived( MatrixArrayNode ) )
+   {
+      if( a_oVariableInfo.Rows >= a_oExpressionInfo.Rows )
+      {
+         return true;
+      }
+   }
+   else
+   if(   p_oSelNode.IsDerived( VectorExpressionNode ) &&
+         p_oVariableNode.IsDerived( MatrixNode ) )
+   {
+      if( a_oVariableInfo.Rows >= a_oExpressionInfo.Rows )
+      {
+         return true;
+      }
+   }
+   else
+   if(   p_oSelNode.IsDerived( MatrixArrayExpressionNode ) &&
+         p_oVariableNode.IsDerived( MatrixArrayNode ) )
+   {
+      if(   a_oVariableInfo.Cols == a_oExpressionInfo.Cols &&
+            a_oVariableInfo.Rows == a_oExpressionInfo.Rows &&
+            a_oVariableInfo.ArrayCount == a_oExpressionInfo.ArrayCount )
+      {
+         return true;
+      }
+   }
+   else
+   if(   p_oSelNode.IsDerived( MatrixExpressionNode ) &&
+         p_oVariableNode.IsDerived( MatrixNode ) )
+   {
+      if(   a_oVariableInfo.Cols == a_oExpressionInfo.Cols &&
+            a_oVariableInfo.Rows == a_oExpressionInfo.Rows )
+      {
+         return true;
+      }
+   }
+   else
+   if(   p_oSelNode.IsDerived( MatrixExpressionNode ) &&
+         p_oVariableNode.IsDerived( MatrixArrayNode ) )
+   {
+      if(   a_oVariableInfo.Cols == a_oExpressionInfo.Cols &&
+            a_oVariableInfo.Rows == a_oExpressionInfo.Rows )
+      {
+         return true;
+      }
+   }
+   else
+   if(   p_oSelNode.IsDerived( BooleanExpressionNode ) &&
+         p_oVariableNode.IsBoolType() )
+   {
+      return true;
+   }
+   else
+   if(   p_oSelNode.IsDerived( IntegerExpressionNode ) &&
+         p_oVariableNode.IsIntType() )
+   {
+      return true;
+   }
+   else
+   if(   p_oSelNode.IsDerived( UnsignedIntegerExpressionNode ) &&
+         p_oVariableNode.IsUintType() )
+   {
+      return true;
+   }
+   else
+   if(   p_oSelNode.IsDerived( FloatExpressionNode ) &&
+         p_oVariableNode.IsFloatType() )
+   {
+      return true;
+   }
+   else
+   if(   p_oSelNode.IsDerived( BooleanArrayExpressionNode ) &&
+         p_oVariableNode.IsDerived( BooleanArrayNode ) )
+   {
+      return EvaluateCount( a_oExpressionInfo, a_oVariableInfo );
+   }
+   else
+   if(   p_oSelNode.IsDerived( IntegerArrayExpressionNode ) &&
+         p_oVariableNode.IsDerived( IntegerArrayNode ) )
+   {
+      return EvaluateCount( a_oExpressionInfo, a_oVariableInfo );
+   }
+   else
+   if(   p_oSelNode.IsDerived( UnsignedIntegerArrayExpressionNode ) &&
+         p_oVariableNode.IsDerived( UnsignedIntegerArrayNode ) )
+   {
+      return EvaluateCount( a_oExpressionInfo, a_oVariableInfo );
+   }
+   else
+   if(   p_oSelNode.IsDerived( FloatArrayExpressionNode ) &&
+         p_oVariableNode.IsDerived( FloatArrayNode ) )
+   {
+      return EvaluateCount( a_oExpressionInfo, a_oVariableInfo );
+   }
+   else
+   if( p_oSelNode.IsDerived( BooleanVectorExpressionNode ) )
+   {
+      if(   p_oVariableNode.IsDerived( BooleanVectorNode ) ||
+            p_oVariableNode.IsDerived( BooleanVectorArrayNode ) )
+      {
+         return EvaluateRowCount( a_oExpressionInfo, a_oVariableInfo );
+      }
+   }
+   else
+   if( p_oSelNode.IsDerived( BooleanVectorArrayExpressionNode ) )
+   {
+      if( p_oVariableNode.IsDerived( BooleanVectorArrayNode ) )
+      {
+         return EvaluateRowArrayCount( a_oExpressionInfo, a_oVariableInfo );
+      }
+   }
+   else
+   if( p_oSelNode.IsDerived( IntegerVectorExpressionNode ) )
+   {
+      if(   p_oVariableNode.IsDerived( IntegerVectorNode ) ||
+            p_oVariableNode.IsDerived( IntegerVectorArrayNode ) )
+      {
+         return EvaluateRowCount( a_oExpressionInfo, a_oVariableInfo );
+      }
+   }
+   else
+   if( p_oSelNode.IsDerived( IntegerVectorArrayExpressionNode ) )
+   {
+      if( p_oVariableNode.IsDerived( IntegerVectorArrayNode ) )
+      {
+         return EvaluateRowArrayCount( a_oExpressionInfo, a_oVariableInfo );
+      }
+   }
+   else
+   if( p_oSelNode.IsDerived( UnsignedIntegerVectorExpressionNode ) )
+   {
+      if(   p_oVariableNode.IsDerived( UnsignedIntegerVectorNode ) ||
+            p_oVariableNode.IsDerived( UnsignedIntegerVectorArrayNode ) )
+      {
+         return EvaluateRowCount( a_oExpressionInfo, a_oVariableInfo );
+      }
+   }
+   else
+   if( p_oSelNode.IsDerived( UnsignedIntegerVectorArrayExpressionNode ) )
+   {
+      if( p_oVariableNode.IsDerived( UnsignedIntegerVectorArrayNode ) )
+      {
+         return EvaluateRowArrayCount( a_oExpressionInfo, a_oVariableInfo );
+      }
+   }
+   else
+   if( p_oSelNode.IsDerived( VectorExpressionNode ) )
+   {
+      if(   p_oVariableNode.IsFloatType() &&
+            p_oVariableNode.IsVectorType() )
+      {
+         return EvaluateRowCount( a_oExpressionInfo, a_oVariableInfo );
+      }
+   }
+   else
+   if( p_oSelNode.IsDerived( VectorArrayExpressionNode ) )
+   {
+      if( p_oVariableNode.IsDerived( VectorArrayNode ) )
+      {
+         return EvaluateRowArrayCount( a_oExpressionInfo, a_oVariableInfo );
+      }
+   }
+   else
+   if( p_oVariableNode.IsDerived( MatrixNode ) )
+   {
+      if( !p_oSelNode.IsDerived( MatrixArrayExpressionNode ) )
+      {
+         if( a_oVariableInfo.Rows * a_oVariableInfo.Cols == a_oExpressionInfo.Rows )
+         {
+            return true;
+         }
+      }
+   }
+   else
+   if(   p_oSelNode.IsDerived( StructExpressionNode ) &&
+         p_oVariableNode.IsDerived( StructInstanceNode ) )
+   {
+      StructExpressionNode a_oStructExpressionNode =
+         (StructExpressionNode)p_oSelNode;
+      StructInstanceNode a_oStructInstanceNode =
+         (StructInstanceNode)p_oVariableNode;
+      if(   a_oStructExpressionNode.IsArray &&
+            a_oStructInstanceNode.IsArray )
+      {
+         return true;
+      }
+      else
+      if(   !( a_oStructExpressionNode.IsArray ) &&
+            !( a_oStructInstanceNode.IsArray ) )
+      {
+         // Allow the user to select any valid struct instance
+         // if the expression doesn't specify any struct type.
+         // We don't even care if the expression already has a
+         // struct instance data source, because we'll change it.
+         // Otherwise, only present struct instances that match the specified type.
+         if( a_oStructExpressionNode.StructTypeName == "" )
+         {
+            //Console.Out( a_oStructExpressionNode.Name + " " + a_oStructExpressionNode.IsArray );
+            return true;
+         }
+         else
+         {
+            if( a_oStructInstanceNode.FindStructDeclaration() )
+            {
+               StructNode a_oStructNode = (StructNode)a_oStructInstanceNode.FindStructDeclaration();
+               if( a_oStructExpressionNode.StructTypeName == a_oStructNode.Block.BlockName )
+               {
+                  return true;
+               }
+            }
+         }
+      }
+   }
+   else
+   if( p_oSelNode.IsDerived( VariableNode ) )
+   {
+      VariableNode a_oVariableNode = (VariableNode)p_oSelNode;
+      if( a_oVariableNode.IsIntegralType() )
+      {
+         return true;
+      }
+   }
+
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SortForExpression(
+
+   bool p_bWriteable,
+   Node p_oSelNode,
+   IntArray p_aiSortedIndent,
+   IntArray p_aiFinalIndent,
+   IntArray p_aiSortedIndices,
+   IntArray p_aiFinalIndices,
+   List p_lSortedObjects,
+   List p_lFinalObjects
+
+   )
+{
+   for( int i = 0; i < p_lSortedObjects.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lSortedObjects.Get( i );
+
+      if( a_oNode && a_oNode.IsDerived( VariableNode ) )
+      {
+         VariableNode a_oVariableNode = (VariableNode)a_oNode;
+         if( p_bWriteable )
+         {
+            if( MatchWriteable( p_oSelNode, a_oVariableNode ) )
+            {
+               p_lFinalObjects.AddRef( a_oVariableNode );
+               p_aiFinalIndent.Add( p_aiSortedIndent.Objects[ i ] );
+               p_aiFinalIndices.Add( p_aiSortedIndices.Objects[ i ] );
+            }
+         }
+         else
+         {
+            if( MatchReadable( p_oSelNode, a_oVariableNode ) )
+            {
+               p_lFinalObjects.AddRef( a_oVariableNode );
+               p_aiFinalIndent.Add( p_aiSortedIndent.Objects[ i ] );
+               p_aiFinalIndices.Add( p_aiSortedIndices.Objects[ i ] );
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SortForMatrix(
+
+   MatrixExpressionNode p_oMatrixExpressionNode,
+   Node p_oSelNode,
+   IntArray p_aiSortedIndent,
+   IntArray p_aiFinalIndent,
+   IntArray p_aiSortedIndices,
+   IntArray p_aiFinalIndices,
+   List p_lSortedObjects,
+   List p_lFinalObjects
+
+   )
+{
+   for( int i = 0; i < p_lSortedObjects.GetCount(); ++i )
+   {
+      bool a_bInRange;
+      Node a_oNode = (Node)p_lSortedObjects.Get( i );
+
+      if( a_oNode && a_oNode.IsDerived( IntegerNode ) )
+      {
+         IntegerNode a_oIntegerNode = (IntegerNode)a_oNode;
+         if( a_oIntegerNode.Value >= 0 && a_oIntegerNode.Value <= 3 )
+         {
+            a_bInRange = true;
+         }
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( UnsignedIntegerNode ) )
+      {
+         UnsignedIntegerNode a_oUnsignedIntegerNode = (UnsignedIntegerNode)a_oNode;
+         if( a_oUnsignedIntegerNode.Value >= 0 && a_oUnsignedIntegerNode.Value <= 3 )
+         {
+            a_bInRange = true;
+         }
+      }
+
+      if( a_bInRange )
+      {
+         p_lFinalObjects.AddRef( a_oNode );
+         p_aiFinalIndent.Add( p_aiSortedIndent.Objects[ i ] );
+         p_aiFinalIndices.Add( p_aiSortedIndices.Objects[ i ] );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetMemberSequence(
+
+   List p_lMemberSequence,
+   List p_lCodeObjects,
+   IntArray p_aiGlobalIndent,
+   int p_nGlobalIndexLocation
+
+   )
+{
+   if( !p_lCodeObjects.GetCount() )
+   {
+      string a_sMessage = "List p_lCodeObjects is EMPTY in VARIABLE_UTIL::GetMemberSequence()";
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   // Reverse iterate the list of code objects.
+   // Find the first item that has an indent of zero.
+   int a_nMaxIndent = p_aiGlobalIndent.Objects[ p_nGlobalIndexLocation ];
+   if( p_lCodeObjects.GetCount() > 1 && p_nGlobalIndexLocation - a_nMaxIndent < 0 )
+   {
+      string a_sMessage = "Array index will go out of range in VARIABLE_UTIL::GetMemberSequence()";
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   for( int i = p_nGlobalIndexLocation; i >= 0; --i )
+   {
+      if( i < 0 )
+      {
+         string a_sMessage = "Array index is out of range in VARIABLE_UTIL::GetMemberSequence()";
+         Console.Assert( a_sMessage );
+         return;
+      }
+
+      Node a_oMember = (Node)p_lCodeObjects.Get( i );
+
+      if( p_aiGlobalIndent.Objects[ i ] == a_nMaxIndent )
+      {
+         if( a_oMember.IsDerived( UniformBufferNode ) )
+         {
+            UniformBufferNode a_oUniformBufferNode = (UniformBufferNode)a_oMember;
+            if( a_oUniformBufferNode.Block.BlockInstanceName != "" )
+            {
+               p_lMemberSequence.AddRef( a_oMember );
+               --a_nMaxIndent;
+            }
+         }
+         else
+         if( a_oMember.IsDerived( InterfaceBlockNode ) )
+         {
+            InterfaceBlockNode a_oInterfaceBlockNode = (InterfaceBlockNode)a_oMember;
+            if( a_oInterfaceBlockNode.Block.BlockInstanceName != "" )
+            {
+               p_lMemberSequence.AddRef( a_oMember );
+               --a_nMaxIndent;
+            }
+         }
+         else
+         {
+            p_lMemberSequence.AddRef( a_oMember );
+            --a_nMaxIndent;
+         }
+      }
+
+      if( p_aiGlobalIndent.Objects[ i ] == 0 )
+      {
+         break;
+      }
+   }
+
+   // DEBUG
+   //SpaListUtil.Out( p_lMemberSequence );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetTypePrefix( List p_lMemberSequence )
+{
+   string a_sTypeInfo;
+
+   Node a_oNode = (Node)p_lMemberSequence.Get( 0 );
+
+   if( a_oNode && a_oNode.IsDerived( VariableNode ) )
+   {
+      auto ExpressionInfo a_oVariableInfo;
+      VariableNode a_oVariableNode = (VariableNode)a_oNode;
+      a_oVariableNode.GetParams( a_oVariableInfo );
+
+      if( a_oVariableNode.IsFloatType() )
+      {
+         if( a_oVariableNode.IsScalarType() )
+         {
+            a_sTypeInfo = "float";
+         }
+         else
+         if( a_oVariableNode.IsVectorType() )
+         {
+            a_sTypeInfo = "vec" + a_oVariableInfo.Rows;
+         }
+         else
+         if( a_oVariableNode.IsMatrixType() )
+         {
+            a_sTypeInfo = "mat" + a_oVariableInfo.Cols + "x" + a_oVariableInfo.Rows;
+         }
+      }
+      else
+      if( a_oVariableNode.IsBoolType() )
+      {
+         if( a_oVariableNode.IsScalarType() )
+         {
+            a_sTypeInfo = "bool";
+         }
+         else
+         if( a_oVariableNode.IsVectorType() )
+         {
+            a_sTypeInfo = "bvec" + a_oVariableInfo.Rows;
+         }
+      }
+      else
+      if( a_oVariableNode.IsIntType() )
+      {
+         if( a_oVariableNode.IsScalarType() )
+         {
+            a_sTypeInfo = "int";
+         }
+         else
+         if( a_oVariableNode.IsVectorType() )
+         {
+            a_sTypeInfo = "ivec" + a_oVariableInfo.Rows;
+         }
+      }
+      else
+      if( a_oVariableNode.IsUintType() )
+      {
+         if( a_oVariableNode.IsScalarType() )
+         {
+            a_sTypeInfo = "uint";
+         }
+         else
+         if( a_oVariableNode.IsVectorType() )
+         {
+            a_sTypeInfo = "uvec" + a_oVariableInfo.Rows;
+         }
+      }
+   }
+
+   return a_sTypeInfo;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetSequenceName( List p_lMemberSequence, ListNode p_oMemberSequence )
+{
+   string a_sSequenceName;
+
+   if( !( p_lMemberSequence.GetCount() ) )
+   {
+      string a_sMessage = "List p_lMemberSequence has zero items in VARIABLE_UTIL::GetSequenceName()";
+      Console.Assert( a_sMessage );
+      return a_sSequenceName;
+   }
+
+   string a_sTypeInfo = GetTypePrefix( p_lMemberSequence );
+
+   for( int i = p_lMemberSequence.GetCount() - 1; i >= 0; --i )
+   {
+      BlockParams a_oBlockParams;
+      int a_nArraySize;
+      auto ExpressionInfo a_oVariableInfo;
+      bool a_bIsVariable;
+      string a_sMemberName;
+
+      Node a_oNode = (Node)p_lMemberSequence.Get( i );
+      p_oMemberSequence.NodeList.AddRef( a_oNode );
+
+      if( a_oNode && a_oNode.IsDerived( InterfaceBlockNode ) )
+      {
+         InterfaceBlockNode a_oInterfaceBlockNode = (InterfaceBlockNode)a_oNode;
+         a_oBlockParams = a_oInterfaceBlockNode.Block;
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( ShaderBufferNode ) )
+      {
+         ShaderBufferNode a_oShaderBufferNode = (ShaderBufferNode)a_oNode;
+         a_oBlockParams = a_oShaderBufferNode.Block;
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( UniformBufferNode ) )
+      {
+         UniformBufferNode a_oUniformBufferNode = (UniformBufferNode)a_oNode;
+         a_oBlockParams = a_oUniformBufferNode.Block;
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( StructNode ) )
+      {
+         StructNode a_oStructNode = (StructNode)a_oNode;
+         a_oBlockParams = a_oStructNode.Block;
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( VariableNode ) )
+      {
+         VariableNode a_oVariableNode = (VariableNode)a_oNode;
+         a_oVariableNode.GetParams( a_oVariableInfo );
+         a_bIsVariable = true;
+         a_sMemberName += a_oVariableNode.NamePrefix +
+            a_oVariableNode.Variable + a_oVariableNode.NameSuffix;
+      }
+
+      if( a_oBlockParams )
+      {
+         if( a_oBlockParams.ArrayParameters.IsImplicitlySizedArray )
+         {
+            a_nArraySize = -1;
+         }
+         else
+         {
+            a_nArraySize = a_oBlockParams.ArrayParameters.ExplicitArraySize;
+         }
+
+         a_sMemberName += a_oBlockParams.BlockInstanceName;
+      }
+      else
+      if( a_bIsVariable )
+      {
+         a_nArraySize = a_oVariableInfo.ArrayCount;
+      }
+
+      // Don't append array info to array type selections.
+      // For example: when assigning int[4] to int[4],
+      // we don't want the menu to show int[0] or any other index.
+      // This can confuse the user by making it appear as
+      // if they are assigning a single element of the array
+      // instead of assigning the entire array.
+      bool a_bIsIdentityType;
+      Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+      if(   a_oSelNode && a_oSelNode.IsDerived( VariableExpressionNode ) &&
+            a_oNode.IsDerived( VariableNode ) )
+      {
+         auto ExpressionInfo a_oExpressionInfo;
+         VariableExpressionNode a_oVariableExpressionNode =
+            (VariableExpressionNode)a_oSelNode;
+         a_oVariableExpressionNode.GetParams( a_oExpressionInfo );
+         VariableNode a_oVariableNode = (VariableNode)a_oNode;
+         a_bIsIdentityType =
+            a_oVariableExpressionNode.Match(
+               a_oVariableExpressionNode,
+               a_oVariableNode );
+      }
+
+      if( !a_bIsIdentityType )
+      {
+         if( a_nArraySize > 0 )
+         {
+            a_sMemberName += "[0]";
+         }
+         else
+         if( a_nArraySize < 0 )
+         {
+            a_sMemberName += "[]";
+         }
+      }
+
+      if( i != 0 && a_sMemberName != "" )
+      {
+         a_sMemberName += ".";
+      }
+
+      a_sSequenceName += a_sMemberName;
+   }
+
+   if( a_sTypeInfo != "" )
+   {
+      a_sTypeInfo += " ";
+   }
+
+   return a_sTypeInfo + a_sSequenceName;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetSequenceInfo(
+
+   ListNode p_oMemberSequence,
+   List p_lCodeObjects,
+   StrList p_slMemberNames,
+   IntArray p_aiArrayDimensions
+
+   )
+{
+   for( int i = 0; i < p_oMemberSequence.NodeList.GetCount(); ++i )
+   {
+      BlockParams a_oBlockParams;
+      int a_nArraySize;
+      auto ExpressionInfo a_oVariableInfo;
+      bool a_bIsVariable;
+      string a_sMemberName;
+
+      Node a_oSequenceNode = (Node)p_oMemberSequence.NodeList.Get( i );
+      p_lCodeObjects.AddRef( a_oSequenceNode );
+
+      if( a_oSequenceNode && a_oSequenceNode.IsDerived( InterfaceBlockNode ) )
+      {
+         InterfaceBlockNode a_oInterfaceBlockNode = (InterfaceBlockNode)a_oSequenceNode;
+         a_oBlockParams = a_oInterfaceBlockNode.Block;
+      }
+      else
+      if( a_oSequenceNode && a_oSequenceNode.IsDerived( ShaderBufferNode ) )
+      {
+         ShaderBufferNode a_oShaderBufferNode = (ShaderBufferNode)a_oSequenceNode;
+         a_oBlockParams = a_oShaderBufferNode.Block;
+      }
+      else
+      if( a_oSequenceNode && a_oSequenceNode.IsDerived( UniformBufferNode ) )
+      {
+         UniformBufferNode a_oUniformBufferNode = (UniformBufferNode)a_oSequenceNode;
+         a_oBlockParams = a_oUniformBufferNode.Block;
+      }
+      else
+      if( a_oSequenceNode && a_oSequenceNode.IsDerived( StructNode ) )
+      {
+         StructNode a_oStructNode = (StructNode)a_oSequenceNode;
+         a_oBlockParams = a_oStructNode.Block;
+      }
+      else
+      if( a_oSequenceNode && a_oSequenceNode.IsDerived( VariableNode ) )
+      {
+         VariableNode a_oVariableNode = (VariableNode)a_oSequenceNode;
+         a_oVariableNode.GetParams( a_oVariableInfo );
+         a_bIsVariable = true;
+         p_slMemberNames.Add( a_oVariableNode.NamePrefix +
+            a_oVariableNode.Variable + a_oVariableNode.NameSuffix );
+      }
+
+      if( a_oBlockParams )
+      {
+         if( a_oBlockParams.ArrayParameters.IsImplicitlySizedArray )
+         {
+            p_aiArrayDimensions.Add( -1 );
+         }
+         else
+         {
+            p_aiArrayDimensions.Add( a_oBlockParams.ArrayParameters.ExplicitArraySize );
+         }
+
+         p_slMemberNames.Add( a_oBlockParams.BlockInstanceName );
+      }
+      else
+      if( a_bIsVariable )
+      {
+         p_aiArrayDimensions.Add( a_oVariableInfo.ArrayCount );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetScopedObjectsByType(
+
+   int p_nGlslVersion,
+   Node p_oNode,
+   Node p_oSelNode,
+   List p_lNodes,
+   ref bool p_bTraverseInto,
+   TypeInfoArray p_oTypes
+
+   )
+{
+   // Stop when traversal reaches the selection
+   // except when the selection is a ShaderSourceNode.
+   // In that case, we don't want to stop because the search
+   // will terminate without finding anything.
+   if(   p_oSelNode &&
+         p_oNode == p_oSelNode &&
+         !( p_oSelNode.IsDerived( ShaderSourceNode ) ) &&
+         !( p_oSelNode.IsDerived( ShaderDeclarationNode ) ) )
+   {
+      return;
+   }
+
+   for( int i = 0; i < p_oTypes.Count; ++i )
+   {
+      TypeInformation a_oTypeInformation =
+         (TypeInformation)p_oTypes.Objects[ i ];
+      if( p_oNode.IsDerived( a_oTypeInformation ) )
+      {
+         if( !( p_lNodes.In( p_oNode ) ) )
+         {
+            p_lNodes.AddRef( p_oNode );
+         }
+      }
+   }
+
+   if( p_oNode.IsDerived( NodeLink ) )
+   {
+      NodeLink a_oLink = (NodeLink)p_oNode;
+      if( a_oLink.Visible )
+      {
+         if( a_oLink.Load( 1 ) )
+         {
+            Node a_oNode = (Node)a_oLink.Node;
+            if( a_oNode )
+            {
+               p_oNode = a_oNode;
+               p_bTraverseInto = true;
+            }
+         }
+      }
+   }
+   else
+   if( p_oNode.IsDerived( MainFunctionNode ) )
+   {
+      p_bTraverseInto = true;
+   }
+   else
+   if( p_oNode.IsDerived( ShaderDeclarationNode ) )
+   {
+      p_bTraverseInto = true;
+   }
+   else
+   if( p_oNode.IsDerived( StructNode ) )
+   {
+      StructNode a_oStructNode = (StructNode)p_oNode;
+      if( a_oStructNode.Block.BlockInstanceName != "" )
+      {
+         p_bTraverseInto = true;
+      }
+      else
+      {
+         p_bTraverseInto = false;
+      }
+   }
+   else
+   if( p_oNode.IsDerived( ShaderVersionNode ) )
+   {
+      ShaderVersionNode a_oShaderVersionNode =
+         (ShaderVersionNode)p_oNode;
+      string a_sGlslVersion = p_nGlslVersion;
+      if( a_sGlslVersion == a_oShaderVersionNode.GetVersionString() )
+      {
+         p_bTraverseInto = true;
+      }
+      else
+      {
+         p_bTraverseInto = false;
+      }
+   }
+
+   if( p_oNode.IsDerived( Group ) && p_bTraverseInto )
+   {
+      Group a_oGroup = (Group)p_oNode;
+
+      for( int j = 0; j < a_oGroup.ChildCount; ++j )
+      {
+         GetScopedObjectsByType(
+            p_nGlslVersion,
+            a_oGroup.Children[j],
+            p_oSelNode,
+            p_lNodes,
+            p_bTraverseInto,
+            p_oTypes );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void UpdateAllVariables( Node p_oNode )
+{
+   // Traverse the model, finding all
+   // nodes derived from VariableNode.
+   if( p_oNode.IsDerived( VariableNode ) )
+   {
+      VariableNode a_oVariableNode = (VariableNode)Model.EditNode( p_oNode );
+      a_oVariableNode.UpdateName();
+   }
+   else
+   if( p_oNode.IsDerived( Group ) )
+   {
+      // Traverse children.
+      Group group = (Group)p_oNode;
+      for( int i = 0; i < group.ChildCount; ++i )
+      {
+         UpdateAllVariables( group.Children[i] );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetSelectedSamplerNodeTypes( int p_nSamplerType )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node p_oNode = Model.GetSelectedNode( i ).GetNode();
+
+      if( p_oNode.IsDerived( SamplerNode ) )
+      {
+         SamplerNode a_oSamplerNode = (SamplerNode)Model.EditNode( p_oNode );
+         a_oSamplerNode.SamplerType = p_nSamplerType;
+         a_oSamplerNode.UpdateName();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  function
+////////////////////////////////////////////////////////////////////////////////
+
+function void FormatMatrixNode3x3(
+
+   double M00, double M10, double M20, 
+   double M01, double M11, double M21, 
+   double M02, double M12, double M22
+
+   )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node p_oNode = Model.GetSelectedNode( i ).GetNode();
+      if( p_oNode.IsDerived( MatrixNode ) )
+      {
+         MatrixNode a_oMatrixNode = (MatrixNode)Model.EditNode( p_oNode );
+         if( a_oMatrixNode.Rows == 3 && a_oMatrixNode.Cols == 3 )
+         {
+            Matrix a_mMatrix = new Matrix;
+            a_mMatrix.M00 = M00;   a_mMatrix.M10 = M10;   a_mMatrix.M20 = M20;
+            a_mMatrix.M01 = M01;   a_mMatrix.M11 = M11;   a_mMatrix.M21 = M21;
+            a_mMatrix.M02 = M02;   a_mMatrix.M12 = M12;   a_mMatrix.M22 = M22;
+            
+            a_oMatrixNode.Value =a_mMatrix;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddVariableNodeByContext( Group p_oLightStruct, Node p_oVariableNode )
+{
+   if( Model.Filename != p_oLightStruct.GetModel().Filename )
+   {
+      p_oLightStruct.AddChild( p_oVariableNode );
+   }
+   else
+   {
+      Model.AddNode( p_oVariableNode, p_oLightStruct, -1 );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void UpdateExtensionNodeName( Node p_oNode, string p_sExtensionName, int p_iMode )
+{
+   if( p_oNode && p_oNode.IsDerived( ExtensionNode ) )
+   {
+      ExtensionNode a_oExtensionNode = (ExtensionNode)p_oNode;
+      string a_sMode;
+
+      if( p_iMode == 0 )
+      {
+         a_sMode = "require";
+      }
+      else
+      if( p_iMode == 1 )
+      {
+         a_sMode = "warn";
+      }
+      else
+      if( p_iMode == 2 )
+      {
+         a_sMode = "enable";
+      }
+      else
+      if( p_iMode == 3 )
+      {
+         a_sMode = "disable";
+      }
+
+      a_oExtensionNode.Name = "#extension " + p_sExtensionName + " : " + a_sMode;
+      
+      if( p_sExtensionName != "" )
+      {
+         a_oExtensionNode.ExtensionName = p_sExtensionName;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExtensionNodeSetMode( Node p_oNode, int p_iMode )
+{
+   if( p_oNode && p_oNode.IsDerived( ExtensionNode ) )
+   {
+      ExtensionNode a_oExtensionNode = (ExtensionNode)p_oNode;
+      a_oExtensionNode.Mode = p_iMode;
+      UpdateExtensionNodeName( a_oExtensionNode,
+         a_oExtensionNode.ExtensionName, p_iMode );
+   }
+   else
+   if( p_oNode == null && Model.GetSelectCount() )
+   {
+      for( int nodes = 0; nodes < Model.GetSelectCount(); ++nodes )
+      {
+         Node a_oSelectedNode = (Node)Model.GetSelectedNode(nodes).GetNode();
+
+         if( a_oSelectedNode && a_oSelectedNode.IsDerived( ExtensionNode ) )
+         {
+            ExtensionNode a_oExtensionNode = (ExtensionNode)Model.EditNode( a_oSelectedNode );
+            a_oExtensionNode.Mode = p_iMode;
+            UpdateExtensionNodeName( a_oExtensionNode, 
+               a_oExtensionNode.ExtensionName, p_iMode );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GenericSetVectorDimension( int p_nVectorDimension )
+{
+   auto List a_lSelectedNodes;
+   SpaSelectUtil.GetSelectedNodes( a_lSelectedNodes );
+   for( int count = 0; count < a_lSelectedNodes.GetCount(); ++count )
+   {
+      Node a_oNode = (Node)a_lSelectedNodes.Get( count );
+      if( a_oNode && a_oNode.IsDerived( VariableNode ) )
+      {
+         VariableNode a_oVariableNode = (VariableNode)Model.EditNode( a_oNode );
+         auto ExpressionInfo a_oExpressionInfo;
+         a_oExpressionInfo.Rows = p_nVectorDimension;
+         a_oVariableNode.SetParams( a_oExpressionInfo );
+         a_oVariableNode.Name = a_oVariableNode.UpdateName();
+      }
+   }
+
+   return 1;
+}

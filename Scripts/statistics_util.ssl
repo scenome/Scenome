@@ -1,0 +1,906 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             GRAPH_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements basic graph utility functions.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "file_util.ssl";
+import library "graph_util.ssl";
+import library "list_util.ssl";
+import library "message_util.ssl";
+import library "node_util.ssl";
+import library "remote_database_util.ssl";
+import library "texture_util.ssl";
+import library "variable_util.ssl";
+
+library SpaStatisticsUtil;
+
+////////////////////////////////////////////////////////////////////////////////////////
+// Global Variables
+////////////////////////////////////////////////////////////////////////////////////////
+
+int a_nByteThreshold = 8192;
+int a_nKilobyteThreshold = 8388607;
+int a_nMegabyteThreshold = 8192000;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetPresentationFlags( ref double a_dCumulativeBits, ref string a_sStorage )
+{
+   if( a_dCumulativeBits < 8192 )
+   {
+      a_dCumulativeBits /= 8;
+      a_sStorage = "bytes";
+   }
+   else
+   if( a_dCumulativeBits <= 8388607 && a_dCumulativeBits >= 8192 )
+   {
+      a_dCumulativeBits /= 8192;
+      a_sStorage = "kilobytes";
+   }
+   else
+   if( a_dCumulativeBits >= 8388607 )
+   {
+      a_dCumulativeBits /= 8192000;
+      a_sStorage = "megabytes";
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function double SetMemPresentationFlags( ref double a_dCumulativeBits, ref string a_sStorage )
+{
+   double a_dReturn;
+
+   if( a_dCumulativeBits < 8192 )
+   {
+      a_dReturn = a_dCumulativeBits /= 8;
+   }
+   else
+   if( a_dCumulativeBits <= 8388607 && a_dCumulativeBits >= 8192 )
+   {
+      a_dReturn = a_dCumulativeBits /= 8192;
+   }
+   else
+   if( a_dCumulativeBits >= 8388607 )
+   {
+      a_dReturn = a_dCumulativeBits /= 8192000;
+   }
+
+   return a_dReturn;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string SetStoPresentationFlags( ref double a_dCumulativeBits, ref string a_sStorage )
+{
+   string a_sReturn;
+
+   if( a_dCumulativeBits < 8192 )
+   {
+      a_sReturn = "bytes";
+      return a_sReturn;
+   }
+   else
+   if( a_dCumulativeBits <= 8388607 && a_dCumulativeBits >= 8192 )
+   {
+      a_sReturn = "kilobytes";
+      return a_sReturn;
+   }
+   else
+   if( a_dCumulativeBits >= 8388607 )
+   {
+      a_sReturn = "megabytes";
+      return a_sReturn;
+   }
+
+   return "EMPTY";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string CalculateVertexPoolMemoryFootprint( ref double a_dBits, 
+   int a_iVertices, ref double a_dDouble, ref double a_dCumulativeBits, 
+   ref double a_dPresentationBits, string a_sStorage, bool p_bVerboseOutput )
+{
+   // Calculate vertex pool memory footprint.
+   a_dBits = a_iVertices * ( a_dDouble * 3 );
+   a_dCumulativeBits += a_dBits;
+   a_dPresentationBits = a_dBits;
+   SetPresentationFlags( a_dPresentationBits, a_sStorage );
+
+   return a_iVertices + " vertices " + a_dPresentationBits + " " + a_sStorage + "\n";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string CalculateVertexConnectivityMemoryFootprint(      ref double a_dBits, 
+                                                               int a_iVertices, 
+                                                               ref double a_dDouble, 
+                                                               ref double a_dCumulativeBits, 
+                                                               ref double a_dPresentationBits, 
+                                                               string a_sStorage, 
+                                                               bool p_bVerboseOutput )
+{
+   // Calculate vertex connectivity memory footprint.
+   a_dBits = a_iVertices * a_dDouble;
+   a_dCumulativeBits += a_dBits;
+   a_dPresentationBits = a_dBits;
+   SetPresentationFlags( a_dPresentationBits, a_sStorage );
+
+   return "Vertex connectivity data " + a_dPresentationBits + " " + a_sStorage + "\n";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string CalculateEdgeConnectivityMemoryFootprint(   ref double a_dBits, 
+                                                            int a_iVertices, 
+                                                            int a_iEdges, 
+                                                            double a_dQuad,
+                                                            ref double a_dDouble, 
+                                                            ref double a_dCumulativeBits, 
+                                                            ref double a_dPresentationBits, 
+                                                            string a_sStorage, 
+                                                            bool p_bVerboseOutput )
+{
+   // Calculate edge connectivity memory footprint.
+   a_dBits = a_iEdges * a_dQuad;
+   a_dCumulativeBits += a_dBits;
+   a_dPresentationBits = a_dBits;
+   SetPresentationFlags( a_dPresentationBits, a_sStorage );
+
+   return "Edge connectivity data " + a_dPresentationBits + " " + a_sStorage + "\n";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string CalculateFaceConnectivityMemoryFootprint(   ref double a_dBits, 
+                                                            int a_iVertices, 
+                                                            int a_iFaces, 
+                                                            double a_dQuad,
+                                                            ref double a_dDouble, 
+                                                            ref double a_dCumulativeBits, 
+                                                            ref double a_dPresentationBits, 
+                                                            string a_sStorage, 
+                                                            bool p_bVerboseOutput )
+{
+   // Calculate face connectivity memory footprint.
+   a_dBits = a_iFaces * a_dQuad;
+   a_dCumulativeBits += a_dBits;
+   a_dPresentationBits = a_dBits;
+   SetPresentationFlags( a_dPresentationBits, a_sStorage );
+
+   return "Face connectivity data " + a_dPresentationBits + " " + a_sStorage;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string CalculateMeshFootprint( ParametricMesh p_oParametricMesh, bool p_bVerboseOutput )
+{
+   int a_iVertices = 0;
+   int a_iEdges = 0;
+   int a_iFaces = 0;
+   int a_dInteger = 8;
+   double a_dSingle = 32;
+   double a_dDouble = 64;
+   double a_dQuad = 256;
+   double a_dBits = 0;
+   double a_dCumulativeBits = 0;
+   double a_dPresentationBits = 0;
+   double a_dReturnBits;
+   string a_sReturnStatistics;
+   string a_sStorage;
+   string a_sModifierName;
+
+   // Calculate geometry memory footprint.
+
+   a_iVertices = p_oParametricMesh.VertexCount();
+   a_iEdges      = p_oParametricMesh.EdgeCount();
+   a_iFaces      = p_oParametricMesh.FaceCount();
+
+   a_sReturnStatistics += "Face Count: " + "Mesh has " + a_iFaces + " faces.\n";
+   a_sReturnStatistics += "Vertex Count: " + CalculateVertexPoolMemoryFootprint( a_dBits, a_iVertices,
+      a_dDouble, a_dCumulativeBits, a_dPresentationBits, a_sStorage, p_bVerboseOutput );
+   a_sReturnStatistics += CalculateVertexConnectivityMemoryFootprint( a_dBits, a_iVertices,
+      a_dDouble, a_dCumulativeBits, a_dPresentationBits, a_sStorage, p_bVerboseOutput );
+   a_sReturnStatistics += CalculateEdgeConnectivityMemoryFootprint( a_dBits, a_iVertices,
+      a_iEdges, a_dQuad, a_dDouble, a_dCumulativeBits, a_dPresentationBits, a_sStorage, p_bVerboseOutput );
+   a_sReturnStatistics += CalculateFaceConnectivityMemoryFootprint( a_dBits, a_iVertices,
+      a_iFaces, a_dQuad, a_dDouble, a_dCumulativeBits, a_dPresentationBits, a_sStorage, p_bVerboseOutput );
+   
+   // Calculate attribute memory footprint.
+   for( int i = 0; i < p_oParametricMesh.ChildCount; ++i )
+   {
+      Modifier a_oModifier = (Modifier)p_oParametricMesh.Children[i];
+
+      if( a_oModifier.IsDerived( AddChannelModifier ) )
+      {
+         AddChannelModifier a_oChannel = (AddChannelModifier)a_oModifier;
+         if( a_oChannel.Attribute == 0 )
+         {
+            a_dBits = a_iVertices * ( a_dDouble * a_oChannel.Dimension );
+            a_dPresentationBits = a_dBits;
+            SetPresentationFlags( a_dPresentationBits, a_sStorage );
+
+            if( p_bVerboseOutput )
+            {
+               a_sReturnStatistics += "\n" + a_oChannel.Name + " attribute dimensions " +
+                  a_oChannel.Dimension + "x" + a_dDouble + " bits " + a_dPresentationBits + " " + a_sStorage;
+            }
+
+            a_dCumulativeBits += a_dBits;
+         }
+         if( a_oChannel.Attribute == 3 )
+         {
+            a_dBits = a_iVertices * ( a_dDouble * a_oChannel.Dimension );
+            a_dPresentationBits = a_dBits;
+            SetPresentationFlags( a_dPresentationBits, a_sStorage );
+
+            if( p_bVerboseOutput )
+            {
+               a_sReturnStatistics += "\n" + a_oChannel.Name + " attribute dimensions " +
+                  a_oChannel.Dimension + "x" + a_dDouble + " bits " + a_dPresentationBits + " " + a_sStorage;
+            }
+
+            a_dCumulativeBits += a_dBits;
+         }
+         else
+         if( a_oChannel.Attribute == 1 )
+         {
+            a_dBits = a_iVertices * ( a_dDouble * a_oChannel.Dimension );
+            a_dPresentationBits = a_dBits;
+            SetPresentationFlags( a_dPresentationBits, a_sStorage );
+
+            if( p_bVerboseOutput )
+            {
+               a_sReturnStatistics += "\n" + a_oChannel.Name + " attribute dimensions " +
+                  a_oChannel.Dimension + "x" + a_dDouble + " bits " + a_dPresentationBits + " " + a_sStorage;
+            }
+
+            a_dCumulativeBits += a_dBits;
+         }
+         else
+         if( a_oChannel.Attribute == 2 )
+         {
+            a_dBits = a_iVertices * ( a_dInteger * a_oChannel.Dimension );
+            a_dPresentationBits = a_dBits;
+            SetPresentationFlags( a_dPresentationBits, a_sStorage );
+            if( p_bVerboseOutput )
+            {
+               a_sReturnStatistics += "\n" + a_oChannel.Name + " attribute dimensions " +
+                  a_oChannel.Dimension + "x" + a_dInteger + " bits " + a_dPresentationBits + " " + a_sStorage;
+            }
+
+            a_dCumulativeBits += a_dBits;
+         }
+         else
+         if( a_oChannel.Attribute == 4 )
+         {
+            a_dBits = a_iVertices * ( a_dInteger * a_oChannel.Dimension );
+            a_dPresentationBits = a_dBits;
+            SetPresentationFlags( a_dPresentationBits, a_sStorage );
+            if( p_bVerboseOutput )
+            {
+               a_sReturnStatistics += "\n" + a_oChannel.Name + " attribute dimensions " +
+                  a_oChannel.Dimension + "x" + a_dInteger + " bits " + a_dPresentationBits + " " + a_sStorage;
+            }
+
+            a_dCumulativeBits += a_dBits;
+         }
+      }
+   }
+   return a_sReturnStatistics;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateProgramAttributeStatistics( List n_lNodes )
+{
+   string a_sAttributeStatistics;
+   int a_iSamplerCount;
+   int a_iPositionCount;
+   int a_iNormalCount;
+   int a_iColorCount;
+   int a_iTexCoordCount;
+   int a_iDataCount;
+   int a_iActivePrograms;
+
+   for( int i = 0; i < n_lNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)n_lNodes.Get( i );
+      if( a_oNode.IsDerived( Program ) )
+      {
+         Program a_oProgram = (Program)a_oNode;
+         a_iSamplerCount  += a_oProgram.GetSPASamplerCount();
+         a_iPositionCount += a_oProgram.GetSPAPositionAttributeCount();
+         a_iNormalCount   += a_oProgram.GetSPANormalAttributeCount();
+         a_iColorCount    += a_oProgram.GetSPAColorAttributeCount();
+         a_iTexCoordCount += a_oProgram.GetSPATexCoordAttributeCount();
+         a_iDataCount     += a_oProgram.GetSPADataAttributeCount();
+         if( a_oProgram.GetHandle() )
+         {
+            a_iActivePrograms += 1;
+         }
+      }
+   }
+
+   a_sAttributeStatistics +=  "\n<ProgramNode> Attribute Statistics\n\n" +
+                              "Active Programs: " + a_iActivePrograms + " / " + n_lNodes.GetCount() + "\n\n" +
+                              "Samplers: " + a_iSamplerCount + "\n" +
+                              "Position: " + a_iPositionCount + "\n" +
+                              "Normal:   " + a_iNormalCount + "\n" +
+                              "Color:    " + a_iColorCount + "\n" +
+                              "TexCoord: " + a_iTexCoordCount + "\n" +
+                              "Data:     " + a_iDataCount;
+
+   return a_sAttributeStatistics;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string ReturnPathToNode( Node p_oNode )
+{
+   return "\nGraph address: " + p_oNode.GetPathToNode() + "\n";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function double DisplayStatisticsForTextureList( List p_lNodes, string p_sTitle )
+{
+   string a_sStatistics;
+   string a_sStorage;
+   a_sStatistics += p_sTitle;
+   double a_dCumulativeTextureFootprint;
+   double a_dReturnTextureFootprint;
+
+   for( int i = 0; i < p_lNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lNodes.Get( i );
+      {
+         a_sStatistics += ReturnPathToNode( a_oNode );
+
+         if( a_oNode.IsDerived( Texture ) )
+         {
+            Texture a_oTexture = (Texture)a_oNode;
+
+            // Determine texture type and render format.
+            string a_sTextureType = SpaTextureUtil.GetTextureTypeString( a_oTexture );
+            string a_sRenderFormat = SpaTextureUtil.GetTextureRenderFormatString( a_oTexture );
+
+            a_dCumulativeTextureFootprint += a_oTexture.GetMemoryFootprint();
+            double a_dTextureSize = a_oTexture.GetMemoryFootprint();
+            SetPresentationFlags( a_dTextureSize, a_sStorage );
+            a_sStatistics += "Disk Address of Containing Database: " + a_oTexture.GetModel().Filename + "\n";
+            a_sStatistics += "Disk Address of Texture: " + Application.ResolveRelativePath( a_oTexture.PathToFile, a_oTexture.GetModel().Filename ) + "\n";
+            a_sStatistics += "Render Size: " + a_oTexture.RenderWidth + "x" + a_oTexture.RenderHeight + "\n";
+            a_sStatistics += "Texture Type: " + a_sTextureType + "\n";
+            a_sStatistics += "Array Size: " + a_oTexture.ArraySize + "\n";
+            a_sStatistics += "Render Format: " + a_sRenderFormat + "\n";
+            a_sStatistics += "Render Depth: " + a_oTexture.RenderDepth + "\n";
+            a_sStatistics += "Storage Requirements: " + a_dTextureSize + " " + a_sStorage;
+         }
+
+         if( i < p_lNodes.GetCount() - 1 )
+         {
+            a_sStatistics += "\n";
+         }
+      }
+   }
+   a_dReturnTextureFootprint = a_dCumulativeTextureFootprint;
+   SetPresentationFlags( a_dCumulativeTextureFootprint, a_sStorage );
+   Console.Message( a_sStatistics );
+   return a_dReturnTextureFootprint;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function double DisplayStatisticsForParametricMeshList( List p_lNodes, string p_sTitle )
+{
+   string a_sStatistics;
+   string a_sStorage;
+   a_sStatistics += p_sTitle;
+   double a_dCumulativeParametricMeshFootprint;
+   double a_dReturnParametricMeshFootprint;
+
+   for( int i = 0; i < p_lNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lNodes.Get( i );
+      {
+         a_sStatistics += ReturnPathToNode( a_oNode );
+
+         if( a_oNode.IsDerived( ParametricMesh ) )
+         {
+            ParametricMesh a_oParametricMesh = (ParametricMesh)a_oNode;
+            a_dCumulativeParametricMeshFootprint += a_oParametricMesh.GetMemoryFootprint();
+            double a_dParametricMeshSize = a_oParametricMesh.GetMemoryFootprint();
+            SetPresentationFlags( a_dParametricMeshSize, a_sStorage );
+            a_sStatistics += "Disk Address: " + a_oParametricMesh.GetModel().Filename + "\n";
+            a_sStatistics += CalculateMeshFootprint( a_oParametricMesh, true ) + "\n";
+            a_sStatistics += "Storage Requirements: " + a_dParametricMeshSize + " " + a_sStorage;
+         }
+
+         if( i < p_lNodes.GetCount() - 1 )
+         {
+            a_sStatistics += "\n";
+         }
+      }
+   }
+   a_dReturnParametricMeshFootprint = a_dCumulativeParametricMeshFootprint;
+   SetPresentationFlags( a_dCumulativeParametricMeshFootprint, a_sStorage );
+   Console.Message( a_sStatistics );
+   return a_dReturnParametricMeshFootprint;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void DisplayStatisticsForProgramList( List p_lNodes, string p_sTitle )
+{
+   string a_sStatistics;
+   a_sStatistics += p_sTitle;
+
+   for( int i = 0; i < p_lNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lNodes.Get( i );
+      {
+         a_sStatistics += ReturnPathToNode( a_oNode );
+
+         if( a_oNode.IsDerived( Program ) )
+         {
+            Program a_oProgram = (Program)a_oNode;
+            string a_sVertexFile = a_oProgram.GetVertexFile();
+            string a_sFragmentFile = a_oProgram.GetFragmentFile();
+            string a_sGeometryFile = a_oProgram.GetGeometryFile();
+            string a_sControlFile = a_oProgram.GetControlFile();
+            string a_sEvaluationFile = a_oProgram.GetEvaluationFile();
+
+            if( a_sVertexFile == "" )        { a_sVertexFile      = "None";   }
+            if( a_sFragmentFile == "" )      { a_sFragmentFile    = "None";   }
+            if( a_sGeometryFile == "" )      { a_sGeometryFile    = "None";   }
+            if( a_sControlFile == "" )       { a_sControlFile     = "None";   }
+            if( a_sEvaluationFile == "" )    { a_sEvaluationFile  = "None";   }
+
+            string a_sProgramStatus;
+            if( a_oProgram.IsCompiled() > 0 )
+            {
+               a_sProgramStatus = a_oProgram.IsCompiled();
+            }
+            else
+            {
+               a_sProgramStatus = a_oProgram.IsCompiled();
+            }
+
+            a_sStatistics +=   "Disk Address: " + a_oProgram.GetModel().Filename +
+                              "\n" +
+                              "Program Status: " + a_sProgramStatus +
+                              "\n" +
+                              "Program Handle: " + a_oProgram.GetHandle() +
+                              "\n" +
+                              "Vertex Shader: " + a_sVertexFile +
+                              "\n" +
+                              "Tessellation Control Shader: " + a_sControlFile +
+                              "\n" +
+                              "Tessellation Evaluation Shader: " + a_sEvaluationFile +
+                              "\n" +
+                              "Geometry Shader: " + a_sGeometryFile +
+                              "\n" +
+                              "Fragment Shader: " + a_sFragmentFile +
+                              "\n";
+         }
+      }
+   }
+   a_sStatistics += GenerateProgramAttributeStatistics( p_lNodes );
+
+   Console.Message( a_sStatistics );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void DisplayStatisticsForMaterialList( List p_lNodes, string p_sTitle )
+{
+   string a_sStatistics;
+   string a_sMaterialIsSolid;
+   string a_sMaterialIsTransparent;
+   a_sStatistics += p_sTitle;
+
+   for( int i = 0; i < p_lNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lNodes.Get( i );
+      {
+         a_sStatistics += ReturnPathToNode( a_oNode );
+
+         if( a_oNode.IsDerived( Material ) )
+         {
+            Material a_oMaterial = (Material)a_oNode;
+
+            if( a_oMaterial.Solid == false || a_oMaterial.AlphaBlend == false )
+            {
+               a_sMaterialIsSolid = "false"; 
+               a_sMaterialIsTransparent = "false";
+            }
+            else
+            if( a_oMaterial.Solid == true  || a_oMaterial.AlphaBlend == true )
+            {
+               a_sMaterialIsSolid = "true";
+               a_sMaterialIsTransparent = "true";
+            }
+
+            string a_sProgram;
+            string a_sProgramContainerFile;
+            Node a_oCheckProgramNode = (Node)a_oMaterial.Program;
+            if( a_oCheckProgramNode && a_oCheckProgramNode.IsDerived( Program ) )
+            {
+               Program a_oProgram = (Program)a_oCheckProgramNode;
+               a_sProgram = a_oProgram.Name;
+               a_sProgramContainerFile = a_oProgram.GetModel().Filename;
+            }
+            else
+            {
+               a_sProgram = "Program Not Found!";
+            }
+
+            a_sStatistics +=   "Disk Address: " + a_oMaterial.GetModel().Filename + "\n" +
+                              "Material Name: " + a_oMaterial.Name + "\n" +
+                              "Material Solid Only: " + a_sMaterialIsSolid + "\n" +
+                              "Material Is Transparent:" + a_sMaterialIsTransparent + "\n" +
+                              "Material Ambient RGB: " + "( " + a_oMaterial.AmbientColor.R + ", " + a_oMaterial.AmbientColor.G + ", " + a_oMaterial.AmbientColor.B + " )" + "\n" +
+                              "Material Diffuse RGB: " + "( " + a_oMaterial.DiffuseColor.R + ", " + a_oMaterial.DiffuseColor.G + ", " + a_oMaterial.DiffuseColor.B + " )" + "\n" +
+                              "Material Specular RGB: " + "( " + a_oMaterial.SpecularColor.R + ", " + a_oMaterial.SpecularColor.R + ", " + a_oMaterial.SpecularColor.R + " )" + "\n" +
+                              "Material Shader Program Name: " + a_sProgram + "\n" +
+                              "Material Shader Program Disk Address: " + a_sProgramContainerFile;
+         }
+
+         if( i < p_lNodes.GetCount() - 1 )
+         {
+            a_sStatistics += "\n";
+         }
+      }
+   }
+   Console.Message( a_sStatistics );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void DisplayStatisticsForLightList( List p_lNodes, string p_sTitle )
+{
+   string a_sStatistics;
+   a_sStatistics += p_sTitle;
+
+   for( int i = 0; i < p_lNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lNodes.Get( i );
+      {
+         a_sStatistics += ReturnPathToNode( a_oNode );
+
+         if( a_oNode.IsDerived( Light ) )
+         {
+            Light a_oLight = (Light)a_oNode;
+            Matrix a_oLightTransform = new Matrix;
+            a_oLightTransform = a_oLight.GetTransform();
+
+            string a_sLightType;
+            if( a_oLight.Type == 0 )
+            {
+               a_sLightType = "Directional";
+            }
+            else
+            if( a_oLight.Type == 2 )
+            {
+               a_sLightType = "Point";
+            }
+            if( a_oLight.Type == 2 && a_oLight.Aperture < 180 )
+            {
+               a_sLightType = "Spot";
+            }
+
+            a_sStatistics +=   "Disk Address: " + a_oNode.GetModel().Filename + "\n" +
+                              "Light Name: " + a_oLight.Name + "\n" +
+                              "Light Type: " + a_sLightType + "\n" +
+                              "Light Position: " + a_oLightTransform.Position[0] + ", " + a_oLightTransform.Position[1] + ", " + a_oLightTransform.Position[2] + "\n" +
+                              "Light Orientation: " + a_oLightTransform.Orientation[0] + ", " + a_oLightTransform.Orientation[1] + ", " + a_oLightTransform.Orientation[2];
+         }
+
+         if( i < p_lNodes.GetCount() - 1 )
+         {
+            a_sStatistics += "\n";
+         }
+      }
+   }
+   Console.Message( a_sStatistics );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetResourcesFromDatabase( List p_lNodes, Node node )
+{
+   if( node.IsDerived( Light ) )
+   {
+      p_lNodes.AddRef( node );
+   }
+   else
+   if( node.IsDerived( Texture ) )
+   {
+      p_lNodes.AddRef( node );
+   }
+   else
+   if( node.IsDerived( Material ) )
+   {
+      p_lNodes.AddRef( node );
+      Material a_oMaterial = (Material)node;
+      Node a_oIsMaterialTextureLink = (Node)a_oMaterial.TextureLink;
+      if( a_oIsMaterialTextureLink && a_oIsMaterialTextureLink.IsDerived( Group ))
+      {
+         Group a_oTexturePaletteGroup = (Group)a_oIsMaterialTextureLink;
+         Graph.GetTexturesFromMaterial( p_lNodes, a_oTexturePaletteGroup );
+      }
+      Node a_oProgram = (Node)a_oMaterial.Program;
+      if( a_oProgram && a_oProgram.IsDerived( Program ) )
+      {
+         p_lNodes.AddRef( a_oProgram );
+      }
+      else
+      if( a_oProgram && a_oProgram.IsDerived( NodeLink ) )
+      {
+         NodeLink a_oNodeLink = (NodeLink)a_oProgram;
+         a_oNodeLink.Load( 1 );
+         if( a_oNodeLink && a_oNodeLink.Node )
+         {
+            Node a_oIsProgram = (Node)a_oNodeLink.Node;
+            if( a_oIsProgram && a_oIsProgram.IsDerived( Program ) )
+            {
+               Program a_oProgramLink = (Program)a_oIsProgram;
+               p_lNodes.AddRef( a_oProgramLink );
+            }
+         }
+      }
+   }
+   else
+   if( node.IsDerived( Program ) )
+   {
+      p_lNodes.AddRef( node );
+   }
+   else
+   if( node.IsDerived( StructureGroup ) )
+   {
+      p_lNodes.AddRef( node );
+   }
+   else
+   if( node.IsDerived( ParametricMesh ) )
+   {
+      ParametricMesh a_oMesh = (ParametricMesh)node;
+      if( a_oMesh.Visible )
+      {
+         p_lNodes.AddRef( node );
+      }
+      Node a_oIsMeshPalette = (Node)a_oMesh.PaletteGroup;
+      if( a_oIsMeshPalette && a_oIsMeshPalette.IsDerived( Group ) )
+      {
+         Group a_oMeshPaletteGroup = (Group)a_oMesh.PaletteGroup;
+         Graph.GetMaterialsFromPaletteGroup( p_lNodes, a_oMeshPaletteGroup );
+         Graph.GetTexturesFromMaterials( p_lNodes, a_oMeshPaletteGroup );
+         Graph.GetProgramsFromMaterials( p_lNodes, a_oMeshPaletteGroup );
+      }
+   }
+   else
+   if( node.IsDerived( RenderTraversalNode ) )
+   {
+      RenderTraversalNode a_oRenderTraversalNode = (RenderTraversalNode)node;
+      if( a_oRenderTraversalNode.Visible && a_oRenderTraversalNode.Enabled )
+      {
+         for( int i = 0; i < a_oRenderTraversalNode.ChildCount; ++i )
+         {
+            GetResourcesFromDatabase( p_lNodes, a_oRenderTraversalNode.Children[i] );
+         }
+      }
+   }
+   else
+   if( node.IsDerived( NodeLink ) )
+   {
+      NodeLink a_oLink = (NodeLink)node;
+      p_lNodes.AddRef( a_oLink );
+
+      if( a_oLink && a_oLink.GetLink() )
+      {
+         a_oLink.Load( 1 );
+
+         if( a_oLink.Node.IsDerived( FrameBuffer ) )
+         {
+            if( a_oLink.GetLink() )
+            {
+               FrameBuffer a_oFrameBuffer = (FrameBuffer)a_oLink.Node;
+               if( a_oFrameBuffer.Visible )
+               {
+                  for( int i = 0; i < a_oFrameBuffer.ChildCount; ++i )
+                  {
+                     GetResourcesFromDatabase( p_lNodes, a_oFrameBuffer.Children[i] );
+                  }
+               }
+            }
+         }
+         else
+         if( a_oLink.Node.IsDerived( Texture ) )
+         {
+            if( a_oLink.GetLink() )
+            {
+               Texture a_oTexture = (Texture)a_oLink.Node;
+               if( a_oTexture )
+               {
+                  p_lNodes.AddRef( a_oTexture );
+               }
+            }
+         }
+         else
+         if( a_oLink.Node.IsDerived( Light ) )
+         {
+            if( a_oLink.GetLink() )
+            {
+               Light a_oLight = (Light)a_oLink.Node;
+               if( a_oLight )
+               {
+                  p_lNodes.AddRef( a_oLight );
+               }
+            }
+         }
+
+         Group a_oLinkParent;
+         Node a_oParent = (Node)a_oLink.Parent();
+         if( a_oParent.IsDerived( Group ) )
+         {
+            a_oLinkParent = (Group)a_oParent;
+         }
+
+         if( a_oLink.LinkType.IsDerived( ScreenAlignedGeometryNode ) && a_oLinkParent.Visible )
+         {
+            ScreenAlignedGeometryNode a_oScreenAlignedGeometryNode = (ScreenAlignedGeometryNode)a_oLink.Node;
+            if( a_oScreenAlignedGeometryNode.Enabled == true )
+            {
+               for( int i = 0; i < a_oScreenAlignedGeometryNode.ChildCount; ++i )
+               {
+                  GetResourcesFromDatabase( p_lNodes, a_oScreenAlignedGeometryNode.Children[i] );
+               }
+            }
+         }
+         else
+         if( a_oLink.IsExternal() && a_oLink.PathToNode != "" && a_oLink.LinkType.IsDerived( ParametricMesh ) )
+         {
+            if( a_oParent.IsDerived( Group ) && !a_oParent.IsDerived( LOD ) )
+            {
+               Group a_oGroup = (Group)a_oParent;
+               if( a_oGroup.Visible )
+               {
+                  p_lNodes.AddRef( a_oLink );
+                  ParametricMesh a_oMesh = (ParametricMesh)a_oLink.Node;
+                  p_lNodes.AddRef( a_oMesh );
+                  if( a_oMesh )
+                  {
+                     Node a_oIsMeshPalette = (Node)a_oMesh.PaletteGroup;
+                     if( a_oIsMeshPalette && a_oIsMeshPalette.IsDerived( Group ) )
+                     {
+                        Group a_oMeshPaletteGroup = (Group)a_oMesh.PaletteGroup;
+                        Graph.GetMaterialsFromPaletteGroup( p_lNodes, a_oMeshPaletteGroup );
+                        Graph.GetTexturesFromMaterials( p_lNodes, a_oMeshPaletteGroup );
+                        Graph.GetProgramsFromMaterials( p_lNodes, a_oMeshPaletteGroup );
+                     }
+                  }
+               }
+            }
+            else
+            if( a_oParent.IsDerived( LOD ) )
+            {
+               LOD a_oLOD = (LOD)a_oParent;
+               if( a_oLOD.Visible )
+               {
+                  if( Graph.CalculateDistance( a_oLOD ) )
+                  {
+                     p_lNodes.AddRef( a_oLink );
+                     ParametricMesh a_oMesh = (ParametricMesh)a_oLink.Node;
+                     p_lNodes.AddRef( a_oMesh );
+                     if( a_oMesh )
+                     {
+                        Node a_oIsMeshPalette = (Node)a_oMesh.PaletteGroup;
+                        if( a_oIsMeshPalette && a_oIsMeshPalette.IsDerived( Group ) )
+                        {
+                           Group a_oMeshPaletteGroup = (Group)a_oMesh.PaletteGroup;
+                           Graph.GetMaterialsFromPaletteGroup( p_lNodes, a_oMeshPaletteGroup );
+                           Graph.GetTexturesFromMaterials( p_lNodes, a_oMeshPaletteGroup );
+                           Graph.GetProgramsFromMaterials( p_lNodes, a_oMeshPaletteGroup );
+                        }
+                     }
+                  }
+               }
+            }
+         }
+         if( a_oLink.IsExternal() && a_oLink.PathToNode != "" && a_oLink.LinkType.IsDerived( LOD ) )
+         {
+            LOD a_oRemoteLOD = (LOD)((NodeLink)a_oLink).Node;
+            if( Graph.CalculateDistance( a_oRemoteLOD ) )
+            {
+               for( int i = 0; i < a_oRemoteLOD.ChildCount; ++i )
+               {
+                  GetResourcesFromDatabase( p_lNodes, a_oRemoteLOD.Children[i] );
+               }
+            }
+         }
+         else
+         if( a_oLink.IsExternal() && a_oLink.PathToNode != "" && a_oLink.LinkType.IsDerived( Group ) )
+         {
+            Group a_oRemoteGroup = (Group)((NodeLink)a_oLink).Node;
+            for( int i = 0; i < a_oRemoteGroup.ChildCount; ++i )
+            {
+               GetResourcesFromDatabase( p_lNodes, a_oRemoteGroup.Children[i] );
+            }
+         }
+      }
+   }
+   else
+   if( node.IsDerived( Group ) )
+   {
+      Group group = (Group)node;
+
+      if( group.Name == "Declarations" )
+      {
+         for( int i = 0; i < group.ChildCount; ++i )
+         {
+            GetResourcesFromDatabase( p_lNodes, group.Children[i] );
+         }
+      }
+
+      if( !group.Visible == false && !group.IsDerived( LOD ) )
+      {
+         for( int i = 0; i < group.ChildCount; ++i )
+         {
+            GetResourcesFromDatabase( p_lNodes, group.Children[i] );
+         }
+      }
+
+      if( node.IsDerived( LOD ) )
+      {
+         LOD lod = (LOD)node;
+         if( lod.Visible )
+         {
+            if( Graph.CalculateDistance( lod ) )
+            {
+               for( int i = 0; i < group.ChildCount; ++i )
+               {
+                  GetResourcesFromDatabase( p_lNodes, group.Children[i] );
+               }
+            }
+         }
+      }
+   }
+}

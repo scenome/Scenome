@@ -1,0 +1,807 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             SELECT_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements functions for working with selections.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "type_util.ssl";
+
+library SpaSelectUtil;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SelectSingleton( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.SetEnabled( false );
+   commandInfo.Status.SetHint( "Please select a single node" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SelectSingletonByType(
+
+   CommandPresentationModuleInfo commandInfo,
+   TypeInformation p_oTypeInformation
+
+   )
+{
+   auto TypeInformation a_oTypeInfo = (TypeInformation)p_oTypeInformation;
+   commandInfo.SetEnabled( false );
+   commandInfo.Status.SetHint( "Please select a single " +
+      a_oTypeInfo.GetTypeName() );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetVariableExpressionType( VariableExpressionNode p_oVariableExpressionNode )
+{
+   string a_sVariableExpressionType;
+   auto ExpressionInfo a_oExpressionInfo;
+   p_oVariableExpressionNode.GetParams( a_oExpressionInfo );
+
+   if( p_oVariableExpressionNode.IsDerived( BooleanExpressionNode ) )
+   {
+      a_sVariableExpressionType = "bool";
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( IntegerExpressionNode ) )
+   {
+      a_sVariableExpressionType = "int";
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( UnsignedIntegerExpressionNode ) )
+   {
+      a_sVariableExpressionType = "uint";
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( FloatExpressionNode ) )
+   {
+      a_sVariableExpressionType = "float";
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( BooleanVectorExpressionNode ) )
+   {
+      a_sVariableExpressionType = "vec" + a_oExpressionInfo.Rows;
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( IntegerVectorExpressionNode ) )
+   {
+      a_sVariableExpressionType = "ivec" + a_oExpressionInfo.Rows;
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( UnsignedIntegerVectorExpressionNode ) )
+   {
+      a_sVariableExpressionType = "uvec" + a_oExpressionInfo.Rows;
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( VectorExpressionNode ) )
+   {
+      a_sVariableExpressionType = "vec" + a_oExpressionInfo.Rows;
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( MatrixExpressionNode ) )
+   {
+      a_sVariableExpressionType = "mat" + a_oExpressionInfo.Cols + "x" + a_oExpressionInfo.Rows;
+   }
+
+   return a_sVariableExpressionType;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetSelectedNodes( List p_lSelectedNodes )
+{
+   for( int selected = 0; selected < Model.GetSelectCount(); ++selected )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode( selected ).GetNode();
+      if( a_oSelNode )
+      {
+         // NOTE: This function must use .AddRef instead of .Add.
+         // Using .Add adds the actual nodes to the list, which is
+         // unsafe for model editing operations.
+         p_lSelectedNodes.AddRef( a_oSelNode );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateSelectionArray( TypeInfoArray types )
+{
+   bool a_bValidSelectionSet;
+   for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+   {
+      a_bValidSelectionSet = false;
+      Node a_oNode = (Node)Model.GetSelectedNode( sel ).GetNode();
+      for( int type = 0; type < types.Count; ++type )
+      {
+         if( a_oNode && a_oNode.IsDerived( types.Objects[ type ] ) )
+         {
+            a_bValidSelectionSet = true;
+            continue;
+         }
+      }
+
+      if( a_bValidSelectionSet == false )
+      {
+         break;
+      }
+   }
+
+   return a_bValidSelectionSet;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateParentType( TypeInfoArray types )
+{
+   bool a_bValidSelectionSet;
+   for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+   {
+      a_bValidSelectionSet = false;
+      Node a_oNode = (Node)Model.GetSelectedNode( sel ).GetNode();
+      Group a_oParent = (Group)a_oNode.Parent();
+      for( int type = 0; type < types.Count; ++type )
+      {
+         if( a_oParent && a_oParent.IsDerived( types.Objects[ type ] ) )
+         {
+            a_bValidSelectionSet = true;
+            continue;
+         }
+      }
+
+      if( a_bValidSelectionSet == false )
+      {
+         break;
+      }
+   }
+
+   return a_bValidSelectionSet;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetBinaryExpressionResult( BinaryOperatorNode p_oBinaryOperatorNode, ExpressionInfo p_oExpressionInfo,
+   VariableExpressionNode p_oLeftExpression, VariableExpressionNode p_oRightExpression )
+{
+   // Use a temporary to evaluate the new expression.
+   auto BinaryOperatorNode a_oBinaryOperatorTemp;
+   a_oBinaryOperatorTemp.Operator = p_oBinaryOperatorNode.Operator;
+   a_oBinaryOperatorTemp.LeftDataSource = p_oLeftExpression;
+   a_oBinaryOperatorTemp.RightDataSource = p_oRightExpression;
+
+   // DEBUG
+   //Console.Out( p_oLeftExpression.Name + "  " + p_oRightExpression.Name );
+
+   a_oBinaryOperatorTemp.GetExpressionResult( p_oExpressionInfo );
+
+   // DEBUG
+   //Console.Out( p_oLeftExpression.GetType().GetTypeName() + " " + p_oRightExpression.GetType().GetTypeName() );
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void IsExpressionConvertible( CommandPresentationModuleInfo commandInfo,
+                                       VariableExpressionNode p_oNewExpressionNode )
+{
+   // Do these tests first. Exit as early as possible.
+   VariableExpressionNode a_oSelNode =
+      (VariableExpressionNode)Model.GetFirstSelectedNode().GetNode();
+
+   // Get the current operator.
+   BinaryOperatorNode a_oBinaryOperatorNode =
+      (BinaryOperatorNode)a_oSelNode.OperatorDataSource;
+
+   if( a_oSelNode.ChildCount )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "You cannot convert an expression that already has child expressions." );
+      return;
+   }
+   else
+   if( a_oSelNode.IsFunction() )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "You cannot convert an expression that is a function." );
+      return;
+   }
+   else
+   if( a_oSelNode.IsFunctionParameter() )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "You cannot convert an expression that is a function parameter." );
+      return;
+   }
+   else
+   if( a_oSelNode.MustBeWriteable() )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "You cannot convert an expression on the left side of an assignment." );
+      return;
+   }
+   else
+   if( a_oSelNode.LeftExpressionMustBeWriteable() )
+   {
+      if( a_oBinaryOperatorNode.Operator == Enum.BinaryOperator_Assign() )
+      {
+         commandInfo.SetEnabled( false );
+         commandInfo.Status.SetHint( "You cannot convert an expression if the left side must be writeable." );
+         return;
+      }
+   }
+   else
+   if( !( a_oSelNode.OperatorDataSource ) )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "You cannot convert an expression that does not have an operator data source." );
+      return;
+   }
+
+   // Okay, we passed basic tests.
+   // Make sure we can actually create the expression.
+   // To do this, we have to test if the resulting expression is valid.
+   VariableExpressionNode a_oOppositeExpression;
+
+   int a_nParentExpressionDimension;
+   Node a_oParent = (Node)a_oSelNode.Parent();
+   VariableExpressionNode a_oParentExpression;
+   bool a_bIsParentVariableExpressionNode;
+   if( a_oParent && a_oParent.IsDerived( VariableExpressionNode ) )
+   {
+      auto ExpressionInfo a_oParentExpressionInfo;
+      a_oParentExpression = (VariableExpressionNode)a_oSelNode.Parent();
+      a_oParentExpression.GetParams( a_oParentExpressionInfo );
+      a_nParentExpressionDimension = a_oParentExpressionInfo.GetScalarCount();
+      a_bIsParentVariableExpressionNode = true;
+   }
+
+   // Get the opposite data source and disambiguate the left/right expression.
+   bool a_bLeftExpressionIsSelected;
+   bool a_bRightExpressionIsSelected;
+   if( a_oBinaryOperatorNode.LeftDataSource == (Node)a_oSelNode )
+   {
+      a_oOppositeExpression = (VariableExpressionNode)a_oBinaryOperatorNode.RightDataSource;
+      a_bLeftExpressionIsSelected = true;
+      // DEBUG
+      //Console.Out( a_oOppositeExpression.GetPathToNode() );
+   }
+   else
+   {
+      a_oOppositeExpression = (VariableExpressionNode)a_oBinaryOperatorNode.LeftDataSource;
+      a_bRightExpressionIsSelected = true;
+      // DEBUG
+      //Console.Out( a_oOppositeExpression.GetPathToNode() );
+   }
+
+
+   //Console.Out( a_oSelNode.GetType().GetTypeName() + " " + a_oOppositeExpression.GetType().GetTypeName() );
+
+   // Determine the data type produced by the new expression is valid.
+   // This will be "Enum.GLSL_DataType_None()", or a valid data type
+   // ( such as vec3, mat3x2, etc. ).
+   int a_nResultingExpressionDimension = 0;
+   int a_nResultingBinaryExpressionStructure = 0;
+   string a_sLeftOperand;
+   string a_sRightOperand;
+   auto ExpressionInfo a_oExpressionInfo;
+   if( a_bLeftExpressionIsSelected )
+   {
+      /*
+      // DEBUG
+      // Output the left and right expression types.
+      Console.Out( p_oNewExpressionNode.GetType().GetTypeName() +
+         " " + a_oOppositeExpression.GetType().GetTypeName() );
+      
+      */
+      GetBinaryExpressionResult( a_oBinaryOperatorNode,
+         a_oExpressionInfo, p_oNewExpressionNode, a_oOppositeExpression );
+      a_sLeftOperand = GetVariableExpressionType( p_oNewExpressionNode );
+      a_sRightOperand = GetVariableExpressionType( a_oOppositeExpression );
+   }
+   else
+   {
+      /*
+      // DEBUG
+      // Output the left and right expression types.
+      Console.Out( p_oNewExpressionNode.GetType().GetTypeName() +
+         " " + a_oOppositeExpression.GetType().GetTypeName() );
+      */
+      GetBinaryExpressionResult( a_oBinaryOperatorNode,
+         a_oExpressionInfo, a_oOppositeExpression, p_oNewExpressionNode );
+      a_sLeftOperand = GetVariableExpressionType( a_oOppositeExpression );
+      a_sRightOperand = GetVariableExpressionType( p_oNewExpressionNode );
+   }
+
+   string a_sExpressionInfo = "[ " + a_sLeftOperand + " " +
+      a_oBinaryOperatorNode.GetOperatorString() + " " + a_sRightOperand + " ]";
+
+   // DEBUG
+   //Console.Out( a_nResultingExpressionDimension );
+
+   // DEBUG
+   //Console.Out( a_oExpressionInfo.Cols + "x" + a_oExpressionInfo.Rows );
+
+   if( !( a_oExpressionInfo.IsValidDataType() ) )
+   {
+      commandInfo.SetEnabled( false );
+      string a_sErrorInfo = "The resulting expression " + a_sExpressionInfo +
+         " does not produce a valid linear combination.";
+      commandInfo.Status.SetHint( a_sErrorInfo );
+      return;
+   }
+
+   // DEBUG
+   //Console.Out( a_nResultingExpressionDimension );
+
+   // If the data type is valid, we still have to check
+   // if it's applicable in the current expression context.
+   bool a_bIsNewExpressionValid;
+   string a_sParentInfo;
+   if( a_bIsParentVariableExpressionNode )
+   {
+      a_sParentInfo = GetVariableExpressionType( a_oParentExpression );
+   }
+
+   // Now test if the resulting expression is valid relative to its parent.
+   bool a_bProceed = false;
+
+   // Compute the scalar dimension to determine if the
+   // expression produces enough data ( such as floats )
+   // to properly initialize the parent expression.
+   // Ex: mat4x4 has a scalar count of 16.
+   a_nResultingExpressionDimension = a_oExpressionInfo.GetScalarCount();
+
+   if(   a_nResultingExpressionDimension >= a_nParentExpressionDimension ||
+         a_nResultingExpressionDimension == Enum.GLSL_DataType_Float() )
+   {
+      a_bProceed = true;
+   }
+
+   if( a_bProceed )
+   {
+      a_bIsNewExpressionValid = true;
+      string a_sExpressionResult = a_oExpressionInfo.GetExpressionResultTypeString();
+      string a_sMessage = "Forms the following expression: " + a_sParentInfo + " = " + a_sExpressionInfo
+         + " using the resulting [ " + a_sExpressionResult + " ]";
+
+      commandInfo.Status.SetHint( a_sMessage );
+   }
+   else
+   {
+      string a_sExpressionResult = "[ " + a_oExpressionInfo.GetExpressionResultTypeString() + " ]";
+      string a_sMessage = "The resulting expression is valid " + a_sExpressionInfo + " but it does not produce sufficient " +
+         "data for its parent expression: " + a_sParentInfo;
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( a_sMessage );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ValidateOperatorChange(
+
+   CommandPresentationModuleInfo commandInfo,
+   int p_eBinaryOperator
+
+   )
+{
+   // Do these tests first. Exit as early as possible.
+   BinaryOperatorNode a_oBinaryOperatorNode =
+      (BinaryOperatorNode)Model.GetFirstSelectedNode().GetNode();
+   Node a_oParent = (Node)a_oBinaryOperatorNode.Parent();
+
+   if( !( a_oBinaryOperatorNode.IsDerived( BinaryOperatorNode ) ) || Model.GetSelectCount() != 1 )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "Please select a single BinaryOperatorNode" );
+      return;
+   }
+
+   // Get result of the expression with the new operator.
+   auto BinaryOperatorNode a_oFutureOperator;
+   a_oFutureOperator.Operator = p_eBinaryOperator;
+
+   auto ExpressionInfo a_oExpressionInfo;
+   a_oFutureOperator.GetExpressionResultForOperands( a_oExpressionInfo,
+      a_oBinaryOperatorNode.LeftDataSource, a_oBinaryOperatorNode.RightDataSource );
+
+   Node a_oLeft = (Node)a_oBinaryOperatorNode.LeftDataSource;
+   Node a_oRight = (Node)a_oBinaryOperatorNode.RightDataSource;
+   if( !a_oLeft )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "Binary operations require a left expression" );
+      return;
+   }
+   if( !a_oRight )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "Binary operations require a right expression" );
+      return;
+   }
+
+   if( a_oLeft.IsDerived( VariableExpressionNode ) )
+   {
+      VariableExpressionNode a_oLeftExpression = (VariableExpressionNode)a_oLeft;
+      if( !( a_oLeftExpression.IsExpression() ) && a_oFutureOperator.IsAnyAssignment() )
+      {
+         commandInfo.SetEnabled( false );
+         commandInfo.Status.SetHint( "Cannot perform assignment when constructor or function is left expression" );
+      }
+   }
+
+   if( a_oParent && a_oParent.IsDerived( ConditionNode ) )
+   {
+      if( !( a_oFutureOperator.IsRelationalOperator() || a_oFutureOperator.IsLogicalOperator() ) )
+      {
+         commandInfo.SetEnabled( false );
+         commandInfo.Status.SetHint( "This operator must produce a bool expression if a ConditionNode is the parent" );
+         return;
+      }
+   }
+
+   if( !( a_oExpressionInfo.IsValidDataType() ) )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "This operator cannot produce a valid expression with these operands" );
+      return;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ValidateSelectionForExpression( CommandPresentationModuleInfo commandInfo,
+   string p_sOperatorString )
+{
+   auto TypeInfoArray types;
+   types.Add( BooleanExpressionNode );
+   types.Add( IntegerExpressionNode );
+   types.Add( FloatExpressionNode );
+   types.Add( VectorExpressionNode );
+   types.Add( MatrixExpressionNode );
+   types.Add( StatementBlockNode );
+   types.Add( ConditionNode );
+   types.Add( TraversalGuardNode );
+   bool a_bCorrectTypeSelected = ValidateSelectionArray( types );
+   commandInfo.SetEnabled( a_bCorrectTypeSelected );
+   
+   if( !a_bCorrectTypeSelected )
+   {
+      commandInfo.Status.SetHint( "Select a node of type VariableExpressionNode, ConditionNode, TraversalGuardNode, or JumpStatementNode." );
+      return;
+   }
+
+   string a_sHint = "This command adds a [ " + p_sOperatorString + " ] expression.";
+
+   Node a_oSelectedNode = (Node)Model.GetFirstSelectedNode().GetNode();
+
+   if( a_oSelectedNode && a_oSelectedNode.IsDerived( VariableExpressionNode ) )
+   {
+      VariableExpressionNode a_oSelExpression = (VariableExpressionNode)a_oSelectedNode;
+
+      if( a_oSelExpression.MustBeWriteable() )
+      {
+         commandInfo.SetEnabled( false );
+         commandInfo.Status.SetHint( "You cannot add sub-expressions to the left of an assignment." );
+         return;
+      }
+      else
+      if( a_oSelExpression.ChildCount )
+      {
+         commandInfo.SetEnabled( false );
+         commandInfo.Status.SetHint( "This expression already has a sub-expression." );
+         return;
+      }
+      else
+      if(   a_oSelExpression.IsFunctionDeclaration() ||
+            a_oSelExpression.IsFunctionPrototype() )
+      {
+         commandInfo.SetEnabled( false );
+         commandInfo.Status.SetHint( "You cannot execute this command on a function declaration or function prototype." );
+      }
+      else
+      {
+         commandInfo.Status.SetHint( a_sHint );
+      }
+   }
+   else
+   if( a_oSelectedNode && a_oSelectedNode.IsDerived( StatementBlockNode ) )
+   {
+      commandInfo.Status.SetHint( a_sHint );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ValidateXmlDocumentCommandContext(
+
+   CommandPresentationModuleInfo commandInfo,
+   string p_sSuccess,
+   string p_sFailure,
+   bool p_bUseDefaultMessage
+
+   )
+{
+   string a_sSuccess = "Validates XML documents";
+   string a_sFailure = "Please select a FolderConfigNode or FileConfigNode";
+
+   if( p_bUseDefaultMessage )
+   {
+      p_sSuccess = a_sSuccess;
+      p_sFailure = a_sFailure;
+   }
+
+   auto TypeInfoArray types;
+   types.Add( FolderConfigNode );
+   types.Add( FileConfigNode );
+   bool a_bEnabled = ValidateSelectionArray( types );
+   commandInfo.SetEnabled( a_bEnabled );
+   if( a_bEnabled )
+   {
+      commandInfo.Status.SetHint( p_sSuccess );
+   }
+   else
+   {
+      commandInfo.Status.SetHint( p_sFailure );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ListNodeHasCount( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() > 1 )
+   {
+      commandInfo.Status.SetHint( "Please select a single ListNode" );
+      commandInfo.SetEnabled( false );
+   }
+   else
+   {
+      ListNode a_oListNode = (ListNode)Model.GetFirstSelectedNode().GetNode();
+      if( !( a_oListNode.NodeList.GetCount() ) )
+      {
+         commandInfo.Status.SetHint( "This ListNode is empty" );
+         commandInfo.SetEnabled( false );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ListNodeHasChildItems( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() > 1 )
+   {
+      commandInfo.Status.SetHint( "Please select a single ListNode" );
+      commandInfo.SetEnabled( false );
+   }
+   else
+   {
+      ListNode a_oListNode = (ListNode)Model.GetFirstSelectedNode().GetNode();
+      if( !( a_oListNode.ChildCount ) )
+      {
+         commandInfo.Status.SetHint( "This ListNode does not contain child nodes" );
+         commandInfo.SetEnabled( false );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ValidateStringArrayNodeContext( CommandPresentationModuleInfo commandInfo, string p_sInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, StringArrayNode, p_sInfo );
+
+   if( Model.GetSelectCount() > 1 )
+   {
+      commandInfo.Status.SetHint( "Please select a single StringArrayNode" );
+      commandInfo.SetEnabled( false );
+   }
+   else
+   {
+      StringArrayNode a_oStringArrayNode = (StringArrayNode)Model.GetFirstSelectedNode().GetNode();
+      if( !( a_oStringArrayNode.Objects.GetCount() ) )
+      {
+         commandInfo.Status.SetHint( "This StringArrayNode is empty" );
+         commandInfo.SetEnabled( false );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateQualifierContext( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() != 1 )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "Please select a single node" );
+      return false;
+   }
+
+   auto TypeInfoArray types;
+   types.Add( StructNode );
+   types.Add( UniformBufferNode );
+   types.Add( InterfaceBlockNode );
+   types.Add( ShaderBufferNode );
+   types.Add( VariableNode );
+   types.Add( QualifierNode );
+   bool a_bEnabled = ValidateSelectionArray( types );
+   commandInfo.SetEnabled( a_bEnabled );
+   if( a_bEnabled )
+   {
+      commandInfo.Status.SetHint( "Connects the qualifier to a variable that sets its value" );
+   }
+   else
+   {
+      commandInfo.Status.SetHint( "Select a StructNode, UniformBufferNode, InterfaceBlockNode, ShaderBufferNode, VariableNode, or QualifierNode." );
+   }
+
+   return a_bEnabled;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool GetVariableNodeCaptureState( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() > 1 )
+   {
+      commandInfo.Status.SetHint( "Please select a single ColorNode" );
+      commandInfo.SetEnabled( false );
+      return false;
+   }
+
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+   if( a_oSelNode && a_oSelNode.IsDerived( VariableNode ) )
+   {
+      VariableNode a_oVariableNode = (VariableNode)a_oSelNode;
+      if( a_oVariableNode.Capture.GetFirstObject() )
+      {
+         commandInfo.Status.SetHint( "This VariableNode is current capturing data and its value cannot be changed" );
+         commandInfo.SetEnabled( false );
+         return false;
+      }
+   }
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ValidateInterfaceElementSelection( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() )
+   {
+      Node a_oIsCommandItem = (Node)Model.GetFirstSelectedNode().GetNode();
+      auto TypeInfoArray types;
+      types.Add( ContextMenuElementNode );
+      types.Add( PopupElementNode );
+      types.Add( ToolbarElementNode );
+      bool a_bEnabled = SpaSelectUtil.ValidateSelectionArray( types );
+      commandInfo.SetEnabled( a_bEnabled );
+
+      if( a_bEnabled )
+      {
+         commandInfo.Status.SetHint( "Creates a command item for the command using the GUID" );
+      }
+      else
+      {
+         string a_sHint = "You can only invoke add command items to nodes of type "+
+            "PopupElementNode, ContextMenuElementNode, or ToolbarElementNode.";
+         commandInfo.SetEnabled( false );
+         commandInfo.Status.SetHint( a_sHint );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ValidateInterfaceSectionConfig(
+
+   CommandPresentationModuleInfo p_oCommandInfo,
+   int p_eInterfaceSectionType,
+   TypeInformation p_oExistingChildType
+
+   )
+{
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+   if( a_oSelNode && a_oSelNode.IsDerived( InterfaceSectionNode ) )
+   {
+      InterfaceSectionNode a_oInterfaceSectionNode =
+         (InterfaceSectionNode)Model.GetFirstSelectedNode().GetNode();
+      if( a_oInterfaceSectionNode.InterfaceSection == p_eInterfaceSectionType )
+      {
+         if( a_oInterfaceSectionNode.ChildCountByType( p_oExistingChildType ) )
+         {
+            p_oCommandInfo.Status.SetHint( "This section already contains a MenuElementNode" );
+            p_oCommandInfo.SetEnabled( false );
+         }
+         else
+         {
+            p_oCommandInfo.Status.SetHint( "Adds a new MenuElementNode to this section of the interface" );
+            p_oCommandInfo.SetEnabled( true );
+         }
+      }
+      else
+      {
+         p_oCommandInfo.Status.SetHint( "You can only add a MenuElementNode to a Menu section of the the interface" );
+         p_oCommandInfo.SetEnabled( false );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ValidateInterfaceSectionType(
+
+      CommandPresentationModuleInfo p_oCommandInfo,
+      int p_eInterfaceSection,
+      string p_sType,
+      string p_sSection
+
+      )
+{
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+   if( a_oSelNode && a_oSelNode.IsDerived( InterfaceSectionNode ) )
+   {
+      InterfaceSectionNode a_oInterfaceSectionNode =
+         (InterfaceSectionNode)Model.GetFirstSelectedNode().GetNode();
+      if( a_oInterfaceSectionNode.InterfaceSection == p_eInterfaceSection )
+      {
+         string a_sHint = "Adds a new " + p_sType +
+            " to this section of the interface";
+         p_oCommandInfo.Status.SetHint( a_sHint );
+         p_oCommandInfo.SetEnabled( true );
+      }
+      else
+      {
+         string a_sError = "You can only add a " + p_sType + " to a " +
+            p_sSection + " section of the the interface";
+         p_oCommandInfo.Status.SetHint( a_sError );
+         p_oCommandInfo.SetEnabled( false );
+      }
+   }
+}

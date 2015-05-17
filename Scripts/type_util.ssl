@@ -1,0 +1,559 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file         :   TYPE_UTIL.SSL
+// $author       :   Scenomics
+// $privacy      :   PUBLIC
+// $description  :   This script implements basic dialog features.
+// $legal        :   Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////
+
+library SpaTypeUtil;
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetNodeLinkDataCaptureTypes( TypeInfoArray p_oNodeLinkDataCaptureTypes )
+{
+   p_oNodeLinkDataCaptureTypes.Add( NodeDataCaptureFilter );
+
+   return p_oNodeLinkDataCaptureTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetBooleanDataCaptureTypes( TypeInfoArray p_oBooleanDataCaptureTypes )
+{
+   p_oBooleanDataCaptureTypes.Add( LightDataCaptureOn );
+   p_oBooleanDataCaptureTypes.Add( LightDataCaptureGlobal );
+   p_oBooleanDataCaptureTypes.Add( LightDataCaptureShadows );
+   p_oBooleanDataCaptureTypes.Add( LightDataCaptureDynamic );
+   p_oBooleanDataCaptureTypes.Add( LightDataCaptureInfinite );
+   p_oBooleanDataCaptureTypes.Add( LightDataCapturePoint );
+   p_oBooleanDataCaptureTypes.Add( LightDataCaptureSpot );
+   p_oBooleanDataCaptureTypes.Add( GuideDataCaptureVertices );
+   p_oBooleanDataCaptureTypes.Add( GuideDataCaptureVertexNormals );
+   p_oBooleanDataCaptureTypes.Add( GuideDataCaptureFaceNormals );
+   p_oBooleanDataCaptureTypes.Add( GuideDataCaptureEdges );
+   p_oBooleanDataCaptureTypes.Add( GuideDataCaptureHiddenEdges );
+   p_oBooleanDataCaptureTypes.Add( BooleanDataCaptureFilter );
+
+   return p_oBooleanDataCaptureTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetIntegerDataCaptureTypes( TypeInfoArray p_oIntegerDataCaptureTypes )
+{
+   p_oIntegerDataCaptureTypes.Add( MaterialDataCaptureIdentification );
+   p_oIntegerDataCaptureTypes.Add( MaterialDataCaptureTwoSided );
+   p_oIntegerDataCaptureTypes.Add( MaterialDataCaptureTransparent );
+   p_oIntegerDataCaptureTypes.Add( MaterialDataCaptureImageWrites );
+   p_oIntegerDataCaptureTypes.Add( MaterialDataCaptureHsrWritesEnabled );
+   p_oIntegerDataCaptureTypes.Add( MaterialDataCaptureHsrTestsEnabled );
+   p_oIntegerDataCaptureTypes.Add( MaterialDataCaptureClampS );
+   p_oIntegerDataCaptureTypes.Add( MaterialDataCaptureClampT );
+   p_oIntegerDataCaptureTypes.Add( MaterialDataCaptureAlphaTestFunction );
+   p_oIntegerDataCaptureTypes.Add( MaterialDataCaptureWireframe );
+   p_oIntegerDataCaptureTypes.Add( MaterialDataCaptureFilled );
+   p_oIntegerDataCaptureTypes.Add( MaterialDataCaptureSolid );
+   p_oIntegerDataCaptureTypes.Add( MaterialDataCaptureTextured );
+   p_oIntegerDataCaptureTypes.Add( LightStackNodeDataCaptureActiveLightCount );
+   p_oIntegerDataCaptureTypes.Add( IntegerDataCaptureFilter );
+
+   return p_oIntegerDataCaptureTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetUnsignedIntegerDataCaptureTypes( TypeInfoArray p_oUnsignedIntegerDataCaptureTypes )
+{
+   p_oUnsignedIntegerDataCaptureTypes.Add( ViewDataCaptureViewportTicksMS );
+   p_oUnsignedIntegerDataCaptureTypes.Add( ViewDataCaptureViewportElapsedTicksMS );
+   p_oUnsignedIntegerDataCaptureTypes.Add( ViewDataCaptureViewportFrameIndex );
+   p_oUnsignedIntegerDataCaptureTypes.Add( UnsignedIntegerDataCaptureFilter );
+
+   return p_oUnsignedIntegerDataCaptureTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetFloatDataCaptureTypes( TypeInfoArray p_oFloatDataCaptureTypes )
+{
+   p_oFloatDataCaptureTypes.Add( LightDataCaptureSpotExponent );
+   p_oFloatDataCaptureTypes.Add( LightDataCaptureSpotCutoff );
+   p_oFloatDataCaptureTypes.Add( LightDataCaptureSpotCosCutoff );
+   p_oFloatDataCaptureTypes.Add( LightDataCaptureConstantAttenuation );
+   p_oFloatDataCaptureTypes.Add( LightDataCaptureLinearAttenuation );
+   p_oFloatDataCaptureTypes.Add( LightDataCaptureQuadraticAttenuation );
+   p_oFloatDataCaptureTypes.Add( LightDataCaptureIntensity );
+   p_oFloatDataCaptureTypes.Add( LightDataCapturePrimarySize );
+   p_oFloatDataCaptureTypes.Add( LightDataCaptureSecondarySize );
+   p_oFloatDataCaptureTypes.Add( LightDataCaptureNearZ );
+   p_oFloatDataCaptureTypes.Add( LightDataCaptureFarZ );
+   p_oFloatDataCaptureTypes.Add( MaterialDataCaptureShininess );
+   p_oFloatDataCaptureTypes.Add( MaterialDataCaptureOpacity );
+   p_oFloatDataCaptureTypes.Add( ViewDataCaptureViewportWidth );
+   p_oFloatDataCaptureTypes.Add( ViewDataCaptureViewportHeight );
+   p_oFloatDataCaptureTypes.Add( ViewDataCaptureViewportNearZ );
+   p_oFloatDataCaptureTypes.Add( ViewDataCaptureViewportFarZ );
+   p_oFloatDataCaptureTypes.Add( FloatDataCaptureFilter );
+
+   return p_oFloatDataCaptureTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetVectorDataCaptureTypes( TypeInfoArray p_oVectorDataCaptureTypes )
+{
+   p_oVectorDataCaptureTypes.Add( ViewDataCaptureViewportPosition );
+   p_oVectorDataCaptureTypes.Add( ViewDataCaptureViewportOrientation );
+   p_oVectorDataCaptureTypes.Add( LightDataCapturePosition );
+   p_oVectorDataCaptureTypes.Add( LightDataCaptureDirection );
+   p_oVectorDataCaptureTypes.Add( LightDataCaptureTransformX );
+   p_oVectorDataCaptureTypes.Add( LightDataCaptureTransformY );
+   p_oVectorDataCaptureTypes.Add( LightDataCaptureTransformZ );
+   p_oVectorDataCaptureTypes.Add( LightDataCaptureTransformT );
+   p_oVectorDataCaptureTypes.Add( RectanglePrimitiveDataCaptureExtents );
+
+   return p_oVectorDataCaptureTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetIntegerVectorDataCaptureTypes( TypeInfoArray p_oIntegerVectorDataCaptureTypes )
+{
+   p_oIntegerVectorDataCaptureTypes.Add( RectanglePrimitiveDataCaptureTessellation );
+
+   return p_oIntegerVectorDataCaptureTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetColorDataCaptureTypes( TypeInfoArray p_oColorDataCaptureTypes )
+{
+   p_oColorDataCaptureTypes.Add( MaterialDataCaptureAmbientColor );
+   p_oColorDataCaptureTypes.Add( MaterialDataCaptureDiffuseColor );
+   p_oColorDataCaptureTypes.Add( MaterialDataCaptureSpecularColor );
+   p_oColorDataCaptureTypes.Add( MaterialDataCaptureEmissiveColor );
+   p_oColorDataCaptureTypes.Add( MaterialDataCaptureIdentificationColor );
+   p_oColorDataCaptureTypes.Add( LightDataCaptureAmbientColor );
+   p_oColorDataCaptureTypes.Add( LightDataCaptureDiffuseColor );
+   p_oColorDataCaptureTypes.Add( LightDataCaptureSpecularColor );
+   p_oColorDataCaptureTypes.Add( LightDataCaptureEmissiveColor );
+   
+   return p_oColorDataCaptureTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetMatrix3x3DataCaptureTypes( TypeInfoArray p_oMatrixDataCaptureTypes )
+{
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureNormalMatrix );
+
+   return p_oMatrixDataCaptureTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetMatrix4x4DataCaptureTypes( TypeInfoArray p_oMatrixDataCaptureTypes )
+{
+   p_oMatrixDataCaptureTypes.Add( LightDataCaptureModelViewCameraMatrix );
+   p_oMatrixDataCaptureTypes.Add( LightDataCaptureModelViewMatrix );
+   p_oMatrixDataCaptureTypes.Add( LightDataCaptureProjectionCameraMatrix );
+   p_oMatrixDataCaptureTypes.Add( LightDataCaptureProjectionMatrix );
+   p_oMatrixDataCaptureTypes.Add( LightDataCaptureProjectionMatrixInverse );
+   p_oMatrixDataCaptureTypes.Add( LightDataCaptureViewMatrix );
+   p_oMatrixDataCaptureTypes.Add( LightDataCaptureCameraMatrix );
+   p_oMatrixDataCaptureTypes.Add( LightDataCaptureLocalCameraMatrix );
+   p_oMatrixDataCaptureTypes.Add( LightDataCaptureLocalViewMatrix );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureModelMatrix );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureModelMatrixInverse );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureModelMatrixInverseTranspose );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureModelMatrixTranspose );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureModelViewMatrix );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureModelViewMatrixInverse );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureModelViewMatrixInverseTranspose );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureModelViewMatrixTranspose );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureModelViewProjectionMatrix );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureModelViewProjectionMatrixInverse );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureModelViewProjectionMatrixInverseTranspose );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureModelViewProjectionMatrixTranspose );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureViewMatrix );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureViewMatrixInverse );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureViewMatrixInverseTranspose );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureViewMatrixTranspose );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureViewProjectionMatrix );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureViewProjectionMatrixInverse );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureViewProjectionMatrixInverseTranspose );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureViewProjectionMatrixTranspose );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCapturePreviousViewProjectionMatrix );
+   p_oMatrixDataCaptureTypes.Add( ViewDataCaptureTextureMatrix );
+
+   return p_oMatrixDataCaptureTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetAllDataCaptureTypes( TypeInfoArray p_aoTypes )
+{
+   GetBooleanDataCaptureTypes( p_aoTypes );
+   GetIntegerDataCaptureTypes( p_aoTypes );
+   GetUnsignedIntegerDataCaptureTypes( p_aoTypes );
+   GetFloatDataCaptureTypes( p_aoTypes );
+   GetVectorDataCaptureTypes( p_aoTypes );
+   GetIntegerVectorDataCaptureTypes( p_aoTypes );
+   GetColorDataCaptureTypes( p_aoTypes );
+   GetMatrix4x4DataCaptureTypes( p_aoTypes );
+
+   return p_aoTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetVariableExpressionNodeTypes( TypeInfoArray p_oVariableExpressionNodeTypes )
+{
+   p_oVariableExpressionNodeTypes.Add( BooleanExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( BooleanArrayExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( BooleanVectorExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( BooleanVectorArrayExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( IntegerExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( IntegerArrayExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( IntegerVectorExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( IntegerVectorArrayExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( UnsignedIntegerExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( UnsignedIntegerVectorExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( UnsignedIntegerArrayExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( UnsignedIntegerVectorArrayExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( FloatExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( FloatArrayExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( VectorExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( VectorArrayExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( VectorExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( VectorArrayExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( MatrixExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( StructExpressionNode );
+   p_oVariableExpressionNodeTypes.Add( SamplerExpressionNode );
+
+   return p_oVariableExpressionNodeTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetVariableExpressionNodeGeneratorTypes( TypeInfoArray p_oVariableExpressionNodeGeneratorTypes )
+{
+   p_oVariableExpressionNodeGeneratorTypes.Add( BooleanExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( BooleanArrayExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( BooleanVectorExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( BooleanVectorArrayExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( IntegerExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( IntegerArrayExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( IntegerVectorExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( IntegerVectorArrayExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( UnsignedIntegerExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( UnsignedIntegerVectorExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( UnsignedIntegerArrayExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( UnsignedIntegerVectorArrayExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( FloatExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( FloatArrayExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( VectorExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( VectorArrayExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( VectorExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( VectorArrayExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( MatrixExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( StructExpressionGenerator );
+   p_oVariableExpressionNodeGeneratorTypes.Add( SamplerExpressionGenerator );
+
+   return p_oVariableExpressionNodeGeneratorTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetVariableExpressionNodeVariableTypes( TypeInfoArray p_oVariableExpressionNodeVariableTypes )
+{
+   p_oVariableExpressionNodeVariableTypes.Add( BooleanNode );
+   p_oVariableExpressionNodeVariableTypes.Add( BooleanArrayNode );
+   p_oVariableExpressionNodeVariableTypes.Add( BooleanVectorNode );
+   p_oVariableExpressionNodeVariableTypes.Add( BooleanVectorArrayNode );
+   p_oVariableExpressionNodeVariableTypes.Add( IntegerNode );
+   p_oVariableExpressionNodeVariableTypes.Add( IntegerArrayNode );
+   p_oVariableExpressionNodeVariableTypes.Add( IntegerVectorNode );
+   p_oVariableExpressionNodeVariableTypes.Add( IntegerVectorArrayNode );
+   p_oVariableExpressionNodeVariableTypes.Add( UnsignedIntegerNode );
+   p_oVariableExpressionNodeVariableTypes.Add( UnsignedIntegerVectorNode );
+   p_oVariableExpressionNodeVariableTypes.Add( UnsignedIntegerArrayNode );
+   p_oVariableExpressionNodeVariableTypes.Add( UnsignedIntegerVectorArrayNode );
+   p_oVariableExpressionNodeVariableTypes.Add( FloatNode );
+   p_oVariableExpressionNodeVariableTypes.Add( FloatArrayNode );
+   p_oVariableExpressionNodeVariableTypes.Add( VectorNode );
+   p_oVariableExpressionNodeVariableTypes.Add( VectorArrayNode );
+   p_oVariableExpressionNodeVariableTypes.Add( ColorNode );
+   p_oVariableExpressionNodeVariableTypes.Add( ColorArrayNode );
+   p_oVariableExpressionNodeVariableTypes.Add( MatrixNode );
+   p_oVariableExpressionNodeVariableTypes.Add( StructInstanceNode );
+   p_oVariableExpressionNodeVariableTypes.Add( SamplerNode );
+
+   return p_oVariableExpressionNodeVariableTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetVariableExpressionNodeConstructorStrings( StrList p_slConstructorStrings )
+{
+   p_slConstructorStrings.Add( "bool" );
+   p_slConstructorStrings.Add( "bool" );
+   p_slConstructorStrings.Add( "bvec" );
+   p_slConstructorStrings.Add( "bvec" );
+   p_slConstructorStrings.Add( "int" );
+   p_slConstructorStrings.Add( "int" );
+   p_slConstructorStrings.Add( "ivec" );
+   p_slConstructorStrings.Add( "ivec" );
+   p_slConstructorStrings.Add( "uint" );
+   p_slConstructorStrings.Add( "uvec" );
+   p_slConstructorStrings.Add( "uint" );
+   p_slConstructorStrings.Add( "uvec" );
+   p_slConstructorStrings.Add( "float" );
+   p_slConstructorStrings.Add( "float" );
+   p_slConstructorStrings.Add( "vec" );
+   p_slConstructorStrings.Add( "vec" );
+   p_slConstructorStrings.Add( "vec" );
+   p_slConstructorStrings.Add( "vec" );
+   p_slConstructorStrings.Add( "mat" );
+   p_slConstructorStrings.Add( "struct" );
+   p_slConstructorStrings.Add( "" );
+
+   return p_slConstructorStrings.GetCount();
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetTypes( TypeInfoArray p_oTypes )
+{
+   p_oTypes.Add( Texture );
+
+   p_oTypes.Add( QualifierNode );
+   p_oTypes.Add( GlslQualifierNode );
+   p_oTypes.Add( StringNode );
+   p_oTypes.Add( StringArrayNode );
+   p_oTypes.Add( StructInstanceNode );
+
+   p_oTypes.Add( BooleanNode );
+   p_oTypes.Add( BooleanExpressionNode );
+   p_oTypes.Add( BooleanArrayNode );
+   p_oTypes.Add( BooleanArrayExpressionNode );
+   p_oTypes.Add( BooleanDataCapture );
+
+   p_oTypes.Add( IntegerNode );
+   p_oTypes.Add( IntegerExpressionNode );
+   p_oTypes.Add( IntegerArrayNode );
+   p_oTypes.Add( IntegerArrayExpressionNode );
+   p_oTypes.Add( UnsignedIntegerNode );
+   p_oTypes.Add( UnsignedIntegerExpressionNode );
+   p_oTypes.Add( UnsignedIntegerArrayNode );
+   p_oTypes.Add( UnsignedIntegerArrayExpressionNode );
+   p_oTypes.Add( IntegerDataCapture );
+   p_oTypes.Add( IntegerVectorDataCapture );
+   p_oTypes.Add( UnsignedIntegerDataCapture );
+
+   p_oTypes.Add( FloatNode );
+   p_oTypes.Add( FloatExpressionNode );
+   p_oTypes.Add( FloatArrayNode );
+   p_oTypes.Add( FloatArrayExpressionNode );
+   p_oTypes.Add( FloatDataCapture );
+
+   p_oTypes.Add( BooleanVectorNode );
+   p_oTypes.Add( BooleanVectorExpressionNode );
+   p_oTypes.Add( BooleanVectorArrayNode );
+   p_oTypes.Add( BooleanVectorArrayExpressionNode );
+   p_oTypes.Add( IntegerVectorNode );
+   p_oTypes.Add( IntegerVectorExpressionNode );
+   p_oTypes.Add( IntegerVectorArrayNode );
+   p_oTypes.Add( IntegerVectorArrayExpressionNode );
+   p_oTypes.Add( UnsignedIntegerVectorNode );
+   p_oTypes.Add( UnsignedIntegerVectorExpressionNode );
+   p_oTypes.Add( UnsignedIntegerVectorArrayNode );
+   p_oTypes.Add( VectorNode );
+   p_oTypes.Add( VectorExpressionNode );
+   p_oTypes.Add( VectorArrayNode );
+   p_oTypes.Add( VectorArrayExpressionNode );
+   p_oTypes.Add( VectorDataCapture );
+
+   p_oTypes.Add( ColorNode );
+   p_oTypes.Add( ColorArrayNode );
+   p_oTypes.Add( ColorDataCapture );
+
+   p_oTypes.Add( MatrixNode );
+   p_oTypes.Add( MatrixExpressionNode );
+   p_oTypes.Add( MatrixArrayNode );
+   p_oTypes.Add( MatrixDataCapture );
+
+   p_oTypes.Add( StructNode );
+   p_oTypes.Add( StructExpressionNode );
+
+   p_oTypes.Add( SamplerNode );
+   p_oTypes.Add( SamplerExpressionNode );
+
+   p_oTypes.Add( UniformBufferNode );
+   p_oTypes.Add( UniformBufferBindNode );
+
+   p_oTypes.Add( InterfaceBlockNode );
+
+   return p_oTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetTypeIcons( StrList p_slTypeIcons )
+{
+   p_slTypeIcons.Add( "new_texture.bmp" );
+
+   p_slTypeIcons.Add( "new_qualifier_node.bmp" );
+   p_slTypeIcons.Add( "new_qualifier_node.bmp" );
+   p_slTypeIcons.Add( "new_string_node.bmp" );
+   p_slTypeIcons.Add( "new_string_node.bmp" );
+   p_slTypeIcons.Add( "new_struct_instance_node.bmp" );
+
+   p_slTypeIcons.Add( "new_boolean_node.bmp" );
+   p_slTypeIcons.Add( "new_boolean_node.bmp" );
+   p_slTypeIcons.Add( "new_boolean_node.bmp" );
+   p_slTypeIcons.Add( "new_boolean_node.bmp" );
+   p_slTypeIcons.Add( "new_boolean_node.bmp" );
+
+   p_slTypeIcons.Add( "new_integer_node.bmp" );
+   p_slTypeIcons.Add( "new_integer_node.bmp" );
+   p_slTypeIcons.Add( "new_integer_node.bmp" );
+   p_slTypeIcons.Add( "new_integer_node.bmp" );
+   p_slTypeIcons.Add( "new_integer_node.bmp" );
+   p_slTypeIcons.Add( "new_integer_node.bmp" );
+   p_slTypeIcons.Add( "new_integer_node.bmp" );
+   p_slTypeIcons.Add( "new_integer_node.bmp" );
+   p_slTypeIcons.Add( "new_integer_node.bmp" );
+   p_slTypeIcons.Add( "new_integer_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+
+   p_slTypeIcons.Add( "new_float_node.bmp" );
+   p_slTypeIcons.Add( "new_float_node.bmp" );
+   p_slTypeIcons.Add( "new_float_node.bmp" );
+   p_slTypeIcons.Add( "new_float_node.bmp" );
+   p_slTypeIcons.Add( "new_float_node.bmp" );
+
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+   p_slTypeIcons.Add( "new_vector_node.bmp" );
+
+   p_slTypeIcons.Add( "new_color_node.bmp" );
+   p_slTypeIcons.Add( "new_color_node.bmp" );
+   p_slTypeIcons.Add( "new_color_node.bmp" );
+
+   p_slTypeIcons.Add( "new_matrix_node.bmp" );
+   p_slTypeIcons.Add( "new_matrix_node.bmp" );
+   p_slTypeIcons.Add( "new_matrix_node.bmp" );
+   p_slTypeIcons.Add( "new_matrix_node.bmp" );
+
+   p_slTypeIcons.Add( "new_struct_instance_node.bmp" );
+   p_slTypeIcons.Add( "new_struct_instance_node.bmp" );
+
+   p_slTypeIcons.Add( "new_sampler_node.bmp" );
+   p_slTypeIcons.Add( "new_sampler_node.bmp" );
+
+   p_slTypeIcons.Add( "new_uniform_buffer_node.bmp" );
+   p_slTypeIcons.Add( "new_uniform_buffer_bind_node.bmp" );
+
+   p_slTypeIcons.Add( "new_interface_block_node.bmp" );
+
+   return p_slTypeIcons.GetCount();
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int GetNamespaceTypes( TypeInfoArray p_oTypes )
+{
+   p_oTypes.Add( UniformBufferNode );
+   p_oTypes.Add( StructNode );
+   p_oTypes.Add( InterfaceBlockNode );
+   p_oTypes.Add( VariableNode );
+   return p_oTypes.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddArraySizeableTypes( TypeInfoArray p_aoAcceptsArraySizeVariable )
+{
+   p_aoAcceptsArraySizeVariable.Add( VariableArrayNode );
+   p_aoAcceptsArraySizeVariable.Add( InterfaceBlockNode );
+   p_aoAcceptsArraySizeVariable.Add( UniformBufferNode );
+   p_aoAcceptsArraySizeVariable.Add( ShaderBufferNode );
+   p_aoAcceptsArraySizeVariable.Add( StructNode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddQualifiableTypes( TypeInfoArray p_aoArrayQualifiableType )
+{
+   p_aoArrayQualifiableType.Add( VariableNode );
+   p_aoArrayQualifiableType.Add( InterfaceBlockNode );
+   p_aoArrayQualifiableType.Add( UniformBufferNode );
+   p_aoArrayQualifiableType.Add( ShaderBufferNode );
+   p_aoArrayQualifiableType.Add( StructNode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddRefactorableTypes( TypeInfoArray p_aoRefactorableType )
+{
+   p_aoRefactorableType.Add( UniformBufferBindNode );
+}

@@ -1,0 +1,894 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             VARIABLE_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements a_oVariableNode helper macros.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "dialog_util.ssl";
+import library "expression_util.ssl";
+import library "graph_util.ssl";
+import library "list_util.ssl";
+import library "select_util.ssl";
+import library "template_util.ssl";
+import library "variable_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Handles common UI update functionality for Wizard commands.
+
+function void HandleOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Node, hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void BooleanNodeToggleState_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Node, "Toggles the BooleanNode's value true/false." );
+}
+
+macro BooleanNodeToggleState()
+[ Category="Expression Commands", Guid="{6CD382B3-DC85-4CCD-A8A2-0990D1DCD212}", Image=".\\icons\\boolean_node_toggle_state.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( BooleanNode ) )
+      {
+         BooleanNode a_oBooleanNode = (BooleanNode)Model.EditNode( node );
+         a_oBooleanNode.Value = !a_oBooleanNode.Value;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void MatrixNodeConvolutionFilterSetGaussian_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the MatrixNode element values to represent a Gaussian filter" );
+}
+
+macro MatrixNodeConvolutionFilterSetGaussian()
+[Category="Expression Commands", Guid="{49E947E6-AFFD-4C3D-8342-5E8B6A46F081}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   SpaVariableUtil.FormatMatrixNode3x3(   1.0,  2.0,  1.0, 
+                                          2.0,  4.0,  2.0, 
+                                          1.0,  2.0,  1.0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void MatrixNodeConvolutionFilterSetRemoveNoise_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the MatrixNode element values to represent a RemoveNoise filter" );
+}
+
+macro MatrixNodeConvolutionFilterSetRemoveNoise()
+[Category="Expression Commands", Guid="{A47D4A2F-F1EC-4CC5-B410-3E217E40C7DF}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   SpaVariableUtil.FormatMatrixNode3x3(   1.0,  1.0,  1.0, 
+                                          1.0,  1.0,  1.0, 
+                                          1.0,  1.0,  1.0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void MatrixNodeConvolutionFilterSetLaplacian_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the MatrixNode element values to represent a Laplacian filter" );
+}
+
+macro MatrixNodeConvolutionFilterSetLaplacian()
+[Category="Expression Commands", Guid="{179CB23B-8020-44A2-92B1-EA5082FD1ED6}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   SpaVariableUtil.FormatMatrixNode3x3(   0.0,  1.0, 0.0, 
+                                          1.0, -4.0, 1.0, 
+                                          0.0,  1.0, 0.0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void MatrixNodeConvolutionFilterSetEmboss_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the MatrixNode element values to represent an emboss filter" );
+}
+
+macro MatrixNodeConvolutionFilterSetEmboss()
+[Category="Expression Commands", Guid="{9F296FB5-4E42-4EEE-A015-C51682101B8C}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   SpaVariableUtil.FormatMatrixNode3x3(   -2.0, -1.0,  0.0, 
+                                          -1.0,  1.0,  1.0, 
+                                          0.0,  1.0,  2.0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void MatrixNodeConvolutionFilterSetSharpness_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the MatrixNode element values to represent a sharpness filter" );
+}
+
+macro MatrixNodeConvolutionFilterSetSharpness()
+[Category="Expression Commands", Guid="{84243DF5-385E-4133-A295-ED5A9A128740}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   SpaVariableUtil.FormatMatrixNode3x3(   0.0, -1.0,  0.0, 
+                                          -1.0,  5.0, -1.0, 
+                                          0.0, -1.0,  0.0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void MatrixNodeConvolutionFilterSetEdgeEnhance_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the MatrixNode element values to represent an edge enhance filter" );
+}
+
+macro MatrixNodeConvolutionFilterSetEdgeEnhance()
+[Category="Expression Commands", Guid="{1646E28F-E1A3-4FFF-8DF5-918690681CD2}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   SpaVariableUtil.FormatMatrixNode3x3(   0.0,  0.0,  0.0, 
+                                          -1.0,  1.0,  0.0, 
+                                          0.0,  0.0,  0.0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void IntegerNodeToggleValue_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   auto TypeInfoArray types;
+   types.Add( IntegerNode );
+   types.Add( UnsignedIntegerNode );
+   bool a_bEnabled = SpaSelectUtil.ValidateSelectionArray( types );
+   commandInfo.SetEnabled( a_bEnabled );
+   if( a_bEnabled )
+   {
+      commandInfo.Status.SetHint( "This command toggles a signed or unsigned integer 0 or 1." );
+   }
+   else
+   {
+      commandInfo.Status.SetHint( "Select a node of type IntegerNode or UnsignedIntegerNode." );
+   }
+}
+
+macro IntegerNodeToggleValue()
+[Category="Expression Commands", Guid="{26951EC7-8D85-4083-9793-799310A643AB}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      
+      if( node.IsDerived( VariableNode ) )
+      {
+         auto ExpressionInfo a_oExpressionInfo;
+         VariableNode a_oVariableNode = (VariableNode)Model.EditNode( node );
+         a_oVariableNode.GetParams( a_oExpressionInfo );
+         if( a_oExpressionInfo.Rows )
+         {
+            a_oExpressionInfo.Rows = 0;
+         }
+         a_oVariableNode.SetParams( a_oExpressionInfo );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ColorNodeSetRed_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   if( !SpaSelectUtil.GetVariableNodeCaptureState( commandInfo ) )
+   {
+      return;
+   }
+
+   ValidateNodeCommandContext.TestContext( commandInfo, ColorNode, "Sets the color node to red" );
+}
+
+macro ColorNodeSetRed()
+[Category="Expression Commands",Guid="{8F89781C-EF76-4177-8C03-E7CAF0E77C40}", Image=".\\icons\\color_node_set_red.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ColorNode ) )
+      {
+         ColorNode a_oColorNode = (ColorNode)Model.EditNode( node );
+         a_oColorNode.Value.SetRGB( 255, 0, 0 );
+         a_oColorNode.UpdateName();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ColorNodeSetGreen_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   if( !SpaSelectUtil.GetVariableNodeCaptureState( commandInfo ) )
+   {
+      return;
+   }
+
+   ValidateNodeCommandContext.TestContext( commandInfo, Node, "Sets the color node to green." );
+}
+
+macro ColorNodeSetGreen()
+[Category="Expression Commands", Guid="{77AB9D32-9DAC-47F1-86FB-6F2251CD07C2}", Image=".\\icons\\color_node_set_green.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ColorNode ) )
+      {
+         ColorNode a_oColorNode = (ColorNode)Model.EditNode( node );
+         a_oColorNode.Value.SetRGB( 0, 255, 0 );
+         a_oColorNode.UpdateName();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ColorNodeSetBlue_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   if( !SpaSelectUtil.GetVariableNodeCaptureState( commandInfo ) )
+   {
+      return;
+   }
+
+   ValidateNodeCommandContext.TestContext( commandInfo, Node, "Sets the color node to blue." );
+}
+
+macro ColorNodeSetBlue()
+[Category="Expression Commands", Guid="{8EE7B319-9B0E-42DA-AA7C-30FC07A11A70}",Image=".\\icons\\color_node_set_blue.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( ColorNode ) )
+      {
+         ColorNode a_oColorNode = (ColorNode)Model.EditNode( node );
+         a_oColorNode.UpdateName();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void VariableNodeSetNameFromParameters_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Node, "Changes the name of the node to reflect its parameters." );
+}
+
+macro VariableNodeSetNameFromParameters()
+[Category="Expression Commands", Guid="{E3BB04A8-44A7-4EDA-9C41-C71D067F5599}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( VariableNode ) )
+      {
+         VariableNode a_oVariableNode = (VariableNode)Model.EditNode( node );
+         a_oVariableNode.UpdateName();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TimerNodeToggleEnabled_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Toggles the TimerNode 'on' or 'off'." );
+}
+
+macro TimerNodeToggledEnabled()
+[Category="Expression Commands", Guid="{FA9EFB07-372A-40A1-A8F9-4D11B7138927}", Image=".\\icons\\timer_node_toggle_enabled.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = (Node)Model.GetSelectedNode( i ).GetNode();
+      if( a_oNode.IsDerived( TimerNode ) )
+      {
+         TimerNode a_oTimerNode = (TimerNode)Model.EditNode( a_oNode );
+         a_oTimerNode.Enabled = !a_oTimerNode.Enabled;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateDataCaptureMenu( CommandBar menu, string commandGuid, string eventHandler )
+{
+   auto StrList a_slTitles;
+   auto IntArray a_aiModes;
+   auto TypeArray a_aoItemImages;
+   auto TypeInfoArray a_aoTypes;
+
+   SpaTypeUtil.GetAllDataCaptureTypes( a_aoTypes );
+
+   for( int i = 0; i < a_aoTypes.Count; ++i )
+   {
+      a_slTitles.Add( a_aoTypes.Objects[ i ].GetTypeName() );
+      a_aiModes.Add( i );
+   }
+
+   SpaMenuUtil.GetIconImages( a_aoTypes, a_aoItemImages );
+
+   if( a_aoItemImages.Count != a_slTitles.GetCount() )
+   {
+      a_aoItemImages = null;
+   }
+
+   SpaMenuUtil.BuildMenuFromIntArray( menu,
+                                      0,
+                                      commandGuid,
+                                      Script,
+                                      eventHandler,
+                                      a_slTitles,
+                                      a_aiModes,
+                                      a_aoItemImages );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void VariableNodeSetMode_OnShowPopupMenu( CommandBarEvent event )
+[HandleEvent="SPA.ShellUIEvents.ShowPopupMenu"]
+{
+   CommandItem a_oDynamicVariableNodeCreateItem =
+      event.Bar.GetItemByText( 0, "CreateDataCaptureItem" );
+
+   string a_sDataCaptureTitle = "D&ata Capture";
+   if( a_oDynamicVariableNodeCreateItem )
+   {
+      a_oDynamicVariableNodeCreateItem.Text = a_sDataCaptureTitle;
+      a_oDynamicVariableNodeCreateItem.IsPopup = true;
+      a_oDynamicVariableNodeCreateItem.ImageIndex = -1;
+   }
+   if( event.Bar.Title == a_sDataCaptureTitle )
+   {
+      event.Bar.RemoveAllItems();
+      CreateDataCaptureMenu(
+         event.Bar,
+         "{AF7D7126-7212-4EC5-AC6D-9705F78B95B9}",
+         "DataCaptureHandleCreate" );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void DataCaptureHandleCreate( ApplicationEventSource source,
+   CommandExecutionEvent event, string typeName, int index )
+{
+   auto ExpressionInfo a_oDimensions;
+   auto Type a_oCaptureType;
+   auto TypeInformation a_oCaptureTypeInfo = a_oCaptureType.GetType().FindClassType( typeName );
+   DataCapture a_oDataCapture = (DataCapture)a_oCaptureTypeInfo.CreateObject();
+   a_oDataCapture.GetParams( a_oDimensions );
+
+   Dialog.SelectDataCaptureDataSource( Model, a_oDataCapture );
+
+   auto TypeInformation a_oVariableTypeInfo = a_oDataCapture.GetBaseVariableType();
+   VariableNode a_oVariableNode = (VariableNode)a_oVariableTypeInfo.CreateObject();
+   a_oVariableNode.Capture.AddObject( a_oDataCapture );
+
+   // Set the DataCapture container pointer to the selected VariableNode.
+   a_oDataCapture.SetContainer( a_oVariableNode );
+
+   a_oVariableNode.NamePrefix = "";
+   a_oVariableNode.Variable = a_oDataCapture.GetDestinationName();
+   a_oVariableNode.NamePrefix = "";
+   a_oVariableNode.Name = a_oVariableNode.UpdateName();
+   a_oVariableNode.SetParams( a_oDimensions );
+
+   Group a_oSelGroup;
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+   if( a_oSelNode && a_oSelNode.IsDerived( Group ) )
+   {
+      a_oSelGroup = (Group)a_oSelNode;
+   }
+
+   if(   a_oSelNode.IsDerived( Program ) ||
+         a_oSelNode.IsDerived( UniformBufferBindNode ) ||
+         a_oSelNode.IsDerived( UniformPaletteNode ) )
+   {
+      a_oVariableNode.QualifierList.ModifyQualifier( true, Enum.GLSL_Qualifier_Uniform() );
+      a_oVariableNode.BindingType = Enum.Binding_Uniform();
+   }
+
+   a_oVariableNode.Name = a_oVariableNode.UpdateName();
+   Model.AddNode( a_oVariableNode, a_oSelGroup, -1 );
+}
+
+function void DataCaptureHandleCreate_OnUpdate( ApplicationEventSource source,
+   CommandUpdateEvent event, string title, int mode )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Group, "Creates a data capture object of the indicated type" );
+}
+
+macro DynamicVariableNodeSetMode( ApplicationEventSource source )
+[Category="Expression Commands", Guid="{AF7D7126-7212-4EC5-AC6D-9705F78B95B9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   // Dummy command to reserve the GUID and associate the image.
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void VariableNodeChangeVariableName_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, VariableNode,
+      "Prompts you to enter a new name for the selected VariableNode." );
+}
+
+macro VariableNodeChangeVariableName()
+[Category="Expression Commands", Guid="{6724C927-2765-4605-9DFE-212A664D0024}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   VariableNode a_oVariableNode = (VariableNode)Model.GetFirstSelectedNode().GetNode();
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      VariableNode a_oSelectedNode = (VariableNode)Model.GetSelectedNode( i ).GetNode();
+      Graph.RenameVariable( a_oSelectedNode );
+      a_oSelectedNode.UpdateName();
+
+      // Update any VariableExpressionNodes!
+      /*
+      auto List a_lExpressionNodes;
+      Graph.GetNodesFromDatabase( Model, a_lExpressionNodes, VariableExpressionNode );
+      for( int a_nV = 0; a_nV < a_lExpressionNodes.GetCount(); ++a_nV )
+      {
+         VariableExpressionNode a_oVariableExpressionNode = (VariableExpressionNode)a_lExpressionNodes.Get( a_nV );
+         for( int a_nS = 0; a_nS < a_oVariableExpressionNode.CodeObjectNodeNames.GetCount(); ++a_nS )
+         {
+            if( a_oVariableExpressionNode.CodeObjectNodeNames.GetAt( a_nS ) == a_sVariableName );
+            {
+               //Console.Out( a_oVariableExpressionNode.GetPathToNode() );
+               //Console.Out( a_sVariableName );
+               a_oVariableExpressionNode.CodeObjectNodeNames.Replace( a_nS, a_oNewVariableName.Value );
+            }
+         }
+      }
+      */
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void VariableNodeChangeArraySize_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() != 1 )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "Please select a single node" );
+      return;
+   }
+
+   auto TypeInfoArray types;
+   SpaTypeUtil.AddArraySizeableTypes( types );
+   bool a_bEnabled = SpaSelectUtil.ValidateSelectionArray( types );
+   commandInfo.SetEnabled( a_bEnabled );
+   if( a_bEnabled )
+   {
+      commandInfo.Status.SetHint( "Changes the array size" );
+   }
+   else
+   {
+      commandInfo.Status.SetHint( "This node does not have any array size" );
+   }
+}
+
+macro VariableNodeChangeArraySize()
+[Category="Expression Commands", Guid="{43F087B1-9DFE-4BB1-95FA-80A21B806D5A}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode( i ).GetNode();
+      int a_nCurrentArrayCount;
+      VariableArrayNode a_oVariableArrayNode;
+      UniformBufferNode a_oUniformBufferNode;
+
+      if( a_oSelNode && a_oSelNode.IsDerived( VariableArrayNode ) )
+      {
+         a_oVariableArrayNode = (VariableArrayNode)Model.EditNode( a_oSelNode );
+         a_nCurrentArrayCount = a_oVariableArrayNode.Count;
+      }
+      else
+      if( a_oSelNode && a_oSelNode.IsDerived( UniformBufferNode ) )
+      {
+         a_oUniformBufferNode = (UniformBufferNode)Model.EditNode( a_oSelNode );
+         a_nCurrentArrayCount = a_oUniformBufferNode.Block.ArrayParameters.ExplicitArraySize;
+      }
+
+      auto Str a_oNewArraySize = new Str( a_nCurrentArrayCount );
+      auto EnterTextDialog a_oDialog;
+
+      if( a_oDialog.Show( "Enter new array size", "Type new array size here:", true, a_oNewArraySize ) )
+      {
+         int a_iSize = a_oNewArraySize.ToInt();
+
+         if( a_oVariableArrayNode.IsDerived( StructInstanceNode ) )
+         {
+            StructInstanceNode a_oStructInstanceNode = (StructInstanceNode)a_oVariableArrayNode;
+            if( a_iSize > 0 || a_iSize == -1 )
+            {
+               a_oStructInstanceNode.IsArray = true;
+            }
+            else
+            {
+               a_oStructInstanceNode.IsArray = false;
+            }
+            a_oStructInstanceNode.ArrayDimension = a_iSize;
+            a_oStructInstanceNode.Name = a_oStructInstanceNode.UpdateName();
+         }
+         else
+         if( a_oVariableArrayNode )
+         {
+            a_oVariableArrayNode.Count = a_iSize;
+            a_oVariableArrayNode.UpdateName();
+         }
+         else
+         if( a_oUniformBufferNode )
+         {
+            a_oUniformBufferNode.Block.ArrayParameters.IsImplicitlySizedArray = false;
+            a_oUniformBufferNode.Block.ArrayParameters.ExplicitArraySize = a_iSize;
+            a_oUniformBufferNode.UpdateName();
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExtensionNodeSetModeRequire_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ExtensionNode, "Sets the ExtensionNode mode to 'require'." );
+}
+
+macro ExtensionNodeSetModeRequire()
+[Category="Node Commands", Guid="{CB3D7004-251B-467C-A91E-9F445ABC1C13}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   SpaVariableUtil.ExtensionNodeSetMode( null, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExtensionNodeSetModeWarn_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ExtensionNode, "Sets the ExtensionNode mode to 'warn'." );
+}
+
+macro ExtensionNodeSetModeWarn()
+[Category="Node Commands", Guid="{B8B4B2F1-D71F-4153-A40B-34B82C9F81B3}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   SpaVariableUtil.ExtensionNodeSetMode( null, 1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExtensionNodeSetModeEnable_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ExtensionNode, "Sets the ExtensionNode mode to 'enable'." );
+}
+
+macro ExtensionNodeSetModeEnable()
+[Category="Node Commands", Guid="{E783A2FA-CFEA-46ED-ACF6-D4FB6BE6CB14}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   SpaVariableUtil.ExtensionNodeSetMode( null, 2 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExtensionNodeSetModeDisable_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ExtensionNode, "Sets the ExtensionNode mode to 'disable'." );
+}
+
+macro ExtensionNodeSetModeDisable()
+[Category="Node Commands", Guid="{DFE36312-ADAD-45BC-96FE-4042135B00D8}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   SpaVariableUtil.ExtensionNodeSetMode( null, 3 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void VariableNodeToggleArray_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, VariableNode, "Toggles the VariableNode array state." );
+
+   if( Model.GetSelectCount() != 1 )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "Please select a single VariableNode." );
+   }
+}
+
+macro VariableNodeToggleArray()
+[Category="Node Commands", Guid="{149622E1-ECFA-4EEA-A5DC-B25332D79E0E}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   auto List a_lSelectedNodes;
+   SpaSelectUtil.GetSelectedNodes( a_lSelectedNodes );
+   Create.ToggleVariableArrayState( a_lSelectedNodes, null );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ValidateSetVectorDimension( CommandPresentationModuleInfo commandInfo )
+{
+   auto TypeInfoArray types;
+   types.Add( BooleanVectorNode );
+   types.Add( IntegerVectorNode );
+   types.Add( UnsignedIntegerVectorNode );
+   types.Add( VectorNode );
+   types.Add( BooleanVectorArrayNode );
+   types.Add( IntegerVectorArrayNode );
+   types.Add( UnsignedIntegerVectorArrayNode );
+   types.Add( VectorArrayNode );
+   bool a_bEnabled = SpaSelectUtil.ValidateSelectionArray( types );
+   commandInfo.SetEnabled( a_bEnabled );
+   if( a_bEnabled )
+   {
+      commandInfo.Status.SetHint( "Sets the dimensions of the underlying vector." );
+   }
+   else
+   {
+      commandInfo.Status.SetHint( "Select a VectorNode type." );
+   }
+}
+
+function void VectorNodeSetDimension2_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateSetVectorDimension( commandInfo );
+}
+
+macro VectorNodeSetDimension2()
+[Category="Node Commands", Guid="{02906A53-58C6-4EDB-9C8D-056A9529FEF4}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   SpaVariableUtil.GenericSetVectorDimension( 2 );
+}
+
+function void VectorNodeSetDimension3_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateSetVectorDimension( commandInfo );
+}
+
+macro VectorNodeSetDimension3()
+[Category="Node Commands", Guid="{CBCD3F66-CC1D-4693-AE9D-7BA0D66D0CBB}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   SpaVariableUtil.GenericSetVectorDimension( 3 );
+}
+
+function void VectorNodeSetDimension4_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateSetVectorDimension( commandInfo );
+}
+
+macro VectorNodeSetDimension4()
+[Category="Node Commands", Guid="{66DC2C03-7315-4365-9AF6-05E2AC81B6E7}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   SpaVariableUtil.GenericSetVectorDimension( 4 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ClearArraySizingDataSource_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() != 1 )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "Please select a single node" );
+      return;
+   }
+
+   auto TypeInfoArray types;
+   SpaTypeUtil.AddArraySizeableTypes( types );
+   bool a_bEnabled = SpaSelectUtil.ValidateSelectionArray( types );
+   commandInfo.SetEnabled( a_bEnabled );
+   if( a_bEnabled )
+   {
+      commandInfo.Status.SetHint( "Clears the a_oVariableNode that sets the array size" );
+   }
+   else
+   {
+      commandInfo.Status.SetHint( "This node cannot use an array size declaration" );
+   }
+}
+
+macro ClearArraySizingDataSource()
+[Category="Node Commands", Guid="{15C33B5C-5D0C-4D23-8B5F-65FC68579CCD}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   auto List a_lSelectedNodes;
+   SpaSelectUtil.GetSelectedNodes( a_lSelectedNodes );
+   for( int a_nIndex = 0; a_nIndex < a_lSelectedNodes.GetCount(); ++a_nIndex )
+   {
+      Node a_oNode = (Node)a_lSelectedNodes.Get( a_nIndex );
+      if( a_oNode && a_oNode.IsDerived( VariableArrayNode ) )
+      {
+         VariableArrayNode a_oVariableArrayNode = (VariableArrayNode)Model.EditNode( a_oNode );
+         a_oVariableArrayNode.NodeSelector.Clear();
+         a_oVariableArrayNode.Name = a_oVariableArrayNode.UpdateName();
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( InterfaceBlockNode ) )
+      {
+         InterfaceBlockNode a_oInterfaceBlockNode = (InterfaceBlockNode)Model.EditNode( a_oNode );
+         a_oInterfaceBlockNode.Block.ArrayParameters.NodeSelector.Clear();
+         a_oInterfaceBlockNode.Name = a_oInterfaceBlockNode.UpdateName();
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( UniformBufferNode ) )
+      {
+         UniformBufferNode a_oUniformBufferNode = (UniformBufferNode)Model.EditNode( a_oNode );
+         a_oUniformBufferNode.Block.ArrayParameters.NodeSelector.Clear();
+         a_oUniformBufferNode.Name = a_oUniformBufferNode.UpdateName();
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( ShaderBufferNode ) )
+      {
+         ShaderBufferNode a_oShaderBufferNode = (ShaderBufferNode)Model.EditNode( a_oNode );
+         a_oShaderBufferNode.Block.ArrayParameters.NodeSelector.Clear();
+         a_oShaderBufferNode.Name = a_oShaderBufferNode.UpdateName();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ClearQualifiers_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() != 1 )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "Please select a single node" );
+      return;
+   }
+
+   auto TypeInfoArray types;
+   SpaTypeUtil.AddQualifiableTypes( types );
+   bool a_bEnabled = SpaSelectUtil.ValidateSelectionArray( types );
+   commandInfo.SetEnabled( a_bEnabled );
+   if( a_bEnabled )
+   {
+      commandInfo.Status.SetHint( "Clears the node's qualifier list" );
+   }
+   else
+   {
+      commandInfo.Status.SetHint( "This node does not have a qualifier list" );
+   }
+}
+
+macro ClearQualifiers()
+[Category="Node Commands", Guid="{436653A8-D80B-4280-9B6E-41640EA1B0B2}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   QualifierList a_oQualifierList;
+
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = Model.EditNode( (Node)Model.GetSelectedNode( i ).GetNode() );
+      auto GlslQualifierManager a_oGlslQualifierManager;
+      a_oQualifierList = a_oGlslQualifierManager.GetQualifierList( a_oNode );
+      if( a_oQualifierList )
+      {
+         a_oQualifierList.Qualifiers.Clear();
+         a_oNode.UpdateName();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void VariableNodeClearDataCapture_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() > 1 )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "Please select a single VariableNode" );
+      return;
+   }
+   else
+   {
+      Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+      if( a_oSelNode && a_oSelNode.IsDerived( VariableNode ) )
+      {
+         VariableNode a_oVariableNode = (VariableNode)a_oSelNode;
+         if( !( a_oVariableNode.Capture.GetFirstObject() ) )
+         {
+            commandInfo.SetEnabled( false );
+            commandInfo.Status.SetHint( "This VariableNode does not contain and capture data" );
+            return;
+         }
+      }
+   }
+
+   ValidateNodeCommandContext.TestContext( commandInfo, VariableNode, "Clears the VariableNode's capture data object" );
+
+}
+
+macro VariableNodeClearDataCapture()
+[Category="Expression Commands", Guid="{61E4548D-9BC9-47CE-B181-90680EB95365}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode( i ).GetNode();
+      if( a_oSelNode && a_oSelNode.IsDerived( VariableNode ) )
+      {
+         VariableNode a_oVariableNode = (VariableNode)Model.EditNode( a_oSelNode );
+         a_oVariableNode.Capture.Clear();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void EnumerateVariableDeclarations_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ShaderSourceNode, "Enumerates all declared variables" );
+
+}
+
+macro EnumerateVariableDeclarations() 
+[Category="Expression Commands", Guid="{E97AC9FC-4D92-4A2F-8D53-7AE6A8E83C64}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+}

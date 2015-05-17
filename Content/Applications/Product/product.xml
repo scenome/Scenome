@@ -1,0 +1,1524 @@
+<interface version="Scenome 1.0">
+   <menu name="Menu Bar">
+      <popup name="  &amp;File  " text="true" image="false">
+         <item name="&amp;Open..." guid="{1F91F851-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="&amp;Close" guid="{1705C6FD-8DDC-4ECC-85BD-C0AEC6F5B9DC}" text="true" image="true"/>
+         <item name="Open And &amp;Disable Rendering..." guid="{E83E27CC-34A6-4529-BC99-292B04E44551}" text="true" image="true"/>
+         <item name="&amp;Save" guid="{1F91F853-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="Save &amp;As..." guid="{1F91F854-F612-46D4-A453-4B81096121A9}" text="true" image="false"/>
+         <separator/>
+         <item name="Enumerate Application &amp;Data Directories" guid="{10BC23FC-B996-42DF-914B-E8F2945E33C5}" text="true" image="true"/>
+         <item name="Open Pro&amp;ject Folder for File" guid="{3343D36F-F825-42AC-AD36-F7EDA39179CD}" text="true" image="true"/>
+         <item name="Open Executab&amp;les Folder..." guid="{2197366A-CD61-473D-9033-09997BEBF9EA}" text="true" image="true"/>
+         <item name="Open Application Documents &amp;Folder..." guid="{F4F34BC0-614B-4B9D-8F07-B1E239AE0EDA}" text="true" image="true"/>
+         <item name="Open Application Data Folde&amp;r..." guid="{B9D9320F-8F15-44F4-9B3C-627DB5ED0C97}" text="true" image="true"/>
+         <item name="Your S&amp;ystem Capabilities" guid="{C5E1F0C8-B343-4E17-A845-D782B6BE2875}" text="true" image="true"/>
+         <item name="Enumerate Global Modules" guid="{C0FC20CE-4D6B-4DC2-9EBB-86DC9D0F6A39}" text="true" image="true"/>
+         <item name="Enumerate DockBar Info" guid="{8CCBD13F-95DC-4738-893B-A35FB57CBBCF}" text="true" image="true"/>
+         <item name="Enumerate Editor Info" guid="{CE032BB2-BD04-4E40-ACE3-B2B0AE6743E6}" text="true" image="true"/>
+         <separator/>
+         <item name="Recent File" guid="{1F91F882-F612-46D4-A453-4B81096121A9}" text="true" image="false"/>
+         <separator/>
+         <item name="E&amp;xit" guid="{1F91F855-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      </popup>
+      <popup name="  &amp;Edit  " text="true" image="false">
+         <item name="Undo" guid="{1F91F856-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="No redo&apos;s" guid="{1F91F857-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <separator/>
+         <item name="Cu&amp;t" guid="{1F91F858-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="&amp;Copy" guid="{1F91F859-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="P&amp;aste" guid="{1F91F85A-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="C&amp;lone Selection" guid="{1F91FAF7-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <separator/>
+         <item name="Copy To NodeLink" guid="{1F91FAD3-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="Paste As NodeLink" guid="{1F91FAD4-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <separator/>
+         <item name="Copy Command To Item" guid="{9836951F-E03B-4131-B91C-44DAA68D4B96}" text="true" image="true"/>
+         <item name="Paste Command As Item" guid="{9DC832D7-104E-4306-B24C-401EB802CA83}" text="true" image="false"/>
+         <separator/>
+         <item name="&amp;Find..." guid="{1F9220BA-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="Find In Files By &amp;Type..." guid="{EBC6DDE3-B7DA-46D5-A6E6-00025BBDB303}" text="true" image="true"/>
+         <item name="&amp;Next" guid="{1F9220B9-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="Pre&amp;vious" guid="{1F9220B8-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <separator/>
+         <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <separator/>
+         <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      </popup>
+      <popup name="  Gr&amp;aph  " text="true" image="false">
+         <item name="&amp;Display Database Statistics" guid="{1F91F8CB-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <separator/>
+         <item name="Move Top" guid="{CF96D78F-965F-4F3A-94BB-8BD7F5530224}" text="true" image="true"/>
+         <item name="Move &amp;Left" guid="{F9AA1355-7256-4A00-8E02-D8CF33415526}" text="true" image="true"/>
+         <item name="Move &amp;Right" guid="{A0DE329E-56D8-432B-B133-E39BD5A67B2E}" text="true" image="true"/>
+         <item name="Move Bottom" guid="{D5DAE46A-6134-4514-8432-3E2C23F09F63}" text="true" image="true"/>
+         <item name="Move Up" guid="{B4B36721-E6EB-47C5-AC7F-47164A4506E1}" text="true" image="true"/>
+         <item name="Move Down" guid="{B1ADB1CD-BF52-44CA-B67E-2B4E7B693C96}" text="true" image="true"/>
+         <separator/>
+         <item name="&amp;Expand All Tree Items" guid="{2DA64747-6145-4083-84F2-9C889FD50BE1}" text="true" image="true"/>
+         <item name="&amp;Contract All Tree Items" guid="{7DBA53AB-B3AF-4775-A8D7-77BD5D9A9229}" text="true" image="true"/>
+         <item name="Expand Below Selection" guid="{CEE7E646-17C6-4485-A44E-228D74D014DB}" text="true" image="true"/>
+         <separator/>
+         <item name="Select By &amp;Name" guid="{E3B94010-ED4B-4764-9628-236AE18BA21A}" text="true" image="true"/>
+         <item name="Select By T&amp;ype" guid="{1F922103-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="Select Remainder Of &amp;List" guid="{1F91FACA-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="Sort &amp;Alphabetically" guid="{CA6944B3-D7F8-4437-AAC6-2C5B311F38AD}" text="true" image="true"/>
+         <separator/>
+         <item name="&amp;Build All" guid="{ABEDC2AD-4325-4A6E-8362-2E548BC634FF}" text="true" image="true"/>
+      </popup>
+      <popup name="  &amp;Desktop  " text="true" image="false">
+         <item name="Toggle &amp;Primary Panel" guid="{7006A3CE-43AC-48E7-A84C-75C79414E0CE}" text="true" image="false"/>
+         <item name="Toggle &amp;Output Panel" guid="{A8186B09-1E58-40A7-977B-083D1C43009F}" text="true" image="false"/>
+         <item name="Toggle &amp;Secondary Panel" guid="{E077D400-4E7E-45B6-A583-59439E78675E}" text="true" image="false"/>
+         <item name="Toggle Status Bar" guid="{1F91F87F-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <separator/>
+         <item name="Reload &amp;Interface" guid="{55A653B0-5C74-442C-AAD7-25B0043FBF9B}" text="true" image="true"/>
+         <item name="Switch To &amp;Graph Shell" guid="{D9003646-665A-4F71-9914-80DA13EDF12E}" text="true" image="true"/>
+         <item name="Switch To &amp;Shader Shell" guid="{78438592-3E15-4808-8445-A6C516C4AFC4}" text="true" image="true"/>
+         <separator/>
+         <item name="Edit Interface Definition &amp;XML..." guid="{7799151D-2480-4EBE-A52A-C19BD7F495AA}" text="true" image="true"/>
+         <item name="St&amp;art Another Copy Of This Application" guid="{8E66B88A-E54A-422D-AAF4-C558A68BCD8C}" text="true" image="true"/>
+         <separator/>
+         <item name="Copy New Node Co&amp;mmand To Clipboard" guid="{0C6D168F-989D-46FD-87F1-455C1E98C617}" text="true" image="true"/>
+         <item name="&amp;Generate GUID" guid="{1F922104-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="Compile Templates" guid="{1DBF181C-49F1-4A60-B648-7C9A61A09C09}" text="true" image="true"/>
+         <item name="Compile Enumerations" guid="{A2E48DB7-CB86-4487-8375-B72BF160F1E1}" text="true" image="true"/>
+         <item name="Compile Classes" guid="{9548ED3C-C5DA-4542-A1DF-4A92B779E445}" text="true" image="true"/>
+         <item name="&amp;Refresh Scripts" guid="{1F91F8E0-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="&amp;Clear Output" guid="{1F91FA1B-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="Output Window Margin: &amp;10px" guid="{AB6C6B8C-0CAE-4A31-A6B3-9E39041C3463}" text="true" image="true"/>
+         <separator/>
+         <item name="Customi&amp;ze" guid="{1F9220B3-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      </popup>
+      <popup name="  &amp;Help  " text="true" image="false">
+         <item name="&amp;Help" guid="{1F91FAF9-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      </popup>
+   </menu>
+   <dockbar name="Output Panel" guid="{A8186B09-1E58-40A7-977B-083D1C43009F}" dockposition="bottom">
+      <dockedview name="Output" guid="{1F922109-F612-46D4-A453-4B81096121A9}"/>
+      <activeview guid="{1F922109-F612-46D4-A453-4B81096121A9}"/>
+   </dockbar>
+   <dockbar name="Primary Panel" guid="{7006A3CE-43AC-48E7-A84C-75C79414E0CE}" dockposition="left,top">
+      <dockedview name="Graph" guid="{1F91F9F6-F612-46D4-A453-4B81096121A9}"/>
+      <activeview guid="{1F91F9F6-F612-46D4-A453-4B81096121A9}"/>
+   </dockbar>
+   <dockbar name="Secondary Panel" guid="{E077D400-4E7E-45B6-A583-59439E78675E}" dockposition="right,top">
+      <dockedview name="Properties" guid="{1F91F9F5-F612-46D4-A453-4B81096121A9}"/>
+      <activeview guid="{1F91F9F5-F612-46D4-A453-4B81096121A9}"/>
+   </dockbar>
+   <toolbar name="Standard">
+      <item name="&amp;New" guid="{1F91F850-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <item name="FileOpen" guid="{1F91F851-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <item name="FileSave" guid="{1F91F853-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <separator/>
+      <item name="EditCut" guid="{1F91F858-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <item name="EditCopy" guid="{1F91F859-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <item name="EditPaste" guid="{1F91F85A-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="EditUndo" guid="{1F91F856-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <item name="EditRedo" guid="{1F91F857-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <separator/>
+      <item name="EditFindNode" guid="{1F9220BA-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <item name="EditFindPreviousNode" guid="{1F9220B8-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <item name="EditFindNextNode" guid="{1F9220B9-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="DesktopDisplayKeyboardAccelerators" guid="{0000F8BC-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <item name="DesktopCustomizeInterface" guid="{1F9220B3-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <item name="DesktopClearOutput" guid="{1F91FA1B-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+      <item name="DesktopToggleLocked" guid="{1F9220FC-F612-46D4-A453-4B81096121A9}" text="false" image="true"/>
+   </toolbar>
+   <contextmenu name="AcceleratorElementNode Context Menu" class="AcceleratorElementNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="AccessControlNode Context Menu" class="AccessControlNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ActiveViewElementNode Context Menu" class="ActiveViewElementNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="AddChannelModifier Context Menu" class="AddChannelModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="AppDefinitionNode Context Menu" class="AppDefinitionNode" text="false" image="false">
+      <item name="&amp;Build Application" guid="{46587B47-EEBF-45DF-B183-F3BDA878F06C}" text="true" image="true"/>
+      <item name="Run &amp;Application" guid="{DBB487AB-C3F5-403F-A301-9D0A3A52A644}" text="true" image="true"/>
+      <item name="Read &amp;Interface From Disk..." guid="{44EEC676-44E0-4412-9A6C-7F3D2E8FD83F}" text="true" image="true"/>
+      <separator/>
+      <item name="Use &amp;Absolute Path" guid="{5FA05C8D-F79D-4A2E-8F71-AD834783DD82}" text="true" image="true"/>
+      <item name="Use &amp;Relative Path" guid="{85EE67F0-20B5-4C77-AF7F-FA5F0A8D1FDF}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="AppScaffoldNode Context Menu" class="AppScaffoldNode" text="false" image="false">
+      <item name="&amp;Build Application" guid="{46587B47-EEBF-45DF-B183-F3BDA878F06C}" text="true" image="true"/>
+      <item name="&amp;Run Application" guid="{DBB487AB-C3F5-403F-A301-9D0A3A52A644}" text="true" image="true"/>
+      <separator/>
+      <item name="Open &amp;Folder..." guid="{3343D36F-F825-42AC-AD36-F7EDA39179CD}" text="true" image="true"/>
+      <item name="Open Interface Definition &amp;File..." guid="{5EC7742E-540A-42A3-AD6E-E8ADB8242961}" text="true" image="true"/>
+      <item name="Use &amp;Absolute Path" guid="{5FA05C8D-F79D-4A2E-8F71-AD834783DD82}" text="true" image="true"/>
+      <item name="Use &amp;Relative Path" guid="{85EE67F0-20B5-4C77-AF7F-FA5F0A8D1FDF}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ApplicationConfigNode Context Menu" class="ApplicationConfigNode" text="false" image="false">
+      <item name="&amp;Build" guid="{2D81EAF0-214B-4625-866A-BA99B2EF483F}" text="true" image="true"/>
+      <item name="&amp;Refresh" guid="{DE80BC4D-523C-454E-A697-8092CE199C69}" text="true" image="true"/>
+      <item name="&amp;New Application..." guid="{40D23A75-D3A5-4134-B1A1-AFA3A625836C}" text="true" image="true"/>
+      <item name="ContainerNode" guid="{41F0E1B1-B271-4F83-8A82-2868E4092902}" text="true" image="true"/>
+      <item name="Load &amp;Application From Disk..." guid="{5C4D0037-C05E-40A3-B826-F4C3911E07D2}" text="true" image="true"/>
+      <item name="Open Pro&amp;ject Folder for File" guid="{3343D36F-F825-42AC-AD36-F7EDA39179CD}" text="true" image="true"/>
+      <item name="To&amp;ggle Debug Mode" guid="{D3CFB821-2AD4-4710-9B9F-A90CA7387D7E}" text="true" image="true"/>
+      <separator/>
+      <item name="New &amp;Folder" guid="{CF92F152-535A-4352-B272-344A08973F98}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="AttributeModifier Context Menu" class="AttributeModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="BevelModifier Context Menu" class="BevelModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="BevelVertexModifier Context Menu" class="BevelVertexModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="BinaryOperatorNode Context Menu" class="BinaryOperatorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="BooleanArrayExpressionNode Context Menu" class="BooleanArrayExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="BooleanArrayNode Context Menu" class="BooleanArrayNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="BooleanExpressionNode Context Menu" class="BooleanExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="BooleanNode Context Menu" class="BooleanNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="BooleanVectorArrayExpressionNode Context Menu" class="BooleanVectorArrayExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="BooleanVectorArrayNode Context Menu" class="BooleanVectorArrayNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="BooleanVectorExpressionNode Context Menu" class="BooleanVectorExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="BooleanVectorNode Context Menu" class="BooleanVectorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="BoxPrimitive Context Menu" class="BoxPrimitive" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="CalculateNormalsModifier Context Menu" class="CalculateNormalsModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Camera Context Menu" class="Camera" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="CategoryGroup Context Menu" class="CategoryGroup" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="CirclePrimitive Context Menu" class="CirclePrimitive" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ClearBuffersNode Context Menu" class="ClearBuffersNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="CollapseVertexModifier Context Menu" class="CollapseVertexModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="CollectionNode Context Menu" class="CollectionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ColorArrayNode Context Menu" class="ColorArrayNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ColorNode Context Menu" class="ColorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="CommandConfigNode Context Menu" class="CommandConfigNode" text="false" image="false">
+      <item name="&amp;Build" guid="{2D81EAF0-214B-4625-866A-BA99B2EF483F}" text="true" image="true"/>
+      <item name="Document Commands..." guid="{6EBD0E0A-5CA7-447E-9CA7-74F2331E1C09}" text="true" image="true"/>
+      <item name="Enumerate Unused Commands" guid="{DD6DE01C-640F-4B6E-8A77-104EE38CC4F9}" text="true" image="false"/>
+      <item name="New &amp;CommandRepNode" guid="{C2C3F1BB-C28E-4402-9075-5E2CA18764D2}" text="true" image="true"/>
+      <item name="Expand Below Selection" guid="{CEE7E646-17C6-4485-A44E-228D74D014DB}" text="true" image="true"/>
+      <item name="To&amp;ggle Debug Mode" guid="{D3CFB821-2AD4-4710-9B9F-A90CA7387D7E}" text="true" image="true"/>
+      <item name="&amp;Refresh" guid="{15CD0DD2-12D0-4DBD-AB57-B970D56FF057}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="CommandRepNode Context Menu" class="CommandRepNode" text="false" image="false">
+      <item name="New CommandRepNode" guid="{C2C3F1BB-C28E-4402-9075-5E2CA18764D2}" text="true" image="true"/>
+      <item name="Enumerate References" guid="{AECF3B77-68B5-41BC-8EE2-6BC289864258}" text="true" image="true"/>
+      <item name="Create E&amp;xtended Documentation File" guid="{FAA33321-D4C0-4517-AC0C-4C00DAD0A084}" text="true" image="true"/>
+      <item name="Clear Extended Documentation" guid="{F4B3AE0D-1215-44D5-ADF5-E62C46C6E847}" text="true" image="true"/>
+      <item name="Open Pro&amp;ject Folder for File" guid="{3343D36F-F825-42AC-AD36-F7EDA39179CD}" text="true" image="true"/>
+      <item name="SetCommandRepNodeStatus" guid="{878475E4-8A17-4B12-A8D5-94B4869F91A6}" text="true" image="true"/>
+      <item name="Copy Command To Item" guid="{9836951F-E03B-4131-B91C-44DAA68D4B96}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ConditionNode Context Menu" class="ConditionNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ConnectModifier Context Menu" class="ConnectModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ContainerNode Context Menu" class="ContainerNode" text="false" image="false">
+      <item name="ConvertToExplicitElements" guid="{F2A84C82-5DF6-46DA-9293-32A680EFC193}" text="true" image="true"/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ContextMenuElementNode Context Menu" class="ContextMenuElementNode" text="false" image="false">
+      <item name="Add Command Instance" guid="{E2EEF414-0B8A-4A4C-B93A-B41435741D50}" text="true" image="true"/>
+      <item name="Create Command Item From GUID..." guid="{9D4ED87B-3DCC-4536-9BDC-AF069FDB9603}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ControlDeclarationNode Context Menu" class="ControlDeclarationNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ControlSourceNode Context Menu" class="ControlSourceNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="CylinderPrimitive Context Menu" class="CylinderPrimitive" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DataConfigNode Context Menu" class="DataConfigNode" text="false" image="false">
+      <item name="&amp;Refresh" guid="{D4934224-B4D5-449A-A03A-5CFC5A92ECF6}" text="true" image="true"/>
+      <item name="&amp;Generate Documentation Info Strings" guid="{F3278FE8-E464-4074-AE80-8E12C36D5226}" text="true" image="true"/>
+      <item name="&amp;Load Documentation Info Strings" guid="{F5835E80-8699-4FFE-AE8C-F1889C6FD0FD}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DataMemberNode Context Menu" class="DataMemberNode" text="false" image="false">
+      <item name="SetPropertyItemType" guid="{878475E4-8A17-4B12-A8D5-94B4869F91A6}" text="true" image="true"/>
+      <item name="New &amp;DataMemberNode" guid="{1288BA6A-CA7B-42E4-8978-923666C3AE11}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DataPaletteNode Context Menu" class="DataPaletteNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DeclarationNode Context Menu" class="DeclarationNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DeclareFunctionNode Context Menu" class="DeclareFunctionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DelaunayModifier Context Menu" class="DelaunayModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DelaunayTrimModifier Context Menu" class="DelaunayTrimModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DeleteFaceModifier Context Menu" class="DeleteFaceModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DisplaceModifier Context Menu" class="DisplaceModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DissolveFaceModifier Context Menu" class="DissolveFaceModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DissolveModifier Context Menu" class="DissolveModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DissolveTriangleEdgesModifier Context Menu" class="DissolveTriangleEdgesModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DockbarElementNode Context Menu" class="DockbarElementNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DockedViewElementNode Context Menu" class="DockedViewElementNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DynamicLightArrayNode Context Menu" class="DynamicLightArrayNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="DynamicTextureModifier Context Menu" class="DynamicTextureModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Edge Context Menu" class="Edge" text="false" image="false">
+      <item name="Select All" guid="{1F91F845-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Translate" guid="{1F91F8D3-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="&amp;Scale" guid="{1F91F8F1-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="&amp;Rotate" guid="{1F91F895-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="EdgeModifier Context Menu" class="EdgeModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="EditModel3D Context Menu" class="EditModel3D" text="false" image="false">
+      <item name="&amp;Canonicalize Paths" guid="{48A4B2E3-5FA7-4643-BBF2-25490A23A1E0}" text="true" image="true"/>
+      <item name="&amp;Load &amp;External Database" guid="{1F91F8D0-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="New &amp;ApplicationConfigNode" guid="{6A2825ED-D85A-48D5-B35F-4429A6A1F5B7}" text="true" image="true"/>
+      <item name="New Co&amp;mmandConfigNode" guid="{6579D446-F656-467F-977B-997CCB6836C8}" text="true" image="true"/>
+      <item name="New &amp;HelpConfigNode" guid="{F7B0140C-A5DA-46AA-B48D-17EB376564B8}" text="true" image="true"/>
+      <item name="New &amp;InstallerConfigNode" guid="{14D2DB37-8451-4987-B747-34ACD7B82616}" text="true" image="true"/>
+      <item name="New &amp;LibraryConfigNode" guid="{47053F86-EA62-422C-AA83-DA952D12045E}" text="true" image="true"/>
+      <item name="New &amp;TypeConfigNode" guid="{D6985539-4597-4CD1-B7AD-23C2FBEA3C71}" text="true" image="true"/>
+      <item name="New DataConfig&amp;Node" guid="{A407BFCA-1530-40CF-9588-52029368ADA6}" text="true" image="true"/>
+      <item name="New IncludePaletteNode" guid="{AC0BDF2D-413A-41A5-8AE6-D160E788242C}" text="true" image="true"/>
+      <separator/>
+      <item name="To&amp;ggle Debug Mode" guid="{D3CFB821-2AD4-4710-9B9F-A90CA7387D7E}" text="true" image="true"/>
+      <item name="&amp;Build" guid="{ABEDC2AD-4325-4A6E-8362-2E548BC634FF}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="EvaluationDeclarationNode Context Menu" class="EvaluationDeclarationNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="EvaluationSourceNode Context Menu" class="EvaluationSourceNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ExportOptionsModifier Context Menu" class="ExportOptionsModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ExpressionNode Context Menu" class="ExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ExtensionNode Context Menu" class="ExtensionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ExtrudeModifier Context Menu" class="ExtrudeModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Face Context Menu" class="Face" text="false" image="false">
+      <item name="Select All" guid="{1F91F845-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Translate" guid="{1F91F8D3-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="&amp;Scale" guid="{1F91F8F1-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="&amp;Rotate" guid="{1F91F895-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FaceAttributeModifier Context Menu" class="FaceAttributeModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FileConfigNode Context Menu" class="FileConfigNode" text="false" image="false">
+      <item name="&amp;Add File From Disk" guid="{01D48F2F-A637-4CC5-B4B8-1375CCD5A6EB}" text="true" image="true"/>
+      <item name="Disa&amp;ble" guid="{1F91FABC-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="&amp;Upload Documentation" guid="{CB6FC119-DED9-4CA3-AEFB-966CD5D67419}" text="true" image="true"/>
+      <item name="Enumerate External Content" guid="{86A660D1-E4D4-41CA-A92F-465DEF2DD688}" text="true" image="true"/>
+      <item name="&amp;Validate File" guid="{9FD4D02E-E3B2-4D98-BA8A-91F5BF959308}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FileNode Context Menu" class="FileNode" text="false" image="false">
+      <item name="Add Node Reference From File" guid="{339B4DFD-8561-42BD-B080-34838CA9F246}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FloatArrayExpressionNode Context Menu" class="FloatArrayExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FloatArrayNode Context Menu" class="FloatArrayNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FloatExpressionNode Context Menu" class="FloatExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FloatNode Context Menu" class="FloatNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FolderConfigNode Context Menu" class="FolderConfigNode" text="false" image="false">
+      <item name="Open Pro&amp;ject Folder for File" guid="{3343D36F-F825-42AC-AD36-F7EDA39179CD}" text="true" image="true"/>
+      <item name="Create Director&amp;y" guid="{AEDEEF93-F3D7-47F0-BC2E-257DD66BC40E}" text="true" image="true"/>
+      <item name="&amp;Upload Documentation" guid="{CB6FC119-DED9-4CA3-AEFB-966CD5D67419}" text="true" image="true"/>
+      <item name="Enumerate Human-Readable Content" guid="{86A660D1-E4D4-41CA-A92F-465DEF2DD688}" text="true" image="true"/>
+      <item name="&amp;Validate Files" guid="{9FD4D02E-E3B2-4D98-BA8A-91F5BF959308}" text="true" image="true"/>
+      <item name="New &amp;Folder" guid="{CF92F152-535A-4352-B272-344A08973F98}" text="true" image="true"/>
+      <item name="New F&amp;ile" guid="{79DA18E6-6646-41B3-AFCA-5B85D2656390}" text="true" image="true"/>
+      <item name="&amp;Add File From Disk" guid="{01D48F2F-A637-4CC5-B4B8-1375CCD5A6EB}" text="true" image="true"/>
+      <item name="Disa&amp;ble" guid="{1F91FABC-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="&amp;Refresh" guid="{DE80BC4D-523C-454E-A697-8092CE199C69}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FragmentDeclarationNode Context Menu" class="FragmentDeclarationNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FragmentSourceNode Context Menu" class="FragmentSourceNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FrameBuffer Context Menu" class="FrameBuffer" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FrameBufferBind Context Menu" class="FrameBufferBind" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FunctionExpressionNode Context Menu" class="FunctionExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="FunctionParameterNode Context Menu" class="FunctionParameterNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Generic Context Menu" class="Generic" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="GeographicProjectionModifier Context Menu" class="GeographicProjectionModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="GeographicTextureModifier Context Menu" class="GeographicTextureModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="GeometryDeclarationNode Context Menu" class="GeometryDeclarationNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="GeometryPaletteNode Context Menu" class="GeometryPaletteNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="GeometrySourceNode Context Menu" class="GeometrySourceNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="GlslQualifierNode Context Menu" class="GlslQualifierNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="GraphMemberNode Context Menu" class="GraphMemberNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Group Context Menu" class="Group" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="HelpConfigNode Context Menu" class="HelpConfigNode" text="false" image="false">
+      <item name="&amp;Build" guid="{2D81EAF0-214B-4625-866A-BA99B2EF483F}" text="true" image="true"/>
+      <item name="New &amp;Folder" guid="{CF92F152-535A-4352-B272-344A08973F98}" text="true" image="true"/>
+      <item name="New F&amp;ile" guid="{79DA18E6-6646-41B3-AFCA-5B85D2656390}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Upload Documentation" guid="{CB6FC119-DED9-4CA3-AEFB-966CD5D67419}" text="true" image="true"/>
+      <item name="&amp;Open File..." guid="{5EC7742E-540A-42A3-AD6E-E8ADB8242961}" text="true" image="true"/>
+      <item name="Use &amp;Relative Path" guid="{7F3BADFB-30A4-4AF6-BFE4-DD5EC8F1276D}" text="true" image="true"/>
+      <item name="Use &amp;Absolute Path" guid="{5FA05C8D-F79D-4A2E-8F71-AD834783DD82}" text="true" image="true"/>
+      <item name="Open Pro&amp;ject Folder for File" guid="{3343D36F-F825-42AC-AD36-F7EDA39179CD}" text="true" image="true"/>
+      <item name="&amp;Copy Help Address To Clipboard" guid="{A4E4EAE0-EDBF-4D22-BB17-CC297D9508BB}" text="true" image="true"/>
+      <item name="To&amp;ggle Debug Mode" guid="{D3CFB821-2AD4-4710-9B9F-A90CA7387D7E}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="IncludePaletteNode Context Menu" class="IncludePaletteNode" text="false" image="false">
+      <item name="&amp;New Include File" guid="{2D8B1ABF-9A1C-4A1E-AAD4-A4EA0BE9B0E3}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="IncludeSourceNode Context Menu" class="IncludeSourceNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="InitializationNode Context Menu" class="InitializationNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="InputNode Context Menu" class="InputNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="InsertQuadCenterVertexModifier Context Menu" class="InsertQuadCenterVertexModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="InsertTriangleIntoTriangleModifier Context Menu" class="InsertTriangleIntoTriangleModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="InsertVertexModifier Context Menu" class="InsertVertexModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="InstallerConfigNode Context Menu" class="InstallerConfigNode" text="false" image="false">
+      <item name="&amp;Build" guid="{2D81EAF0-214B-4625-866A-BA99B2EF483F}" text="true" image="true"/>
+      <item name="&amp;Upload Installer..." guid="{4F5CB621-FA54-4D30-BE08-91E0594F9DBA}" text="true" image="true"/>
+      <item name="New Installer &amp;Section" guid="{A51823B5-AEE4-413F-B4B5-B9DC6383AF18}" text="true" image="true"/>
+      <item name="New F&amp;ile" guid="{79DA18E6-6646-41B3-AFCA-5B85D2656390}" text="true" image="true"/>
+      <item name="New &amp;Folder" guid="{CF92F152-535A-4352-B272-344A08973F98}" text="true" image="true"/>
+      <separator/>
+      <item name="Find In Files By &amp;Type..." guid="{EBC6DDE3-B7DA-46D5-A6E6-00025BBDB303}" text="true" image="true"/>
+      <item name="Use &amp;Absolute Path" guid="{5FA05C8D-F79D-4A2E-8F71-AD834783DD82}" text="true" image="true"/>
+      <item name="Use &amp;Relative Path" guid="{85EE67F0-20B5-4C77-AF7F-FA5F0A8D1FDF}" text="true" image="true"/>
+      <item name="Open Pro&amp;ject Folder for File" guid="{3343D36F-F825-42AC-AD36-F7EDA39179CD}" text="true" image="true"/>
+      <item name="Open &amp;File..." guid="{5EC7742E-540A-42A3-AD6E-E8ADB8242961}" text="true" image="true"/>
+      <item name="To&amp;ggle Debug Mode" guid="{D3CFB821-2AD4-4710-9B9F-A90CA7387D7E}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="InstallerDeclarationNode Context Menu" class="InstallerDeclarationNode" text="false" image="false">
+      <item name="&amp;Add File" guid="{4C13703B-FBA5-4427-97DD-175F17D233E1}" text="true" image="true"/>
+      <item name="New &amp;Installer Parameter" guid="{CB9428DF-DB3E-49BB-91B9-244B3550C514}" text="true" image="true"/>
+      <item name="New Installer &amp;Flag" guid="{B258F7E3-C32A-4E75-9F15-FD7F1B45BCD7}" imageguid="{CB9428DF-DB3E-49BB-91B9-244B3550C514}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="InstallerDirectiveNode Context Menu" class="InstallerDirectiveNode" text="false" image="false">
+      <item name="InstallerDirectiveNodeSetParameter" guid="{878475E4-8A17-4B12-A8D5-94B4869F91A6}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="InstallerFlagNode Context Menu" class="InstallerFlagNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="InstallerParameterNode Context Menu" class="InstallerParameterNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="IntegerArrayExpressionNode Context Menu" class="IntegerArrayExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="IntegerArrayNode Context Menu" class="IntegerArrayNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="IntegerExpressionNode Context Menu" class="IntegerExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="IntegerNode Context Menu" class="IntegerNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="IntegerVectorArrayExpressionNode Context Menu" class="IntegerVectorArrayExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="IntegerVectorArrayNode Context Menu" class="IntegerVectorArrayNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="IntegerVectorExpressionNode Context Menu" class="IntegerVectorExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="IntegerVectorNode Context Menu" class="IntegerVectorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="InterfaceBlockNode Context Menu" class="InterfaceBlockNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="InterfaceElementNode Context Menu" class="InterfaceElementNode" text="false" image="false">
+      <item name="ConvertToExplicitElements" guid="{F2A84C82-5DF6-46DA-9293-32A680EFC193}" text="true" image="true"/>
+      <item name="Validate Interface Definition File" guid="{C2C7AC75-3FCA-4AAB-8559-5DBA912CA537}" text="true" image="true"/>
+      <item name="Use &amp;Relative Path" guid="{7F3BADFB-30A4-4AF6-BFE4-DD5EC8F1276D}" text="true" image="true"/>
+      <item name="Use &amp;Absolute Path" guid="{5FA05C8D-F79D-4A2E-8F71-AD834783DD82}" text="true" image="true"/>
+      <item name="&amp;InterfaceSectionNode" guid="{02F5110B-D40A-4D90-ACAC-A9AE12BD32D7}" text="true" image="true"/>
+      <item name="&amp;Refresh" guid="{C283EC28-8C25-4E3D-ACE4-2E44F025D20F}" text="true" image="true"/>
+      <separator/>
+      <item name="Enumerate Global Modules" guid="{C0FC20CE-4D6B-4DC2-9EBB-86DC9D0F6A39}" text="true" image="true"/>
+      <item name="Enumerate Dockbar Info" guid="{8CCBD13F-95DC-4738-893B-A35FB57CBBCF}" text="true" image="true"/>
+      <item name="Enumerate Editor Info" guid="{CE032BB2-BD04-4E40-ACE3-B2B0AE6743E6}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="InterfaceSectionNode Context Menu" class="InterfaceSectionNode" text="false" image="false">
+      <item name="MenuElementNode" guid="{F53ABB22-E57C-4894-AA75-F9C982C6E092}" text="true" image="true"/>
+      <item name="DockbarElementNode" guid="{6419F8E1-0891-4569-923C-F5B2945B6622}" text="true" image="true"/>
+      <item name="ContextMenuElementNode" guid="{8AD3E17D-2E0B-47C3-8040-926DEF967222}" text="true" image="true"/>
+      <item name="KeyboardElementNode" guid="{8F06C383-A5CC-49EF-AB63-B682EF260837}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Refresh" guid="{DE80BC4D-523C-454E-A697-8092CE199C69}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ItemElementNode Context Menu" class="ItemElementNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="IteratorNode Context Menu" class="IteratorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="JumpStatementNode Context Menu" class="JumpStatementNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="KeyboardElementNode Context Menu" class="KeyboardElementNode" text="false" image="false">
+      <item name="AcceleratorElementNode" guid="{C232BAC1-D841-4E84-8634-E4A4932D73C9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LOD Context Menu" class="LOD" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LayoutNode Context Menu" class="LayoutNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LibraryConfigNode Context Menu" class="LibraryConfigNode" text="false" image="false">
+      <item name="&amp;Build" guid="{2D81EAF0-214B-4625-866A-BA99B2EF483F}" text="true" image="true"/>
+      <item name="New &amp;Folder" guid="{CF92F152-535A-4352-B272-344A08973F98}" text="true" image="true"/>
+      <item name="New T&amp;ypeRepNode" guid="{853912C3-7AA0-4687-83C4-0AEC0CE1FD15}" text="true" image="true"/>
+      <item name="Expand Below Selection" guid="{CEE7E646-17C6-4485-A44E-228D74D014DB}" text="true" image="true"/>
+      <item name="Find In Files By &amp;Type..." guid="{EBC6DDE3-B7DA-46D5-A6E6-00025BBDB303}" text="true" image="true"/>
+      <item name="Populate With All Nodes" guid="{75C8A7AE-91C1-4036-BE58-5B2830C8DD44}" text="true" image="true"/>
+      <item name="To&amp;ggle Debug Mode" guid="{D3CFB821-2AD4-4710-9B9F-A90CA7387D7E}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Light Context Menu" class="Light" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightArrayNode Context Menu" class="LightArrayNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightBooleanNode Context Menu" class="LightBooleanNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightCameraStateNode Context Menu" class="LightCameraStateNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightColorNode Context Menu" class="LightColorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightCountNode Context Menu" class="LightCountNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightFloatNode Context Menu" class="LightFloatNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightIntegerNode Context Menu" class="LightIntegerNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightMatrixNode Context Menu" class="LightMatrixNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightModelViewCameraMatrixNode Context Menu" class="LightModelViewCameraMatrixNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightModelViewMatrixNode Context Menu" class="LightModelViewMatrixNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightProjectionCameraMatrixNode Context Menu" class="LightProjectionCameraMatrixNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightProjectionMatrixNode Context Menu" class="LightProjectionMatrixNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightStackNode Context Menu" class="LightStackNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LightVectorNode Context Menu" class="LightVectorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LoftPrimitive Context Menu" class="LoftPrimitive" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="LoopNode Context Menu" class="LoopNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="MainFunctionNode Context Menu" class="MainFunctionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Material Context Menu" class="Material" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="MaterialArrayNode Context Menu" class="MaterialArrayNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="MaterialColorNode Context Menu" class="MaterialColorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="MaterialFloatNode Context Menu" class="MaterialFloatNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="MaterialIntegerNode Context Menu" class="MaterialIntegerNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="MaterialModifier Context Menu" class="MaterialModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="MaterialPaletteNode Context Menu" class="MaterialPaletteNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="MatrixArrayNode Context Menu" class="MatrixArrayNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="MatrixExpressionNode Context Menu" class="MatrixExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="MatrixNode Context Menu" class="MatrixNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="MenuElementNode Context Menu" class="MenuElementNode" text="false" image="false">
+      <item name="Popup" guid="{ED3ABAF3-58C2-4291-9520-61A886AE379A}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="MergeFacesModifier Context Menu" class="MergeFacesModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Mesh Context Menu" class="Mesh" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="NodeLink Context Menu" class="NodeLink" text="false" image="false">
+      <item name="Select Target..." guid="{E41E1C29-4A56-4806-8682-CE3336EB2167}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="NormalTranslateModifier Context Menu" class="NormalTranslateModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="OrthoProjectionMatrixNode Context Menu" class="OrthoProjectionMatrixNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ParameterListNode Context Menu" class="ParameterListNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ParametricMesh Context Menu" class="ParametricMesh" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Path Context Menu" class="Path" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="PlanarProjectTexturePrimitive Context Menu" class="PlanarProjectTexturePrimitive" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Point Context Menu" class="Point" text="false" image="false">
+      <item name="&amp;Translate" guid="{1F91F8D3-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="&amp;Scale" guid="{1F91F8F1-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="&amp;Rotate" guid="{1F91F895-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="PopupElementNode Context Menu" class="PopupElementNode" text="false" image="false">
+      <item name="Add Command Instance" guid="{E2EEF414-0B8A-4A4C-B93A-B41435741D50}" text="true" image="true"/>
+      <item name="Create Command Item From GUID..." guid="{9D4ED87B-3DCC-4536-9BDC-AF069FDB9603}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="PreprocessorNode Context Menu" class="PreprocessorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Program Context Menu" class="Program" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ProgramOptions Context Menu" class="ProgramOptions" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ProgramVariationNode Context Menu" class="ProgramVariationNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="QualifierNode Context Menu" class="QualifierNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="RectanglePrimitive Context Menu" class="RectanglePrimitive" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="RectanglePrimitiveVectorNode Context Menu" class="RectanglePrimitiveVectorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="RemoveChannelModifier Context Menu" class="RemoveChannelModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="RenderTraversalNode Context Menu" class="RenderTraversalNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="SamplerExpressionNode Context Menu" class="SamplerExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="SamplerNode Context Menu" class="SamplerNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ScreenAlignedGeometryNode Context Menu" class="ScreenAlignedGeometryNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ScriptNode Context Menu" class="ScriptNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="SectionConfigNode Context Menu" class="SectionConfigNode" text="false" image="false">
+      <item name="New &amp;Folder" guid="{CF92F152-535A-4352-B272-344A08973F98}" text="true" image="true"/>
+      <item name="New &amp;Installer Directive" guid="{B5E4602F-534B-4BE6-89C4-82DBF77DF8FD}" text="true" image="false"/>
+      <item name="New Installer Declaration &amp;Node" guid="{CCB55578-D4E9-43E0-B2CD-0D79AD4136D3}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Segment Context Menu" class="Segment" text="false" image="false">
+      <item name="&amp;Translate" guid="{1F91F8D3-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="&amp;Scale" guid="{1F91F8F1-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="&amp;Rotate" guid="{1F91F895-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderBufferBindNode Context Menu" class="ShaderBufferBindNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderBufferNode Context Menu" class="ShaderBufferNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderCommentNode Context Menu" class="ShaderCommentNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderDeclarationNode Context Menu" class="ShaderDeclarationNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderDefineNode Context Menu" class="ShaderDefineNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderEndifNode Context Menu" class="ShaderEndifNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderIfndefNode Context Menu" class="ShaderIfndefNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderImportNode Context Menu" class="ShaderImportNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderIncludeNode Context Menu" class="ShaderIncludeNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderPaletteNode Context Menu" class="ShaderPaletteNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderPragmaNode Context Menu" class="ShaderPragmaNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderSourceNode Context Menu" class="ShaderSourceNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderUndefNode Context Menu" class="ShaderUndefNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ShaderVersionNode Context Menu" class="ShaderVersionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="SimplifyModifier Context Menu" class="SimplifyModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="SmoothModifier Context Menu" class="SmoothModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="SpherePrimitive Context Menu" class="SpherePrimitive" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="StatementBlockNode Context Menu" class="StatementBlockNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="StencilNode Context Menu" class="StencilNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="StringArrayNode Context Menu" class="StringArrayNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="StringNode Context Menu" class="StringNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="StructExpressionNode Context Menu" class="StructExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="StructInstanceNode Context Menu" class="StructInstanceNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="StructNode Context Menu" class="StructNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="SubdivideQuadModifier Context Menu" class="SubdivideQuadModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="SubroutineIntegerNode Context Menu" class="SubroutineIntegerNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="SubroutineListNode Context Menu" class="SubroutineListNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="SweepPrimitive Context Menu" class="SweepPrimitive" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="TerrainOptionsModifier Context Menu" class="TerrainOptionsModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Texture Context Menu" class="Texture" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="TextureArrayNode Context Menu" class="TextureArrayNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="TexturePaletteNode Context Menu" class="TexturePaletteNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="TimerNode Context Menu" class="TimerNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ToggleVertexSpokeEdgesModifier Context Menu" class="ToggleVertexSpokeEdgesModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ToolbarElementNode Context Menu" class="ToolbarElementNode" text="false" image="false">
+      <item name="Add Command Instance" guid="{E2EEF414-0B8A-4A4C-B93A-B41435741D50}" text="true" image="true"/>
+      <item name="Create Command Item From GUID..." guid="{9D4ED87B-3DCC-4536-9BDC-AF069FDB9603}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="TransformFeedbackLayoutNode Context Menu" class="TransformFeedbackLayoutNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="TransformModifier Context Menu" class="TransformModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="TraversalGuardNode Context Menu" class="TraversalGuardNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="TriangulateModifier Context Menu" class="TriangulateModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="TurnEdgeModifier Context Menu" class="TurnEdgeModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="TypeAggregatorNode Context Menu" class="TypeAggregatorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="TypeConfigNode Context Menu" class="TypeConfigNode" text="false" image="false">
+      <item name="&amp;Build" guid="{2D81EAF0-214B-4625-866A-BA99B2EF483F}" text="true" image="true"/>
+      <item name="&amp;Refresh" guid="{E3B68D9D-F1DA-4534-8733-FEEC00C1B50A}" text="true" image="true"/>
+      <item name="New &amp;TypeRepNode" guid="{853912C3-7AA0-4687-83C4-0AEC0CE1FD15}" text="true" image="true"/>
+      <item name="Expand Below Selection" guid="{CEE7E646-17C6-4485-A44E-228D74D014DB}" text="true" image="true"/>
+      <item name="To&amp;ggle Debug Mode" guid="{D3CFB821-2AD4-4710-9B9F-A90CA7387D7E}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="TypeRepNode Context Menu" class="TypeRepNode" text="false" image="false">
+      <item name="New &amp;DataMemberNode" guid="{1288BA6A-CA7B-42E4-8978-923666C3AE11}" text="true" image="true"/>
+      <item name="SetTypeRepNodeStatus" guid="{878475E4-8A17-4B12-A8D5-94B4869F91A6}" text="true" image="true"/>
+      <separator/>
+      <item name="Use &amp;Absolute Path" guid="{5FA05C8D-F79D-4A2E-8F71-AD834783DD82}" text="true" image="true"/>
+      <item name="Use &amp;Relative Path" guid="{85EE67F0-20B5-4C77-AF7F-FA5F0A8D1FDF}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="UniformArrayNode Context Menu" class="UniformArrayNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="UniformBufferBindNode Context Menu" class="UniformBufferBindNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="UniformBufferNode Context Menu" class="UniformBufferNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="UniformPaletteNode Context Menu" class="UniformPaletteNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="UnsignedIntegerArrayExpressionNode Context Menu" class="UnsignedIntegerArrayExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="UnsignedIntegerArrayNode Context Menu" class="UnsignedIntegerArrayNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="UnsignedIntegerExpressionNode Context Menu" class="UnsignedIntegerExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="UnsignedIntegerNode Context Menu" class="UnsignedIntegerNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="UnsignedIntegerVectorArrayExpressionNode Context Menu" class="UnsignedIntegerVectorArrayExpressionNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="UnsignedIntegerVectorArrayNode Context Menu" class="UnsignedIntegerVectorArrayNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="UnsignedIntegerVectorExpressionNode Context Menu" class="UnsignedIntegerVectorExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="UnsignedIntegerVectorNode Context Menu" class="UnsignedIntegerVectorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="VectorArrayExpressionNode Context Menu" class="VectorArrayExpressionNode" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="VectorArrayNode Context Menu" class="VectorArrayNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="VectorExpressionNode Context Menu" class="VectorExpressionNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="VectorNode Context Menu" class="VectorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="Vertex Context Menu" class="Vertex" text="false" image="false">
+      <item name="Select All" guid="{1F91F845-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Translate" guid="{1F91F8D3-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="&amp;Scale" guid="{1F91F8F1-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <item name="&amp;Rotate" guid="{1F91F895-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="VertexDeclarationNode Context Menu" class="VertexDeclarationNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="VertexSourceNode Context Menu" class="VertexSourceNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ViewMatrixNode Context Menu" class="ViewMatrixNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ViewportFloatNode Context Menu" class="ViewportFloatNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="ViewportVectorNode Context Menu" class="ViewportVectorNode" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <contextmenu name="WeldVertexModifier Context Menu" class="WeldVertexModifier" text="false" image="false">
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <keyboard>
+      <accelerator keys="0x00530009" guid="{1F91F853-F612-46D4-A453-4B81096121A9}"/>
+      <accelerator keys="0x004F0009" guid="{1F91F851-F612-46D4-A453-4B81096121A9}"/>
+      <accelerator keys="0x004E0009" guid="{1F91F850-F612-46D4-A453-4B81096121A9}"/>
+      <accelerator keys="0x005A0009" guid="{1F91F856-F612-46D4-A453-4B81096121A9}"/>
+      <accelerator keys="0x00590009" guid="{1F91F857-F612-46D4-A453-4B81096121A9}"/>
+      <accelerator keys="0x00430009" guid="{1F91F859-F612-46D4-A453-4B81096121A9}"/>
+      <accelerator keys="0x00580009" guid="{1F91F858-F612-46D4-A453-4B81096121A9}"/>
+      <accelerator keys="0x00560009" guid="{1F91F85A-F612-46D4-A453-4B81096121A9}"/>
+      <accelerator keys="0x000D0001" guid="{1F91F85C-F612-46D4-A453-4B81096121A9}"/>
+      <accelerator keys="0x00310011" guid="{7006A3CE-43AC-48E7-A84C-75C79414E0CE}"/>
+      <accelerator keys="0x00330011" guid="{E077D400-4E7E-45B6-A583-59439E78675E}"/>
+      <accelerator keys="0x00320011" guid="{A8186B09-1E58-40A7-977B-083D1C43009F}"/>
+      <accelerator keys="0x002E0001" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}"/>
+      <accelerator keys="0x001B0001" guid="{1F91F884-F612-46D4-A453-4B81096121A9}"/>
+      <accelerator keys="0x00230011" guid="{D5DAE46A-6134-4514-8432-3E2C23F09F63}"/>
+      <accelerator keys="0x00280011" guid="{B1ADB1CD-BF52-44CA-B67E-2B4E7B693C96}"/>
+      <accelerator keys="0x00250011" guid="{F9AA1355-7256-4A00-8E02-D8CF33415526}"/>
+      <accelerator keys="0x00270011" guid="{A0DE329E-56D8-432B-B133-E39BD5A67B2E}"/>
+      <accelerator keys="0x00240011" guid="{CF96D78F-965F-4F3A-94BB-8BD7F5530224}"/>
+      <accelerator keys="0x00260011" guid="{B4B36721-E6EB-47C5-AC7F-47164A4506E1}"/>
+   </keyboard>
+</interface>

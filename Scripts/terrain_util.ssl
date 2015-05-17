@@ -1,0 +1,826 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             CREATE_DISTRIBUTED_LANDSCAPE_DATABASE_FROM_MESH.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements commands for subdividing a rectangle-based mesh into submeshes.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "graph_util.ssl";
+import library "message_util.ssl";
+import library "node_util.ssl";
+
+library SpaTerrainUtil;
+
+bool a_bDebugMessages = false;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int ValidateMesh( ParametricMesh p_oParametricMesh )
+{
+   int a_iRGM, a_iEOM, a_iSIM, a_iDPM = 0;
+   
+   RectangleGeometryModifier newRectangleGeometryModifier =
+      (RectangleGeometryModifier)p_oParametricMesh.GetChildByType( RectangleGeometryModifier );
+   ExportOptionsModifier newExportOptionsModifier =
+      (ExportOptionsModifier)p_oParametricMesh.GetChildByType( ExportOptionsModifier );
+   SimplifyModifier newSimplifyModifier =
+      (SimplifyModifier)p_oParametricMesh.GetChildByType( SimplifyModifier );
+   DisplaceModifier newDisplaceModifier =
+      (DisplaceModifier)p_oParametricMesh.GetChildByType( DisplaceModifier );
+
+   if( newRectangleGeometryModifier )
+   {
+      a_iRGM = 1;
+   }
+   else
+   {
+      string a_sMessage = "RectangleGeometryModifier not found in mesh construction history. " +
+         "To fix this error, right click over the mesh and select Modifiers -> RectangleGeometryModifier " +
+         "from the listed options.\n";
+      Console.Error( a_sMessage );
+      return 0;
+   }
+
+   if( newExportOptionsModifier )
+   {
+      a_iEOM = 1;
+   }
+   else
+   {
+      string a_sMessage = "ExportOptionsModifier not found in mesh construction history. " +
+         "To fix this error, right click over the mesh and select Modifiers -> ExportOptionsModifier " +
+         " from the listed options.\n";
+      Console.Error( a_sMessage );
+      return 0;
+   }
+
+   if( newSimplifyModifier )
+   {
+      a_iSIM = 1;
+   }
+   else
+   {
+      string a_sMessage = "SimplifyModifier not found in mesh construction history. " +
+         "To fix this error, right click over the mesh and select Modifiers -> SimplifyModifier " +
+         "from the listed options.\n";
+      Console.Error( a_sMessage );
+      return 0;
+   }
+
+   if( newDisplaceModifier )
+   {
+      a_iDPM = 1;
+   }
+   else
+   {
+      string a_sMessage = "DisplaceModifier not found in mesh construction history. " + 
+         "To fix this error, right click over the mesh and select Modifiers -> DisplaceModifier " +
+         "from the listed options.\n";
+      Console.Error( a_sMessage );
+      return 0;
+   }
+
+   if( a_iRGM == 1 && a_iEOM == 1 && a_iSIM == 1 && a_iDPM )
+   {
+      return 1;
+   }
+   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function Model3D LoadCopyOfModel( Model3D srcModel )
+{
+   Model3D destModel = new Model3D;
+   string pushFileName = srcModel.Filename;
+   string tempFileName = Application.GetTempPath( "previewmesh.box", 0 );
+   bool success = false;
+   if( srcModel.SaveFile( tempFileName ) )
+   {
+      if( destModel.OpenFile( tempFileName ) )
+      {
+         success = true;
+      }
+   }
+   srcModel.Filename = pushFileName;
+
+   if( !success )
+   {
+      delete destModel;
+      destModel = null;
+   }
+   return destModel;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetTileExtents( int row, int col, Vec minTileExtent, Vec maxTileExtent,
+   ParametricMesh srcMesh, ParametricMesh tileMesh, RectangleGeometryModifier inputRGM,
+   DisplaceModifier tileDPM )
+{
+   GeographicProjectionModifier inputGPM =
+      (GeographicProjectionModifier)srcMesh.GetChildByType( GeographicProjectionModifier );
+
+   // Declare new vectors.
+   Vec upperLeft = new Vec;
+   Vec upperRight = new Vec;
+   Vec lowerLeft = new Vec;
+   Vec lowerRight = new Vec;
+   Vec displaceMin = new Vec;
+   Vec displaceMax = new Vec;
+
+   // Calculate ranges and assign.
+   double rangeX = ( inputRGM.XMax - inputRGM.XMin );
+   double rangeY = ( inputRGM.YMax - inputRGM.YMin );
+
+   lowerLeft.X = inputRGM.XMin;
+   lowerLeft.Y = inputRGM.YMin;
+   upperRight.X = inputRGM.XMin + rangeX;
+   upperRight.Y = inputRGM.YMin + rangeY;
+
+   // Swap
+   upperLeft.X = lowerLeft.X;
+   upperLeft.Y = upperRight.Y;
+   lowerRight.X = upperRight.X;
+   lowerRight.Y = lowerLeft.Y;
+
+   // Handle GeographicProjection differently. Project the
+   // coordinates into the other coordinate space ( UTM or LCC ).
+   if( inputGPM )
+   {
+      inputGPM.ForwardProject( upperLeft );
+      inputGPM.ForwardProject( upperRight );
+      inputGPM.ForwardProject( lowerLeft );
+      inputGPM.ForwardProject( lowerRight );
+   }
+
+   // Get the minimum and maximum elevations from the DisplaceModifier.
+   tileDPM.GetMinMaxMapPixel( displaceMin, displaceMax );
+
+   // Calculate color scaling. Divide by 255 if using 8-bit height data.
+   double invert = 0.0;
+   if( tileDPM.ImageryIs24Bit )
+   {
+      invert = 1.0f / (tileDPM.MaximumHeight - tileDPM.MinimumHeight);
+   }
+   else
+   {
+      invert = 1.0f / 255;
+   }
+
+   // Calculate the correct min/max elevation.
+   double minElev = tileDPM.OverallMinimumHeight +
+      (tileDPM.OverallMaximumHeight - tileDPM.OverallMinimumHeight) *
+         (displaceMin.Z * invert);
+   double maxElev = tileDPM.OverallMinimumHeight +
+      (tileDPM.OverallMaximumHeight - tileDPM.OverallMinimumHeight) *
+         (displaceMax.Z * invert);
+
+   if( inputGPM )
+   {
+      // Calculate correct corners for meshes that are no longer align
+      // with the cardinal axes in WCS because of projection ( such as UTM or LCC ).
+      double a_dMinLatitude  = Math.MinD( lowerLeft.Y, lowerRight.Y );
+      double a_dMaxLatitude  = Math.MaxD( upperLeft.Y, upperRight.Y );
+      double a_dMinLongitude = Math.MinD( lowerLeft.X, upperLeft.X );
+      double a_dMaxLongitude = Math.MaxD( upperRight.X, lowerRight.X );
+   
+      minTileExtent.X = a_dMinLongitude;
+      minTileExtent.Y = a_dMinLatitude;
+      maxTileExtent.X = a_dMaxLongitude;
+      maxTileExtent.Y = a_dMaxLatitude;
+
+      if( a_bDebugMessages == true )
+      {
+         Console.Message( "Y Min Lat  " + a_dMinLatitude );
+         Console.Message( "X Min Long " + a_dMinLongitude );
+         Console.Message( "Y Max Lat  " + a_dMaxLatitude );
+         Console.Message( "X Max Long " + a_dMaxLongitude );
+      }
+   }
+   else
+   {
+      // Otherwise, just assign.
+      minTileExtent.X = lowerLeft.X;
+      minTileExtent.Y = lowerLeft.Y;
+      minTileExtent.Z = minElev;
+      maxTileExtent.X = upperRight.X;
+      maxTileExtent.Y = upperRight.Y;
+      maxTileExtent.Z = maxElev;
+      if( a_bDebugMessages == true )
+      {
+         Console.Message( "Lower Left X:  " + lowerLeft.X );
+         Console.Message( "Lower Left Y:  " + lowerLeft.Y );
+         Console.Message( "Lower Left Z:  " + lowerLeft.Z );
+         Console.Message( "Upper Right X: " + upperRight.X );
+         Console.Message( "Upper Right Y: " + upperRight.Y );
+         Console.Message( "Upper Right Z: " + upperRight.Z );
+         Console.Message( "Min Elevation: " + minElev );
+         Console.Message( "Max Elevation: " + maxElev );
+      }
+   }
+   // The million-dollar statement group! Invalidate and regenerate.
+   ((Group)srcMesh).InvalidateExtent();
+   srcMesh.InvalidateMesh();
+   srcMesh.GenerateMesh();
+
+   // Clean up after ourselves.
+   delete upperLeft;
+   delete upperRight;
+   delete lowerLeft;
+   delete lowerRight;
+   delete displaceMin;
+   delete displaceMax;
+
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int InitializeTileLOD( int lod, int row, int col, LOD tileLOD,
+   ExportOptionsModifier inputEOM, Vec minTileExtent, Vec maxTileExtent )
+{
+   // Assign the correct bounding box size.
+   tileLOD.BoundMin[0] = minTileExtent.X;
+   tileLOD.BoundMin[1] = minTileExtent.Y;
+   tileLOD.BoundMin[2] = minTileExtent.Z;
+   tileLOD.BoundMax[0] = maxTileExtent.X;
+   tileLOD.BoundMax[1] = maxTileExtent.Y;
+   tileLOD.BoundMax[2] = maxTileExtent.Z;
+
+   if( a_bDebugMessages == true )
+   {
+      Console.Message( "Lower Left X:  " + minTileExtent.X );
+      Console.Message( "Lower Left Y:  " + minTileExtent.Y );
+      Console.Message( "Lower Left Z:  " + minTileExtent.Z );
+      Console.Message( "Upper Right X: " + maxTileExtent.X );
+      Console.Message( "Upper Right Y: " + maxTileExtent.Y );
+      Console.Message( "Upper Right Z: " + maxTileExtent.Z );
+   }
+
+   // Calculate and assign the correct LOD center values.
+   tileLOD.Center[0] = ( minTileExtent.X + maxTileExtent.X ) / 2;
+   tileLOD.Center[1] = ( minTileExtent.Y + maxTileExtent.Y ) / 2;
+   tileLOD.Center[2] = ( minTileExtent.Z + maxTileExtent.Z ) / 2;
+
+   // Calculate switch in and switch out settings based on the size of the bounding box.
+   double dist = minTileExtent.GetDistance( maxTileExtent );
+
+   tileLOD.SwitchIn = dist * lod;
+
+   if( lod + 1 == inputEOM.LODCount )
+   {
+      tileLOD.SwitchOut = 10000000.0f;
+   }
+   else
+   {
+      tileLOD.SwitchOut = dist * ( lod + 1 );
+   }
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddPaletteDatabaseEntry( Model3D a_oNewPaletteDatabase,
+   Group a_oTextureGroup, bool p_bMultipleMaterials, int a_iRows, int a_iCols )
+{
+   // Create and format groups.
+   ProjectGroup a_oTerrainMaterial = new ProjectGroup;
+   a_oTerrainMaterial.Name = "Terrain";
+
+   if( p_bMultipleMaterials == true )
+   {
+      a_oTerrainMaterial.Name += " " + ( a_iRows + 1 ) + " x " + ( a_iCols + 1 );
+   }
+   //Console.Message( "Rows " + a_iRows + " Cols " + a_iCols );
+
+   Group a_oRenderGroup = new Group;
+   a_oRenderGroup.Name = "Render";
+   NodeLink a_oLinkToProgram = new NodeLink;
+   a_oLinkToProgram.Name = "Normal";
+   Group a_oUniformsGroup = new Group;
+   a_oUniformsGroup.Name = "Uniforms";
+   Group a_oMaterialsGroup = new Group;
+   a_oMaterialsGroup.Name = "Materials";
+   Material a_oNewMaterial = new Material;
+   a_oNewMaterial.Name = "Terrain";
+
+   // Format the link node that points at the program.
+   Program a_oProgram = new Program;
+   string a_sAbsolutePath = Application.GetApplicationDocumentsPath() + "Templates\\Materials\\Normal.box";
+   string a_sRelativePathFragment = Application.GetFilePath( Model.Filename + "temporary_palette\\" + Application.GetStrippedFileName( Model.Filename ) + "_palette.box" );
+   string a_sRelativePath = Application.MakeRelativePath( a_sAbsolutePath, a_sRelativePathFragment );
+   a_oLinkToProgram.Load( 1 );
+   a_oLinkToProgram.PathToFile = a_sRelativePath;
+   a_oLinkToProgram.PathToNode = "/Normal/Render/Normal";
+   a_oLinkToProgram.LinkType = a_oProgram.GetType();
+
+   // Clone the texture group.
+   Group a_oDestinationTextureGroup;
+   if( a_oTextureGroup.ChildCount > 0 )
+   {
+      a_oDestinationTextureGroup = (Group)a_oTextureGroup.Clone();
+      a_oDestinationTextureGroup.SetParent( null );
+      for( int i = 0; i < a_oDestinationTextureGroup.ChildCount; ++i )
+      {
+         Texture a_oTexture = (Texture)a_oDestinationTextureGroup.Children[i];
+         string a_sTexturePath = Application.GetFilePath( Model.Filename ) + "temporary_texture\\" + Application.GetFileName( a_oTexture.PathToFile );
+         a_oTexture.PathToFile = a_sTexturePath;
+      }
+   }
+   else
+   {
+      string a_sPalettePathFragment = Application.GetFilePath( Model.Filename ) + "temporary_palette\\" + Application.GetStrippedFileName( Model.Filename ) + "_palette.box";//+ "paged_terrain\\" + Application.GetStrippedFileName( Model.Filename ) + "_palette.box" );
+      Model3D a_oRemotePalette = SpaRemoteDatabaseUtil.GetRemoteDatabase( a_sPalettePathFragment );      
+      NodeLink a_oRemoteNodeLink = (NodeLink)a_oRemotePalette.GetTypedNodeByPath( "/Terrain/Render/Normal", NodeLink );      
+      Material a_oMaterial = (Material)Graph.GetMaterialReferencedByNode( a_oRemoteNodeLink );
+      a_oDestinationTextureGroup = (Group)a_oMaterial.TextureLink;
+      Group a_oClonedTextureGroup = (Group)a_oDestinationTextureGroup.Clone();
+      a_oClonedTextureGroup.SetParent( null );
+      a_oTextureGroup = a_oClonedTextureGroup;
+      delete a_oRemotePalette;
+   }
+
+   // Format the material.
+   a_oNewMaterial.TextureLink = a_oTextureGroup;
+   a_oNewMaterial.ProgramLink = a_oLinkToProgram;
+   a_oNewMaterial.RenderHook = a_oUniformsGroup;
+
+   // Clone the uniforms.
+   Model3D a_oRemoteShader = SpaRemoteDatabaseUtil.GetRemoteDatabase( a_sAbsolutePath );
+   string a_sPathToProgram = "\\Normal\\Render\\Normal";
+   Group a_oRemoteUniforms = (Group)a_oRemoteShader.GetTypedNodeByPath( a_sPathToProgram, Group );
+
+   for( int u = 0; u < a_oRemoteUniforms.ChildCount; ++u )
+   {
+      Node a_oUniform = (Node)a_oRemoteUniforms.Children[u];
+      Node a_oClonedUniform = (Node)a_oUniform.Clone();
+      a_oClonedUniform.SetParent( null );
+      a_oUniformsGroup.AddChild( a_oClonedUniform );
+   }
+
+   // Add all the nodes to the database.
+   a_oTerrainMaterial.AddChild( a_oRenderGroup );
+   a_oRenderGroup.AddChild( a_oLinkToProgram );
+   a_oTerrainMaterial.AddChild( a_oUniformsGroup );
+   a_oTerrainMaterial.AddChild( a_oTextureGroup );
+   a_oTerrainMaterial.AddChild( a_oMaterialsGroup );
+   a_oMaterialsGroup.AddChild( a_oNewMaterial );
+   a_oNewPaletteDatabase.AddChild( a_oTerrainMaterial );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// This creates the Tree graph structure that stores references to all the individual cells.
+
+function void CreateTreeDatabase(   bool p_bExternalize, 
+                                    Model3D a_oSourceModel, 
+                                    Model3D a_oDestinationModel, 
+                                    Model3D a_oCellPaletteModel, 
+                                    Group a_oMasterGroup, 
+                                    ParametricMesh a_oDestinationMesh, 
+                                    ParametricMesh a_oInputMesh, 
+                                    RectangleGeometryModifier inputRGM, 
+                                    DisplaceModifier inputDPM, 
+                                    ExportOptionsModifier inputEOM, 
+                                    SimplifyModifier inputSIM, 
+                                    int a_iRows, 
+                                    int a_iCols )
+{
+   Group a_oContainerGroup = new Group;
+
+   for( int i = 0; i < inputEOM.LODCount; ++i )
+   {
+      // Invalidation as a failsafe. Make sure the current mesh is fully generated with its new parameters.
+      a_oDestinationMesh.InvalidateMesh();
+      a_oDestinationMesh.GenerateMesh();
+      
+      // Do some filename book-keeping.
+      //string a_sRelativePath = Application.MakeRelativePath( a_sAbsolutePath, a_sRelativePathFragment );
+      string a_sRelativePathFragment = Application.GetFilePath( Model.Filename ) + "paged_terrain\\";
+      string a_sFileName = Model.Filename;
+      string a_sTileIdentifier = ( a_iRows + 1 ) + "x" + ( a_iCols + 1 );
+      string a_sDatabaseIdentifier = Application.GetStrippedFileName( a_sFileName );
+      string a_sCompleteFileName = a_sDatabaseIdentifier + "_" + "LOD" + "_" + ( i + 1 ) + "_" + a_sTileIdentifier + ".box";
+      string a_sCompletePathAndFileName = a_sRelativePathFragment + a_sCompleteFileName;
+      string a_sPathToSelectedNode = a_oInputMesh.GetPathToNode();
+      string a_sAbsolutePath = Application.GetApplicationDocumentsPath() + a_sCompleteFileName;
+      a_oContainerGroup.Name = a_sTileIdentifier;
+
+      // Handle LOD.
+      inputSIM.Percent = inputEOM.SimplifyPercentages[i];
+      Vec minTileExtent = new Vec;
+      Vec maxTileExtent = new Vec;
+      GetTileExtents( a_iRows, a_iCols, minTileExtent, maxTileExtent, a_oDestinationMesh, a_oInputMesh, inputRGM, inputDPM );
+      LOD a_oLOD = new LOD;
+      a_oLOD.Name = "LOD " + ( i + 1 );
+      InitializeTileLOD( i, a_iRows, a_iCols, a_oLOD, inputEOM, minTileExtent, maxTileExtent );
+      
+      // In case we need to debug.
+      if( a_bDebugMessages   == true )
+      {
+         Console.Message( "MinVec[0] " + minTileExtent.X );
+         Console.Message( "MinVec[1] " + minTileExtent.Y );
+         Console.Message( "MinVec[2] " + minTileExtent.Z );
+         Console.Message( "MaxVec[0] " + maxTileExtent.X );
+         Console.Message( "MaxVec[1] " + maxTileExtent.Y );
+         Console.Message( "MaxVec[2] " + maxTileExtent.Z );
+      }
+
+      // Handle external tile generation.
+      NodeLink a_oNodeLink = new NodeLink;
+      a_oNodeLink.Name = a_sCompleteFileName;
+      a_oNodeLink.PathToFile = a_sCompletePathAndFileName;
+      a_oNodeLink.PathToNode = a_sPathToSelectedNode;
+      a_oNodeLink.LinkType = a_oDestinationMesh.GetType();
+      ((Group)a_oLOD).InvalidateExtent();
+      a_oLOD.AddChild( a_oNodeLink );
+      a_oContainerGroup.AddChild( a_oLOD );
+      a_oDestinationModel.SaveFile( a_sCompletePathAndFileName );
+      Console.Message( " Writing file to disk: ( " + a_sRelativePathFragment + a_sCompleteFileName + " )" );
+
+      Group a_oTextureGroup = new Group;
+      a_oTextureGroup.Name = "Textures";
+      AddPaletteDatabaseEntry( a_oCellPaletteModel, a_oTextureGroup, true, a_iRows, a_iCols );
+   }
+
+   a_oMasterGroup.AddChild( a_oContainerGroup );
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SubdivideMeshIntoCells( ParametricMesh p_oParametricMesh, Node parentNode, Node p_oGrandParent, bool p_bExternalize )
+{
+   Group a_oMasterGroup = new Group;
+   a_oMasterGroup.Name = "Scene";
+   Model3D a_oMasterFile = new Model3D;
+   a_oMasterFile.Name = "Tree";
+   Model3D a_oCellPaletteModel = new Model3D;
+   a_oCellPaletteModel.Name = "Palette";
+
+   // Construct groups and models as needed.
+   Group a_oContainer = new Group;
+   Group a_oClonedGroup;
+   ParametricMesh a_oDestinationMesh;
+   Model3D a_oSourceModel = LoadCopyOfModel( Model );
+   Model3D a_oDestinationModel = (Model3D)a_oSourceModel.Clone();
+   string a_sPathToSelectedNode = p_oParametricMesh.GetPathToNode();
+
+   // Work with the selected mesh. Construct modifiers as needed.
+   ParametricMesh a_oInputMesh         = (ParametricMesh)a_oDestinationModel.GetTypedNodeByPath( a_sPathToSelectedNode, Node );
+   RectangleGeometryModifier inputRGM   = (RectangleGeometryModifier)a_oInputMesh.GetChildByType( RectangleGeometryModifier );
+   ExportOptionsModifier inputEOM      = (ExportOptionsModifier)a_oInputMesh.GetChildByType( ExportOptionsModifier );
+   DisplaceModifier inputDPM            = (DisplaceModifier)a_oInputMesh.GetChildByType( DisplaceModifier );
+   SimplifyModifier inputSIM            = (SimplifyModifier)a_oInputMesh.GetChildByType( SimplifyModifier );
+
+   int colCount = inputRGM.XSubdivision;
+   int rowCount = inputRGM.YSubdivision;
+   int a_iCachedRectangleXSub = inputRGM.XSubdivision;
+   int a_iCachedRectangleYSub = inputRGM.YSubdivision;
+   double a_dMinX;
+   double a_dMinY;
+   double a_dMaxX;
+   double a_dMaxY;
+
+   Console.Message( "\n Generating terrain...\n" );
+
+   //  Iterate the mesh based on the row and column count of its tessellation.
+   for( int rows = 0; rows < rowCount; ++rows ) //rowCount
+   {
+      for( int cols = 0; cols < colCount; ++cols ) //colCount
+      {      
+         // Store the database path to the node for use later.
+         a_sPathToSelectedNode = a_oInputMesh.GetPathToNode();
+         // Get the node we wish to modify.
+         a_oDestinationMesh = (ParametricMesh)a_oDestinationModel.GetTypedNodeByPath( a_sPathToSelectedNode, ParametricMesh );
+         
+         // Access its modifiers and create new versions.
+         RectangleGeometryModifier newRectangleGeometryModifier = (RectangleGeometryModifier)a_oDestinationMesh.GetChildByType( RectangleGeometryModifier );
+         DisplaceModifier newDisplaceModifier = (DisplaceModifier)a_oDestinationMesh.GetChildByType( DisplaceModifier );
+         ExportOptionsModifier newExportOptionsModifier = (ExportOptionsModifier)a_oDestinationMesh.GetChildByType( ExportOptionsModifier );
+         SimplifyModifier newSimplifyModifier = (SimplifyModifier)a_oDestinationMesh.GetChildByType( SimplifyModifier );
+
+         if( inputRGM )
+         {
+            // Handle the RectangleGeometryModifier
+            // This can't be a straightforward copy. We have to do some math to establish the new tile extents along X and Y.
+         
+            // First establish the minimum coordinates.
+            double StartX = inputRGM.XMin;
+            double StartY = inputRGM.YMin;
+         
+            // Now establish the range for each tile by dividing the span along x/y by the input tessellation.
+            double RangeX = ( inputRGM.XMax - inputRGM.XMin ) / inputRGM.XSubdivision;
+            double RangeY = ( inputRGM.YMax - inputRGM.YMin ) / inputRGM.YSubdivision;
+
+            // Now set the new output coordinates, using the minimum coordinates as the basis.
+            newRectangleGeometryModifier.Triangulate = true;
+            newRectangleGeometryModifier.XMin = StartX + ( RangeX * cols );
+            newRectangleGeometryModifier.YMin = StartY + ( RangeY * rows );
+            newRectangleGeometryModifier.XMax = StartX + RangeX * ( cols + 1 );
+            newRectangleGeometryModifier.YMax = StartY + RangeY * ( rows + 1 );
+            newRectangleGeometryModifier.XSubdivision = newExportOptionsModifier.TileTessellationX;
+            newRectangleGeometryModifier.YSubdivision = newExportOptionsModifier.TileTessellationY;
+
+            a_dMinX = StartX + ( RangeX * cols );
+            a_dMinY = StartY + ( RangeY * rows );
+         }
+
+         if( inputDPM )
+         {
+            // This can't be a straightforward copy. We have to do some math to establish the new displacement extents along X and Y.     
+            // Establish the minimum coordinates.
+            double StartCornerX = inputDPM.CornerX;
+            double StartCornerY = inputDPM.CornerY;
+            double DisplaceWidth = inputDPM.Width;
+            double DisplaceHeight = inputDPM.Length;
+                        
+            // Establish the range for each tile by dividing the span along x/y by the input tessellation.
+            double DisplaceRangeX = DisplaceWidth / a_iCachedRectangleXSub;
+            double DisplaceRangeY = DisplaceHeight / a_iCachedRectangleYSub ;
+                        
+            // Set the new output coordinates, using the minimum coordinates as the basis.
+            newDisplaceModifier.CornerX = StartCornerX + ( DisplaceRangeX * cols );
+            newDisplaceModifier.CornerY = StartCornerY + ( DisplaceRangeY * rows );
+            newDisplaceModifier.Width = DisplaceRangeX + 1;
+            newDisplaceModifier.Length = DisplaceRangeY + 1;
+            newDisplaceModifier.ImageryIs24Bit = inputDPM.ImageryIs24Bit;
+            newDisplaceModifier.MinimumHeight = inputDPM.MinimumHeight;
+            newDisplaceModifier.MaximumHeight = inputDPM.MaximumHeight;
+            newDisplaceModifier.OverallMinimumHeight = inputDPM.OverallMinimumHeight;
+            newDisplaceModifier.OverallMaximumHeight = inputDPM.OverallMaximumHeight;
+         }
+
+         CreateTreeDatabase(   p_bExternalize, 
+                              a_oSourceModel, 
+                              a_oDestinationModel, 
+                              a_oCellPaletteModel, 
+                              a_oMasterFile, 
+                              a_oDestinationMesh, 
+                              a_oInputMesh, 
+                              newRectangleGeometryModifier, 
+                              newDisplaceModifier, 
+                              inputEOM, 
+                              newSimplifyModifier, 
+                              rows, 
+                              cols );
+      }
+   }
+   a_oMasterFile.SaveFile( Application.GetFilePath( Model.Filename ) + Application.GetStrippedFileName( Model.Filename ) + "_master.box" );
+
+   // Handle palette generation for the single cell.
+   a_oCellPaletteModel.SaveFile( Application.GetFilePath( Model.Filename ) + "paged_terrain\\" + Application.GetStrippedFileName( Model.Filename ) + "_palette.box" );
+
+   delete a_oMasterFile;
+   delete a_oCellPaletteModel;
+
+   // Finis!
+   Console.Message( "\n Terrain generation complete!" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void MeshSubdivideIntoLandscape_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ParametricMesh, "Creates a paged terrain database from a cell of terrain" );
+}
+macro MeshSubdivideIntoLandscape()
+[Category="Mesh Commands", Guid="{7C521533-C85D-4BC5-AEAC-89F8C7C36AFC}", Image=".\\icons\\subdivide_geographic_tiles_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = Model.GetSelectedNode( i ).GetNode();
+      Node a_oParentNode = a_oNode.Parent();
+      Node a_oGrandParent = a_oParentNode.Parent();
+      bool p_bExternalize = true;
+
+      if( a_oNode.IsDerived( ParametricMesh ) )
+      {
+         ParametricMesh a_oInputMesh = (ParametricMesh)a_oNode;
+         
+         if( ValidateMesh( a_oInputMesh ) )
+         {
+            SubdivideMeshIntoCells( a_oInputMesh, a_oParentNode, a_oGrandParent, p_bExternalize );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateGeographicTerrain( Node node, StrList a_slFileList, int p_iInsertIndex )
+{
+   if( node.IsDerived( ParametricMesh ) )
+   {
+      // Create the palette database.
+      string a_sFileName = Application.GetFilePath( Model.Filename ) + "temporary_palette\\" + Application.GetStrippedFileName( Model.Filename ) + "_palette.box";      
+
+      /*
+      Model3D a_oNewPaletteDatabase = new Model3D;
+      a_oNewPaletteDatabase.Name = "Palette";
+
+      Group a_oMeshPaletteGroup = (Group)a_oParametricMesh.PaletteGroup;
+      NodeLink a_oMaterialLink = (NodeLink)a_oMeshPaletteGroup.Children[0];
+      for( int i = 0; i < a_oParametricMesh.ChildCount; ++i )
+      {
+         Node a_oPMC = (Node)a_oParametricMesh.Children[0];
+         Model.DeleteNode( a_oPMC );
+      }
+      */
+      ParametricMesh a_oParametricMesh = (ParametricMesh)node;
+
+      auto List n_lOutputMeshes;
+      auto List n_lOutputGroups;
+
+      Group a_oPreviewGroup = new Group;
+      a_oPreviewGroup.Name = "Preview";
+      a_oPreviewGroup.ExportDisabled = true;
+
+      GIS.CreatePreviewMeshes( n_lOutputGroups, n_lOutputMeshes, a_slFileList, a_oPreviewGroup, Model );
+      DisplaceModifier a_oRemoteDisplaceModifier;
+      RectangleGeometryModifier a_oRemoteRectangleGeometryModifier;
+      double a_dMinBoundsX, a_dMinBoundsY, a_dMinBoundsZ, a_dMaxBoundsX, a_dMaxBoundsY, a_dMaxBoundsZ;
+      Vec a_vMeshVertexMin = new Vec;
+      Vec a_vMeshVertexMax = new Vec;
+
+      for( int l = 0; l < n_lOutputMeshes.GetCount(); ++l )
+      {
+         Node a_oTemp = (Node)n_lOutputMeshes.Get( l );
+         if( a_oTemp.IsDerived( ParametricMesh ) )
+         {
+            ParametricMesh a_oTemplateMesh = (ParametricMesh)a_oTemp;
+            a_oRemoteDisplaceModifier = (DisplaceModifier)a_oTemplateMesh.GetChildByType( DisplaceModifier );
+            //a_oRemoteRectangleGeometryModifier = (RectangleGeometryModifier)a_oTemplateMesh.GetChildByType( RectangleGeometryModifier );
+            a_dMinBoundsX = a_oTemplateMesh.BoundMin[0];
+            a_dMinBoundsY = a_oTemplateMesh.BoundMin[1];
+            a_dMinBoundsZ = a_oTemplateMesh.BoundMin[2];
+            a_dMaxBoundsX = a_oTemplateMesh.BoundMax[0];
+            a_dMaxBoundsY = a_oTemplateMesh.BoundMax[1];
+            a_dMaxBoundsZ = a_oTemplateMesh.BoundMax[2];
+            a_oTemplateMesh.GetVertexMin( a_vMeshVertexMin );
+            a_oTemplateMesh.GetVertexMax( a_vMeshVertexMax );
+
+         }
+      }
+      Console.Message( a_vMeshVertexMin.X );
+      Console.Message( a_vMeshVertexMin.Y );
+      Console.Message( a_vMeshVertexMin.Z );
+      Console.Message( a_vMeshVertexMax.X );
+      Console.Message( a_vMeshVertexMax.Y );
+      Console.Message( a_vMeshVertexMax.Z );
+
+      // Create a new DisplaceModifier
+      DisplaceModifier a_oDisplaceModifier = new DisplaceModifier;
+      a_oDisplaceModifier.Name = "NewDisplaceModifier";
+      a_oDisplaceModifier.MapFile = Application.MakeRelativePath( a_slFileList.Get(0), Model.Filename );
+      a_oDisplaceModifier.ImageryIs24Bit = true;
+      a_oDisplaceModifier.Translation = 24.0;
+      a_oDisplaceModifier.CornerX = a_oRemoteDisplaceModifier.CornerX;
+      a_oDisplaceModifier.CornerY = a_oRemoteDisplaceModifier.CornerY;
+      a_oDisplaceModifier.Width = a_oRemoteDisplaceModifier.Width;
+      a_oDisplaceModifier.Length = a_oRemoteDisplaceModifier.Length;
+      a_oDisplaceModifier.MinimumHeight = a_oRemoteDisplaceModifier.MinimumHeight;
+      a_oDisplaceModifier.MaximumHeight = a_oRemoteDisplaceModifier.MaximumHeight;
+      a_oDisplaceModifier.OverallMinimumHeight = a_oRemoteDisplaceModifier.OverallMinimumHeight;
+      a_oDisplaceModifier.OverallMaximumHeight = a_oRemoteDisplaceModifier.OverallMaximumHeight;
+      a_oDisplaceModifier.UnitsPerPixelX = a_oRemoteDisplaceModifier.UnitsPerPixelX;
+      a_oDisplaceModifier.UnitsPerPixelY = a_oRemoteDisplaceModifier.UnitsPerPixelY;
+
+      SimplifyModifier a_oSimplifyModifier = new SimplifyModifier;
+      a_oSimplifyModifier.Name = "SimplifyModifier";
+      //a_oSimplifyModifier.Percent = 50;
+
+      Model.AddNode( a_oDisplaceModifier, a_oParametricMesh, p_iInsertIndex );
+      //Model.AddNode( a_oSimplifyModifier, a_oParametricMesh, -1 );
+
+
+      //Console.Message( a_lOutputGroups.GetCount() );
+      /*
+      for( int i = 0; i < a_lOutputMeshes.GetCount(); ++i )
+      {
+         Node a_oNode = (Node)a_lOutputGroups.Get(i);
+         Console.Message( a_oNode.Name );
+      }
+      */
+      /*
+      for( int l = 0; l < n_lOutputMeshes.GetCount(); ++l )
+      {
+         Node a_oTemp = (Node)n_lOutputMeshes.Get( l );
+         if( a_oTemp.IsDerived( ParametricMesh ) )
+         {
+            ParametricMesh a_oGeoMesh = (ParametricMesh)a_oTemp;
+
+            // Generate textures.
+            Group a_oPaletteGroup = (Group)a_oGeoMesh.PaletteLink;
+            Material a_oMaterial = (Material)a_oPaletteGroup.Children[ 0 ];
+            Group a_oTextureGroup = (Group)a_oMaterial.TextureLink;
+            Texture a_oTexture = (Texture)a_oTextureGroup.Children[ 0 ];
+      
+            Graph.GenerateTextures( a_oGeoMesh, a_oTextureGroup, a_oTexture, a_oTexture.Name );
+
+            for( int t = 0; t < a_oTextureGroup.ChildCount; ++t )
+            {
+               Node a_oChild = (Node)a_oTextureGroup.Children[t];
+            }
+
+            a_oMaterialLink.Name = "Terrain";
+            a_oMaterialLink.PathToNode = "Terrain/Materials/Terrain";
+            a_oMaterialLink.PathToFile = ".\\temporary_palette\\" + Application.GetStrippedFileName( Model.Filename ) + "_palette.box";
+            a_oParentNode.Name = "Terrain";
+            a_oGeoMesh.SetParent( null );
+            a_oGeoMesh.Name = "Mesh";
+            a_oGeoMesh.PaletteGroup = a_oMeshPaletteGroup;
+
+            for( int m = 0; m < a_oGeoMesh.ChildCount; ++m )
+            {
+               Modifier a_oModifier = (Modifier)a_oGeoMesh.Children[m];
+               
+               if( a_oModifier.IsDerived( RectangleGeometryModifier ) )
+               {
+                  RectangleGeometryModifier a_oRGM = (RectangleGeometryModifier)a_oModifier;
+                  a_oRGM.MaterialLink = a_oMeshPaletteGroup.Children[0];
+               }
+               if( a_oModifier.IsDerived( GeographicTextureModifier ) )
+               {
+                  GeographicTextureModifier a_oGTM = (GeographicTextureModifier)a_oModifier;
+                  a_oGTM.MaterialLink = a_oMeshPaletteGroup.Children[0];
+               }
+            }
+
+            AddPaletteDatabaseEntry( a_oNewPaletteDatabase, a_oTextureGroup, false, 0, 0 );
+
+            Model.DeleteNode( a_oParametricMesh );
+            Model.AddNode( a_oGeoMesh, a_oParentNode, -1 );
+         }
+      }
+
+      a_oNewPaletteDatabase.SaveFile( a_sFileName );
+      delete a_oNewPaletteDatabase;
+      GIS.FindTerrainMeshes( Model, n_lOutputMeshes );
+      */
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateDisplaceModifier( string p_sFile, ParametricMesh p_oParentNode, int p_iInsertIndex )
+{
+   DisplaceModifier a_oDisplaceModifier = new DisplaceModifier;
+   a_oDisplaceModifier.MapFile = Application.MakeRelativePath( p_sFile, Model.Filename );
+
+   // Configure the range from the file's size parameters.
+   Image image = new Image;
+   string a_sFileToOpen = Application.ResolveModelRelativePath( p_sFile );
+   image.OpenFileHeader( a_sFileToOpen );
+   a_oDisplaceModifier.CornerX = 0;
+   a_oDisplaceModifier.CornerY = 0;
+   a_oDisplaceModifier.Length = image.Height;
+   a_oDisplaceModifier.Width = image.Width;
+   a_oDisplaceModifier.Name = "DisplaceModifier";
+
+   // Configure a 'useful default' for the displacement by using the RectangleGeometryModifier.
+
+   // Find the RectangleGeometryModifier
+   RectangleGeometryModifier sourceRectangle = (RectangleGeometryModifier)p_oParentNode.GetChildByType( RectangleGeometryModifier );
+   // Create a useful default value - nothing fancy here, because there isn't really a 'correct value' by default.
+   double a_dRectangleWidth = sourceRectangle.XMax - sourceRectangle.XMin;
+   double a_dRectangleHeight = sourceRectangle.YMax - sourceRectangle.YMin;
+   double a_dTranslate = ( a_dRectangleWidth + a_dRectangleHeight ) / 4;
+   a_oDisplaceModifier.Translation = a_dTranslate;
+
+   // Generate the mesh.
+   ParametricMesh a_oParametricMesh = (ParametricMesh)sourceRectangle.Parent();
+   a_oParametricMesh.InvalidateMesh();
+   a_oParametricMesh.GenerateMesh();
+
+   // Add the DisplaceModifier to the mesh construction history.
+   Model.AddNode( a_oDisplaceModifier, p_oParentNode, p_iInsertIndex );
+
+   // Clean up
+   delete image;
+}
+

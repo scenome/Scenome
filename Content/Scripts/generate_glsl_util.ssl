@@ -1,0 +1,2903 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             GENERATE_GLSL_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements helper/worker functions for GLSL code generation.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+library SpaGenerateShaderUtil;
+
+import library "enumeration_util.ssl";
+import library "expression_util.ssl";
+import library "list_util.ssl";
+import library "message_util.ssl";
+import library "str_list_util.ssl";
+import library "template_util.ssl";
+import library "texture_util.ssl";
+import library "validation_util.ssl";
+import library "variable_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool ValidateExpressionGraph( ScriptNode p_oScriptNode )
+{
+   // Pass through function to avoid having too many libraries included in the
+   // code generation template script.
+   return Expression.ValidateExpressionGraph( p_oScriptNode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void WriteFileToDisk( string p_sFilePath, string p_sFile )
+{
+   // Pass through function to avoid having too many libraries included in the
+   // code generation template script.
+   Expression.WriteFileToDisk( p_sFilePath, p_sFile );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int ValidateGraph( Node p_oNode )
+{
+   // Pass through function to avoid having too many libraries included in the
+   // code generation template script.
+   bool a_bDatabaseIsExternal = false;
+   return SpaValidationUtil.ValidateGraph( p_oNode.GetModel(), true );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetCompleteVariableName( Node p_oNode )
+{
+   string a_sCompleteVariableName;
+
+   if( p_oNode.IsDerived( VariableNode ) )
+   {
+      VariableNode a_oCodeParameter = (VariableNode)p_oNode;
+      a_sCompleteVariableName =  a_oCodeParameter.NamePrefix +
+                                 a_oCodeParameter.Variable +
+                                 a_oCodeParameter.NameSuffix;
+   }
+
+   return a_sCompleteVariableName;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateInitCommentHeader( int p_nCommentLength )
+{
+   p_nCommentLength -= 7; // Subtract the '/* ' and ' */' from the length.
+   auto Str a_oInitCommentHeader = new Str( "/* " );
+   for( int i = 0; i < p_nCommentLength; ++i )
+   {
+      a_oInitCommentHeader.Value += "-";
+   }
+
+   a_oInitCommentHeader.Value += " */\n";
+   return a_oInitCommentHeader.Value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateIndent( int p_iSpaces )
+{
+   string a_sIndent;
+   for( int spaces = 0; spaces < p_iSpaces; ++spaces )
+   {
+      a_sIndent += " ";
+   }
+   return a_sIndent;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateOpeningBrace( int p_iSpaces, bool p_bInsertNewline )
+{
+   string a_sOpeningBrace;
+   if( p_bInsertNewline )
+   {
+      a_sOpeningBrace += "\n";
+   }
+   else
+   {
+      // Add a space before the opening brace.
+      a_sOpeningBrace += " ";
+   }
+
+   a_sOpeningBrace += GenerateIndent( p_iSpaces ) + "{";
+   a_sOpeningBrace += "\n";
+   return a_sOpeningBrace;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateClosingBrace( Node p_oNode, int p_iSpaces, bool p_bInsertNewline )
+{
+   string a_sClosingBrace;
+   a_sClosingBrace += "\n";
+   a_sClosingBrace += GenerateIndent( p_iSpaces ) + "}";
+
+   // Do instance names, etc, here.
+   BlockParams a_oBlockParams;
+   if( p_oNode.IsDerived( InterfaceBlockNode ) )
+   {
+      InterfaceBlockNode a_oInterfaceBlockNode = (InterfaceBlockNode)p_oNode;
+      a_oBlockParams = a_oInterfaceBlockNode.Block;
+   }
+   else
+   if( p_oNode.IsDerived( StructNode ) )
+   {
+      StructNode a_oStructNode = (StructNode)p_oNode;
+      a_oBlockParams = a_oStructNode.Block;
+   }
+   else
+   if( p_oNode.IsDerived( UniformBufferNode ) )
+   {
+      UniformBufferNode a_oUniformBufferNode = (UniformBufferNode)p_oNode;
+      a_oBlockParams = a_oUniformBufferNode.Block;
+   }
+   else
+   if( p_oNode.IsDerived( ShaderBufferNode ) )
+   {
+      ShaderBufferNode a_oShaderBufferNode = (ShaderBufferNode)p_oNode;
+      a_oBlockParams = a_oShaderBufferNode.Block;
+   }
+
+   if( a_oBlockParams )
+   {
+      string a_sVariableName = a_oBlockParams.ArrayParameters.NodeSelector.GetVariableName();
+      string a_sInstanceName = a_oBlockParams.GetInstanceNameString( a_sVariableName );
+      if( a_oBlockParams.BlockInstanceName != "" && a_sInstanceName != "" )
+      {
+         a_sClosingBrace += " " + a_sInstanceName;
+      }
+   }
+
+   Group a_oParent = (Group)p_oNode.Parent();
+   Node a_oChild = (Node)a_oParent.Children[0];
+
+   if( a_oChild && a_oChild.IsDerived( DeclareFunctionNode ) )
+   {
+      a_sClosingBrace += "\n";
+   }
+   else
+   {
+      if(   !( a_oParent.IsDerived( StatementNode ) ) &&
+            !( a_oParent.IsDerived( IteratorNode ) ) )
+      {
+         a_sClosingBrace += ";";
+      }
+      a_sClosingBrace += "\n";
+   }
+
+   return a_sClosingBrace;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateNewLine( Node p_oNode, bool p_bLastChild )
+{
+   // Only return a newline if the node is not the last node in its child list.
+   string a_sClosingNewLine;
+   Group a_oParent = (Group)p_oNode.Parent();
+   int a_iChildCount = a_oParent.ChildCount;
+   int a_iChildIndex = p_oNode.ChildIndex();
+   if( p_bLastChild )
+   {
+      if( a_iChildIndex == a_iChildCount - 1 )
+      {
+         a_sClosingNewLine = "\n";
+      }
+   }
+   else
+   {
+      if( a_iChildIndex != a_iChildCount - 1 )
+      {
+         a_sClosingNewLine = "\n";
+      }   
+   }
+   return a_sClosingNewLine;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetMemberSelectionString( VariableExpressionNode p_oVariableExpressionNode )
+{
+   if( p_oVariableExpressionNode && p_oVariableExpressionNode.IsDerived( BooleanVectorExpressionNode ) )
+   {
+      BooleanVectorExpressionNode a_oBooleanVectorExpressionNode =
+         (BooleanVectorExpressionNode)p_oVariableExpressionNode;
+      return a_oBooleanVectorExpressionNode.GetMemberSelectionString();
+   }
+   else
+   if( p_oVariableExpressionNode && p_oVariableExpressionNode.IsDerived( IntegerVectorExpressionNode ) )
+   {
+      IntegerVectorExpressionNode a_oIntegerVectorExpressionNode =
+         (IntegerVectorExpressionNode)p_oVariableExpressionNode;
+      return a_oIntegerVectorExpressionNode.GetMemberSelectionString();
+   }
+   else
+   if( p_oVariableExpressionNode && p_oVariableExpressionNode.IsDerived( UnsignedIntegerVectorExpressionNode ) )
+   {
+      UnsignedIntegerVectorExpressionNode a_oUnsignedIntegerVectorExpressionNode =
+         (UnsignedIntegerVectorExpressionNode)p_oVariableExpressionNode;
+      return a_oUnsignedIntegerVectorExpressionNode.GetMemberSelectionString();
+   }
+   else
+   if( p_oVariableExpressionNode && p_oVariableExpressionNode.IsDerived( VectorExpressionNode ) )
+   {
+      VectorExpressionNode a_oVectorExpressionNode =
+         (VectorExpressionNode)p_oVariableExpressionNode;
+      return a_oVectorExpressionNode.GetMemberSelectionString();
+   }
+
+   return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateInitialization(
+
+   VariableNode p_oVariableNode,
+   int p_nSpaces,
+   int p_nIndent,
+   bool p_bInStructInstance
+
+   )
+{
+   string a_sInitialization;
+
+   if( p_oVariableNode.IsDerived( BooleanNode ) )
+   {
+      BooleanNode a_oBooleanNode = (BooleanNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      a_sInitialization += a_oBooleanNode.GetTypeString();
+      a_sInitialization += "( ";
+      string a_sInit;
+      if( a_oBooleanNode.Value )
+      {
+         a_sInit = "true";
+      }
+      else
+      {
+         a_sInit = "false";
+      }
+      a_sInitialization += a_sInit;
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( BooleanArrayNode ) )
+   {
+      BooleanArrayNode a_oBooleanArrayNode =
+         (BooleanArrayNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      a_sInitialization += "bool[" + a_oBooleanArrayNode.Count + "]";
+      a_sInitialization += "( ";
+      for( int count = 0; count < a_oBooleanArrayNode.Count; ++count )
+      {
+         bool a_bVal = a_oBooleanArrayNode.Objects[count];
+         if( a_bVal )
+         {
+            a_sInitialization += "true";
+         }
+         else
+         {
+            a_sInitialization += "false";
+         }
+
+         if( count < a_oBooleanArrayNode.Count - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( BooleanVectorNode ) )
+   {
+      BooleanVectorNode a_oBooleanVectorNode =
+         (BooleanVectorNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      a_sInitialization += a_oBooleanVectorNode.GetTypeString();
+      a_sInitialization += "( ";
+      for( int dim = 0; dim < a_oBooleanVectorNode.Dimension; ++dim )
+      {
+         bool a_bVal = a_oBooleanVectorNode.GetComponent( dim );
+         if( a_bVal )
+         {
+            a_sInitialization += "true";
+         }
+         else
+         {
+            a_sInitialization += "false";
+         }
+
+         if( dim < a_oBooleanVectorNode.Dimension - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( BooleanVectorArrayNode ) )
+   {
+      BooleanVectorArrayNode a_oBooleanVectorArrayNode =
+         (BooleanVectorArrayNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      string a_sVecType = a_oBooleanVectorArrayNode.GetTypeString();
+      a_sInitialization += a_sVecType + "[" + a_oBooleanVectorArrayNode.Count + "]";
+      a_sInitialization += "( ";
+      for( int dim = 0; dim < a_oBooleanVectorArrayNode.Count; ++dim )
+      {
+         a_sInitialization += "bvec" + a_oBooleanVectorArrayNode.VectorDimension + "( ";
+         Vec4I a_vVec4I = a_oBooleanVectorArrayNode.Objects[ dim ];
+         for( int v = 0; v < a_oBooleanVectorArrayNode.VectorDimension; ++v )
+         {
+            bool a_bVal = a_vVec4I.GetComponent( v );
+            if( a_bVal )
+            {
+               a_sInitialization += "true";
+            }
+            else
+            {
+               a_sInitialization += "false";
+            }
+
+            if( v < a_oBooleanVectorArrayNode.VectorDimension - 1 )
+            {
+               a_sInitialization += ", ";
+            }
+         }
+         a_sInitialization += " )";
+         if( dim < a_oBooleanVectorArrayNode.Count - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( IntegerNode ) )
+   {
+      IntegerNode a_oIntegerNode =
+         (IntegerNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      a_sInitialization += a_oIntegerNode.GetTypeString();
+      a_sInitialization += "( ";
+      a_sInitialization += a_oIntegerNode.Value;
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( IntegerArrayNode ) )
+   {
+      IntegerArrayNode a_oIntegerArrayNode =
+         (IntegerArrayNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      a_sInitialization += "int[" + a_oIntegerArrayNode.Count + "]";
+      a_sInitialization += "( ";
+      for( int count = 0; count < a_oIntegerArrayNode.Count; ++count )
+      {
+         a_sInitialization += a_oIntegerArrayNode.Objects[count];
+         if( count < a_oIntegerArrayNode.Count - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( IntegerVectorNode ) )
+   {
+      IntegerVectorNode a_oIntegerVectorNode =
+         (IntegerVectorNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      a_sInitialization += a_oIntegerVectorNode.GetTypeString();
+      a_sInitialization += "( ";
+      for( int dim = 0; dim < a_oIntegerVectorNode.Dimension; ++dim )
+      {
+         a_sInitialization +=  a_oIntegerVectorNode.GetComponent( dim );
+
+         if( dim < a_oIntegerVectorNode.Dimension - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( IntegerVectorArrayNode ) )
+   {
+      IntegerVectorArrayNode a_oIntegerVectorArrayNode =
+         (IntegerVectorArrayNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      string a_sVecType = a_oIntegerVectorArrayNode.GetTypeString();
+      a_sInitialization += a_sVecType + "[" + a_oIntegerVectorArrayNode.Count + "]";
+      a_sInitialization += "( ";
+      for( int dim = 0; dim < a_oIntegerVectorArrayNode.Count; ++dim )
+      {
+         a_sInitialization += "ivec" + a_oIntegerVectorArrayNode.VectorDimension + "( ";
+         Vec4I a_vVec4I = a_oIntegerVectorArrayNode.Objects[ dim ];
+         for( int v = 0; v < a_oIntegerVectorArrayNode.VectorDimension; ++v )
+         {
+            a_sInitialization += a_vVec4I.GetComponent( v );
+
+            if( v < a_oIntegerVectorArrayNode.VectorDimension - 1 )
+            {
+               a_sInitialization += ", ";
+            }
+         }
+         a_sInitialization += " )";
+         if( dim < a_oIntegerVectorArrayNode.Count - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( UnsignedIntegerNode ) )
+   {
+      UnsignedIntegerNode a_oUnsignedIntegerNode =
+         (UnsignedIntegerNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      a_sInitialization += a_oUnsignedIntegerNode.GetTypeString();
+      a_sInitialization += "( ";
+      a_sInitialization += a_oUnsignedIntegerNode.Value;
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( UnsignedIntegerArrayNode ) )
+   {
+      UnsignedIntegerArrayNode a_oUnsignedIntegerArrayNode =
+         (UnsignedIntegerArrayNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      a_sInitialization += "uint[" + a_oUnsignedIntegerArrayNode.Count + "]";
+      a_sInitialization += "( ";
+      for( int count = 0; count < a_oUnsignedIntegerArrayNode.Count; ++count )
+      {
+         a_sInitialization += a_oUnsignedIntegerArrayNode.Objects[count];
+         if( count < a_oUnsignedIntegerArrayNode.Count - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( UnsignedIntegerVectorNode ) )
+   {
+      UnsignedIntegerVectorNode a_oUnsignedIntegerVectorNode =
+         (UnsignedIntegerVectorNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      a_sInitialization += a_oUnsignedIntegerVectorNode.GetTypeString();
+      a_sInitialization += "( ";
+      for( int dim = 0; dim < a_oUnsignedIntegerVectorNode.Dimension; ++dim )
+      {
+         auto Str a_oUint;
+         // We're getting a double back from the component since the scripting
+         // language does not support uint. We'll print this double no decimal places.
+         // a_oUnsignedIntegerVectorNode.GetComponent( dim ) - returns a double
+         a_oUint.Value = a_oUint.PrintDouble( a_oUnsignedIntegerVectorNode.GetComponent( dim ), 0 );
+         a_sInitialization += a_oUint.Value;
+
+         if( dim < a_oUnsignedIntegerVectorNode.Dimension - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( UnsignedIntegerVectorArrayNode ) )
+   {
+      UnsignedIntegerVectorArrayNode a_oUnsignedIntegerVectorArrayNode =
+         (UnsignedIntegerVectorArrayNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      string a_sVecType = a_oUnsignedIntegerVectorArrayNode.GetTypeString();
+      a_sInitialization += a_sVecType + "[" + a_oUnsignedIntegerVectorArrayNode.Count + "]";
+      a_sInitialization += "( ";
+      for( int dim = 0; dim < a_oUnsignedIntegerVectorArrayNode.Count; ++dim )
+      {
+         a_sInitialization += "uvec" + a_oUnsignedIntegerVectorArrayNode.VectorDimension + "( ";
+         Vec4U a_vVec4U = a_oUnsignedIntegerVectorArrayNode.Objects[ dim ];
+         for( int v = 0; v < a_oUnsignedIntegerVectorArrayNode.VectorDimension; ++v )
+         {
+            auto Str a_oUint;
+            // We're getting a double back from the component since the scripting
+            // language does not support uint. We'll print this double no decimal places.
+            // a_oUnsignedIntegerVectorNode.GetComponent( dim ) - returns a double
+            a_oUint.Value = a_oUint.PrintDouble( a_vVec4U.GetComponent( v ), 0 );
+            a_sInitialization += a_oUint.Value;
+
+            if( v < a_oUnsignedIntegerVectorArrayNode.VectorDimension - 1 )
+            {
+               a_sInitialization += ", ";
+            }
+         }
+         a_sInitialization += " )";
+         if( dim < a_oUnsignedIntegerVectorArrayNode.Count - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( FloatNode ) )
+   {
+      FloatNode a_oFloatNode = (FloatNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      a_sInitialization += a_oFloatNode.GetTypeString();
+      a_sInitialization += "( ";
+      auto Str a_oDouble;
+      a_sInitialization += a_oDouble.PrintDouble( a_oFloatNode.Value, 2 );
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( FloatArrayNode ) )
+   {
+      FloatArrayNode a_oFloatArrayNode = (FloatArrayNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      a_sInitialization += "float[" + a_oFloatArrayNode.Count + "]";
+      a_sInitialization += "( ";
+      for( int count = 0; count < a_oFloatArrayNode.Count; ++count )
+      {
+         bool a_dVal = a_oFloatArrayNode.Objects[count];
+         if( a_dVal )
+         {
+            a_sInitialization += a_oFloatArrayNode.Objects[count];
+         }
+         else
+         {
+            a_sInitialization += "0.0";
+         }
+
+         if( count < a_oFloatArrayNode.Count - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( VectorNode ) )
+   {
+      VectorNode a_oVectorNode = (VectorNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      a_sInitialization += a_oVectorNode.GetTypeString();
+      a_sInitialization += "( ";
+      for( int dim = 0; dim < a_oVectorNode.Dimension; ++dim )
+      {
+         bool a_dVal = a_oVectorNode.GetComponent( dim );
+         if( a_dVal )
+         {
+            a_sInitialization += a_oVectorNode.GetComponent( dim );
+         }
+         else
+         {
+            a_sInitialization += "0.0";
+         }
+
+         if( dim < a_oVectorNode.Dimension - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( VectorArrayNode ) )
+   {
+      VectorArrayNode a_oVectorArrayNode = (VectorArrayNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      string a_sVecType = a_oVectorArrayNode.GetTypeString();
+      a_sInitialization += a_sVecType + "[" + a_oVectorArrayNode.Count + "]";
+      a_sInitialization += "( ";
+      for( int dim = 0; dim < a_oVectorArrayNode.Count; ++dim )
+      {
+         a_sInitialization += "vec" + a_oVectorArrayNode.VectorDimension + "( ";
+         Vec4 a_vVec4 = a_oVectorArrayNode.Objects[ dim ];
+         for( int v = 0; v < a_oVectorArrayNode.VectorDimension; ++v )
+         {
+            bool a_bVal = a_vVec4.GetComponent( v );
+            if( a_bVal )
+            {
+               a_sInitialization += a_vVec4.GetComponent( v );
+            }
+            else
+            {
+               a_sInitialization += "0.0";
+            }
+
+            if( v < a_oVectorArrayNode.VectorDimension - 1 )
+            {
+               a_sInitialization += ", ";
+            }
+         }
+         a_sInitialization += " )";
+         if( dim < a_oVectorArrayNode.Count - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( ColorNode ) )
+   {
+      ColorNode a_oColorNode = (ColorNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      a_sInitialization += a_oColorNode.GetTypeString();
+      a_sInitialization += "( ";
+      Color a_oColor = a_oColorNode.Value;
+      for( int dim = 0; dim < Enum.MaxVectorDim(); ++dim )
+      {
+         bool a_dVal = a_oColor.GetComponent( dim );
+         if( a_dVal )
+         {
+            auto Str a_oDouble;
+            double a_dColor = (double)a_oColor.GetComponent( dim ) / 255.0;
+            a_sInitialization += a_oDouble.PrintDouble( a_dColor, 2 );
+         }
+         else
+         {
+            a_sInitialization += "0.0";
+         }
+
+         if( dim < Enum.MaxVectorDim() - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( ColorArrayNode ) )
+   {
+      ColorArrayNode a_oColorArrayNode = (ColorArrayNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      string a_sVecType = "vec4";
+      a_sInitialization += a_sVecType + "[" + a_oColorArrayNode.Count + "]";
+      a_sInitialization += "( ";
+      for( int dim = 0; dim < a_oColorArrayNode.Count; ++dim )
+      {
+         a_sInitialization += "vec4( ";
+         Color a_oColor = a_oColorArrayNode.Objects[ dim ];
+         for( int v = 0; v < Enum.MaxVectorDim(); ++v )
+         {
+            double a_dChannel = a_oColor.GetComponent( v ) / 255.0;
+            auto Str a_oChannel;
+            a_oChannel.Value = a_oChannel.PrintDouble( a_dChannel, 3 );
+            a_sInitialization += a_oChannel.Value;
+            if( v < Enum.MaxVectorDim() - 1 )
+            {
+               a_sInitialization += ", ";
+            }
+         }
+         a_sInitialization += " )";
+         if( dim < a_oColorArrayNode.Count - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( MatrixNode ) )
+   {
+      MatrixNode a_oMatrixNode = (MatrixNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      string a_sMatrixType = a_oMatrixNode.GetTypeString();
+      a_sInitialization += a_sMatrixType;
+      a_sInitialization += "( ";
+
+      // DEBUG
+      //a_sInitialization += "/*" + a_oMatrixNode.GetValueString() + "*/";
+
+      Matrix m = a_oMatrixNode.Value;
+      for( int c = 0; c < a_oMatrixNode.Cols; ++c )
+      {
+         for( int r = 0; r < a_oMatrixNode.Rows; ++r )
+         {
+            double a_dMatrixVal = m.GetComponent( c, r );
+            auto Str a_oDouble;
+            a_sInitialization += a_oDouble.PrintDouble( a_dMatrixVal, 6 );
+
+            if( r < a_oMatrixNode.Rows - 1 )
+            {
+               a_sInitialization += ", ";
+            }
+         }
+         if( c < a_oMatrixNode.Cols - 1 )
+         {
+            a_sInitialization += ", ";
+         }
+      }
+
+      a_sInitialization += " )";
+   }
+   else
+   if( p_oVariableNode.IsDerived( MatrixArrayNode ) )
+   {
+      MatrixArrayNode a_oMatrixArrayNode = (MatrixArrayNode)p_oVariableNode;
+      if( p_bInStructInstance )
+      {
+         a_sInitialization += GenerateIndent( p_nIndent );
+      }
+      string a_sMatrixType = a_oMatrixArrayNode.GetTypeString();
+
+      a_sInitialization += a_sMatrixType + "[" + a_oMatrixArrayNode.Count + "]";
+      a_sInitialization += "(\n";
+      a_sInitialization += GenerateIndent( p_nIndent + p_nSpaces );
+
+      for( int i = 0; i < a_oMatrixArrayNode.Count; ++i )
+      {
+         a_sInitialization += a_sMatrixType + "( ";
+         Matrix m = a_oMatrixArrayNode.Objects[ i ];
+         for( int c = 0; c < a_oMatrixArrayNode.Cols; ++c )
+         {
+            for( int r = 0; r < a_oMatrixArrayNode.Rows; ++r )
+            {
+               double a_dMatrixVal = m.GetComponent( c, r );
+               auto Str a_oDouble;
+               a_sInitialization += a_oDouble.PrintDouble( a_dMatrixVal, 6 );
+
+               if( r < a_oMatrixArrayNode.Rows - 1 )
+               {
+                  a_sInitialization += ", ";
+               }
+            }
+            if( c < a_oMatrixArrayNode.Cols - 1 )
+            {
+               a_sInitialization += ", ";
+            }
+         }
+
+         a_sInitialization += " )";
+
+         if( i < a_oMatrixArrayNode.Count - 1 )
+         {
+            a_sInitialization += ",\n";
+            a_sInitialization += GenerateIndent( p_nIndent + p_nSpaces );
+         }
+      }
+
+      a_sInitialization += " )";
+   }
+
+   return a_sInitialization;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void TraverseConstExpression(
+
+   VariableNode p_oVariableNode,
+   ref string p_sInitialization,
+   ref bool p_bInStructInstance,
+   int p_nSpaces,
+   ref int p_nIndent
+   )
+{
+   if( p_oVariableNode.Parent() )
+   {
+      if(   !( p_oVariableNode.Parent().IsDerived( StructNode ) ) &&
+            !( p_oVariableNode.Parent().IsDerived( InterfaceBlockNode ) ) &&
+            !( p_oVariableNode.Parent().IsDerived( UniformBufferNode ) ) &&
+            !( p_oVariableNode.Parent().IsDerived( ShaderBufferNode ) ) )
+      {
+         p_sInitialization += " = ";
+      }
+   }
+
+   if( !( p_oVariableNode.IsDerived( StructInstanceNode ) ) )
+   {
+      // DEBUG
+      //Console.Out( GenerateIndent( p_nIndent ) + p_oVariableNode.Name );
+
+      p_sInitialization +=
+         GenerateInitialization(
+            p_oVariableNode,
+            p_nSpaces,
+            p_nIndent,
+            p_bInStructInstance );
+   }
+   else
+   if( p_oVariableNode.IsDerived( StructInstanceNode ) )
+   {
+      StructInstanceNode a_oStructInstanceNode =
+         (StructInstanceNode)p_oVariableNode;
+      p_bInStructInstance = true;
+
+      // DEBUG
+      //Console.Out( GenerateIndent( p_nIndent ) + a_oStructInstanceNode.Name );
+      if( p_oVariableNode.Parent().IsDerived( StructNode ) )
+      {
+         p_sInitialization += GenerateIndent( p_nIndent );
+      }
+
+      p_nIndent += p_nSpaces;
+
+      Node a_oIsDeclaration =
+         (Node)a_oStructInstanceNode.FindStructDeclaration();
+
+      if( a_oIsDeclaration && a_oIsDeclaration.IsDerived( StructNode ) )
+      {
+         StructNode a_oStructNode = (StructNode)a_oIsDeclaration;
+         p_sInitialization += a_oStructNode.Block.BlockName;
+         if( a_oStructInstanceNode.IsArray )
+         {
+            p_sInitialization += "[" + a_oStructInstanceNode.ArrayDimension + "]";
+         }
+         p_sInitialization += "( ";
+
+         int a_nIterator = 0;
+         if( a_oStructInstanceNode.IsArray )
+         {
+            a_nIterator = a_oStructInstanceNode.ArrayDimension;
+         }
+
+         if( a_oStructNode.ChildCount )
+         {
+            p_sInitialization += "\n";
+         }
+
+         string a_sLeftBrace = "[";
+         string a_sRightBrace = "]";
+
+         if( a_nIterator == 0 )
+         {
+            a_nIterator = 1; // Make sure it's at least 1 so that we can initialize non-arrays.
+            a_sLeftBrace = "";
+            a_sRightBrace = "";
+         }
+
+         for( int a_nInitAOS = 0; a_nInitAOS < a_nIterator; ++a_nInitAOS )
+         {
+            if( a_nIterator > 1 )
+            {
+               p_sInitialization += GenerateIndent( p_nIndent );
+               p_nIndent += p_nSpaces;
+            }
+            string a_sBlockName = a_oStructNode.Block.BlockName;
+            string a_sArrayInfo = a_sLeftBrace + a_nInitAOS + a_sRightBrace;
+
+            if( !( a_oStructInstanceNode.IsArray ) )
+            {
+               a_sArrayInfo = "";
+            }
+
+            if( a_nIterator > 1 )
+            {
+               auto Str a_oInitComment = new Str( "/* Init " + a_sBlockName + a_sArrayInfo + " */\n" );
+               string a_sInitCommentHeader = GenerateInitCommentHeader( a_oInitComment.Length() );
+               p_sInitialization += a_sInitCommentHeader;
+               p_sInitialization += GenerateIndent( p_nIndent - p_nSpaces );
+               p_sInitialization += a_oInitComment.Value;
+               p_sInitialization += GenerateIndent( p_nIndent - p_nSpaces );
+               p_sInitialization += a_sInitCommentHeader;
+            }
+
+            if( a_oStructInstanceNode.IsArray )
+            {
+               p_sInitialization += GenerateIndent( p_nIndent - p_nSpaces );
+               p_sInitialization += a_sBlockName + "(\n";
+            }
+
+            for( int a_nChild = 0; a_nChild < a_oStructNode.ChildCount; ++a_nChild )
+            {
+               Node a_oNode = (Node)a_oStructNode.Children[ a_nChild ];
+               if( a_oNode && a_oNode.IsDerived( VariableNode ) )
+               {
+                  VariableNode a_oVariableNode = (VariableNode)a_oNode;
+
+                  TraverseConstExpression(
+                     a_oVariableNode,
+                     p_sInitialization,
+                     p_bInStructInstance,
+                     p_nSpaces,
+                     p_nIndent );
+
+                  if( a_nChild < a_oStructNode.ChildCount - 1 )
+                  {
+                     p_sInitialization += ",\n";
+                  }
+               }
+            }
+
+            p_sInitialization += " )";
+
+            if( a_nInitAOS < a_nIterator - 1 )
+            {
+               p_sInitialization += ",\n";
+            }
+
+            if( a_nIterator > 1 )
+            {
+               p_nIndent -= p_nSpaces;
+            }
+
+         }
+
+         if( a_oStructInstanceNode.IsArray )
+         {
+            if( a_nInitAOS < a_nIterator - 1 )
+            {
+               p_sInitialization += "\n";
+            }
+            p_sInitialization += " )";
+         }
+
+      }   
+   }
+
+   if( p_oVariableNode.IsDerived( StructInstanceNode ) )
+   {
+      p_nIndent -= p_nSpaces;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string IsConst( VariableNode p_oVariableNode, int p_nSpaces )
+{
+   int a_nIndent = p_nSpaces;
+   string a_sCode;
+   bool a_bInStructInstance = p_oVariableNode.IsDerived( StructInstanceNode );
+   if(   p_oVariableNode.BindingType == Enum.Binding_Constant() ||
+         p_oVariableNode.IsConst() )
+   {
+      TraverseConstExpression(
+         p_oVariableNode,
+         a_sCode,
+         a_bInStructInstance,
+         p_nSpaces,
+         a_nIndent );
+   }
+
+   return a_sCode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string AppendComma( VariableExpressionNode p_oVariableExpressionNode )
+{
+   string a_sCode;
+
+   if( p_oVariableExpressionNode.Parent().IsDerived( VariableExpressionNode ) )
+   {
+      VariableExpressionNode a_oParentExpression =
+         (VariableExpressionNode)p_oVariableExpressionNode.Parent();
+      if( a_oParentExpression.IsConstructor() || a_oParentExpression.IsFunction() )
+      {
+         if( p_oVariableExpressionNode.OperatorDataSource == false )
+         {
+            if( p_oVariableExpressionNode.IsLastChild() == false )
+            {
+               a_sCode = ", ";
+            }
+         }
+      }
+   }
+
+   return a_sCode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateIndentedVariableName( VariableNode p_oVariableNode, int p_iSpaces )
+{
+   return GenerateIndent( p_iSpaces ) + p_oVariableNode.UpdateName();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateJumpStatement(
+
+   JumpStatementNode p_oJumpStatementNode,
+   bool p_bInMainFunction,
+   int p_iSpaces
+
+   )
+{
+   string a_sCode;
+   bool a_bCloseJumpStatement;
+   a_sCode += GenerateIndent( p_iSpaces ) + p_oJumpStatementNode.GetJumpStatementString();
+
+   if(   p_oJumpStatementNode.ChildCount &&
+         p_oJumpStatementNode.JumpStatement == Enum.JumpStatement_Return() )
+   {
+      a_sCode += " ";
+   }
+   else
+   {
+      a_sCode += ";\n";
+   }
+
+   return a_sCode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateVariableName(
+
+   VariableNode p_oVariableNode,
+   bool p_bInMainFunction,
+   int p_iSpaces
+
+   )
+{
+   if( p_oVariableNode.ExportDisabled )
+   {
+      return "";
+   }
+
+   string a_sVariableName;
+
+   if( p_bInMainFunction == false )
+   {
+      // If we're not in the main function, handle
+      // newlines and spaces, and always append
+      // the declaration with a semicolon.
+
+      // Get the variable name info.
+      if( p_oVariableNode.Parent().IsDerived( ParameterListNode ) )
+      {
+         ParameterListNode a_oParameterListNode =
+            (ParameterListNode)p_oVariableNode.Parent();
+         if( a_oParameterListNode.ChildCount <= 3 )
+         {
+            p_iSpaces = 1;
+         }
+      }
+
+      a_sVariableName += GenerateIndentedVariableName( p_oVariableNode, p_iSpaces );
+
+      // Maybe generate a const initializer.
+      if( !( p_oVariableNode.Parent().IsDerived( ParameterListNode ) ) )
+      {
+         a_sVariableName += IsConst( p_oVariableNode, p_iSpaces );
+      }
+
+      if( p_oVariableNode.Parent().IsDerived( ParameterListNode ) )
+      {
+         ParameterListNode a_oParameterListNode =
+            (ParameterListNode)p_oVariableNode.Parent();
+         if( !( p_oVariableNode.IsLastChild() ) )
+         {
+            // Append a comma.
+            a_sVariableName += ",";
+            if( a_oParameterListNode.ChildCount > 3 )
+            {
+               a_sVariableName += "\n";
+            }
+         }
+      }
+      else
+      if( p_oVariableNode.Parent().IsDerived( StatementBlockNode ) )
+      {
+         // Append a semicolon.
+         a_sVariableName += ";";
+      }
+      else
+      if( p_oVariableNode.Parent().IsDerived( DeclarationNode ) )
+      {
+         // Append a semicolon.
+         if( p_oVariableNode.Parent().ChildCount == 1 )
+         {
+            a_sVariableName += ";";
+         }
+      }
+      else
+      if(   p_oVariableNode.Parent().IsDerived( DeclarationNode ) ||
+            p_oVariableNode.Parent().IsDerived( StatementBlockNode ) )
+      {
+         // Append a semicolon.
+         if( p_oVariableNode.Parent().IsDerived( DeclarationNode ) &&
+             p_oVariableNode.Parent().ChildCount == 1 )
+         {
+            a_sVariableName += ";";
+         }
+      }
+      else
+      if( !( p_oVariableNode.Parent().IsDerived( FunctionParameterNode ) ) )
+      {
+         // Append a semicolon.
+         a_sVariableName += ";";
+
+         // Maybe Generate a newline.
+         a_sVariableName += GenerateNewLine( p_oVariableNode, false );
+      }
+   }
+   else
+   {
+      // We're inside void main(void). Is the variable
+      // being declared as part of an expression or
+      // declaration?
+      if(   p_oVariableNode.Parent().IsDerived( ExpressionNode ) ||
+            p_oVariableNode.Parent().IsDerived( DeclarationNode ) )
+      {
+         // Variable is being declared and initialized by an expression.
+         a_sVariableName += GenerateIndent( p_iSpaces ) + p_oVariableNode.UpdateName();
+      }
+      else
+      if( p_oVariableNode.Parent().IsDerived( StructNode ) )
+      {
+         a_sVariableName += GenerateIndentedVariableName( p_oVariableNode, p_iSpaces ) + ";";
+         if( p_oVariableNode.IsLastChild() == false )
+         {
+            a_sVariableName += "\n";
+         }
+      }
+      else
+      if( p_oVariableNode.Parent().IsDerived( InitializationNode ) )
+      {
+         a_sVariableName += GenerateIndentedVariableName( p_oVariableNode, 0 );
+      }
+      else
+      {
+         // Raw variable node. Declare as usual, but handle const initialization.
+         a_sVariableName += GenerateIndentedVariableName( p_oVariableNode, p_iSpaces );
+         a_sVariableName += IsConst( p_oVariableNode, p_iSpaces );
+         a_sVariableName += ";\n";
+      }
+   }
+
+   return a_sVariableName;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateStructInstanceName( StructNode p_oStructNode, int p_iSpaces )
+{
+   string a_sStructInstanceName;
+   a_sStructInstanceName += GenerateIndent( p_iSpaces ) + p_oStructNode.GetDeclarationString();
+   if( p_oStructNode.Block.ArrayParameters.ExplicitArraySize != 0 )
+   {
+      string a_sArrayDeclaration = "[";
+      a_sArrayDeclaration += p_oStructNode.Block.ArrayParameters.ExplicitArraySize;
+      a_sArrayDeclaration += "]";
+      a_sStructInstanceName += a_sArrayDeclaration;
+   }
+   a_sStructInstanceName += ";";
+   a_sStructInstanceName += GenerateNewLine( p_oStructNode, false );
+   return a_sStructInstanceName;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateQualifierName( GlslQualifierNode p_oGlslQualifierNode, int p_iSpaces )
+{
+   if( p_oGlslQualifierNode.Qualifier == 0 )
+   {
+      return "";
+   }
+
+   string a_sQualifierName;
+   int a_iQualifierIndex = p_oGlslQualifierNode.Qualifier;
+   a_sQualifierName += GenerateIndent( p_iSpaces ) + p_oGlslQualifierNode.Name;
+
+   // Insert a space if the next node in the child list is NOT a GlslQualifierNode.
+   Group a_oParent = (Group)p_oGlslQualifierNode.Parent();
+   if( !( p_oGlslQualifierNode.IsLastChild() ) )
+   {
+      if( a_oParent.IsDerived( LayoutNode ) )
+      {
+         a_sQualifierName += ", ";
+      }
+      else
+      {
+         a_sQualifierName += " ";
+      }
+   }
+   else
+   {
+      if( !( a_oParent.IsDerived( LayoutNode ) ) )
+      {
+         // Add a space before the qualifier if it's the last in the list.
+         string a_sTemp;
+         if( !( p_oGlslQualifierNode.IsLastChild() ) )
+         {
+            a_sTemp = " ";
+         }
+         a_sTemp += a_sQualifierName;
+         a_sQualifierName = a_sTemp;
+         a_sQualifierName += ";";
+      }
+   }
+
+   if( !( a_oParent.IsDerived( LayoutNode ) ) )
+   {
+      a_sQualifierName += GenerateNewLine( p_oGlslQualifierNode, true );
+   }
+
+   return a_sQualifierName;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateLayoutDeclaration( LayoutNode a_oLayoutNode, int p_iSpaces )
+{
+   string a_sLayoutDeclaration;
+   a_sLayoutDeclaration += "layout( ";
+   return a_sLayoutDeclaration;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateExtensionDeclaration(
+
+   ExtensionNode p_oExtensionNode,
+   int p_iSpaces
+
+   )
+{
+   string a_sCode;
+
+   if( p_oExtensionNode.IsAvailable() )
+   {
+      a_sCode += "#extension " + p_oExtensionNode.ExtensionName + " : ";
+      int a_nMode = p_oExtensionNode.Mode;
+      if( a_nMode == Enum.ExtensionMode_Require() )
+      {
+         a_sCode += "require";
+      }
+      else
+      if( a_nMode == Enum.ExtensionMode_Warn() )
+      {
+         a_sCode += "warn";
+      }
+      else
+      if( a_nMode == Enum.ExtensionMode_Enable() )
+      {
+         a_sCode += "enable";
+      }
+      else
+      if( a_nMode == 3 )
+      {
+         a_sCode += "disable";
+      }
+      a_sCode += "\n";
+   }
+
+   return a_sCode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetExpressionIndent(
+
+   VariableExpressionNode p_oVariableExpressionNode,
+   int p_iSpaces
+
+   )
+{
+   string a_sCode;
+
+   if(   p_oVariableExpressionNode.Parent().IsDerived( ExpressionNode ) ||
+         p_oVariableExpressionNode.Parent().IsDerived( DeclarationNode ) ||
+         p_oVariableExpressionNode.Parent().IsDerived( StatementBlockNode ) )
+   {
+      if(   p_oVariableExpressionNode.ChildIndex() == 0 ||
+            !( p_oVariableExpressionNode.OperatorDataSource ) )
+      {
+         a_sCode = GenerateIndent( p_iSpaces );
+      }
+   }
+   else
+   if( p_oVariableExpressionNode.Parent().IsDerived( VariableExpressionNode ) )
+   {
+      VariableExpressionNode a_oVariableExpressionNode =
+         (VariableExpressionNode)p_oVariableExpressionNode.Parent();
+      if( a_oVariableExpressionNode.IsFunction() && a_oVariableExpressionNode.ChildCount > 3 )
+      {
+         if( !( p_oVariableExpressionNode.ChildIndex() == 0 ) )
+         {
+            a_sCode = GenerateIndent( p_iSpaces );
+         }
+      }
+   }
+
+   return a_sCode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string MaybeAppendSemicolon( VariableExpressionNode p_oVariableExpressionNode )
+{
+   string a_sCode;
+
+   if( p_oVariableExpressionNode.Parent().IsDerived( LoopNode ) )
+   {
+      return a_sCode;
+   }
+   else
+   if( p_oVariableExpressionNode.Parent().IsDerived( ConditionNode ) )
+   {
+      return a_sCode;
+   }
+   else
+   if( p_oVariableExpressionNode.Parent().IsDerived( VariableExpressionNode ) )
+   {
+      VariableExpressionNode a_oVariableExpressionNode =
+         (VariableExpressionNode)p_oVariableExpressionNode.Parent();
+
+      if(   !( a_oVariableExpressionNode.IsFunction() )              &&
+            !( a_oVariableExpressionNode.IsConstructor() )           &&
+            !( a_oVariableExpressionNode.IsConstructorParameter() )  &&
+            p_oVariableExpressionNode.IsLastChild() )
+      {
+         a_sCode = ";";
+      }
+   }
+   else
+   if( !( p_oVariableExpressionNode.OperatorDataSource ) )
+   {
+      a_sCode = ";";
+   }
+
+   return a_sCode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool IsConstructor( VariableExpressionNode p_oVariableExpressionNode )
+{
+   if(   p_oVariableExpressionNode.IsConstructor() ||
+         p_oVariableExpressionNode.IsFunctionParameter() ||
+         p_oVariableExpressionNode.IsConstructorParameter() )
+   {
+      return true;
+   }
+
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateScalarExpression(
+
+   VariableExpressionNode p_oVariableExpressionNode,
+   bool p_bInMainFunction,
+   int p_iSpaces,
+   string p_sType,
+   TypeInformation p_oGenerator
+
+   )
+{
+   string a_sVariableExpression;
+   string a_sIndent;
+
+   if( !( p_oVariableExpressionNode.IsFunctionDeclaration() ) )
+   {
+      a_sVariableExpression += p_oVariableExpressionNode.GetUnaryOperatorString();
+   }
+
+   if(   p_oVariableExpressionNode.IsFunctionDeclaration() ||
+         p_oVariableExpressionNode.IsFunctionPrototype() )
+   {
+      a_sVariableExpression += p_sType + " " + p_oVariableExpressionNode.FunctionName;
+   }
+   else
+   if( p_oVariableExpressionNode.IsFunction() )
+   {
+      a_sVariableExpression += p_oVariableExpressionNode.FunctionName + "( ";
+      return a_sVariableExpression;
+   }
+   else
+   if( p_oVariableExpressionNode.ChildCount && IsConstructor( p_oVariableExpressionNode ) )
+   {
+      a_sVariableExpression += p_sType + "( ";
+      return a_sVariableExpression;
+   }
+   else
+   {
+      if( !( p_oVariableExpressionNode.Parent().IsDerived( ConditionNode ) ) )
+      {
+         a_sIndent = GetExpressionIndent( p_oVariableExpressionNode, p_iSpaces );
+      }
+      string a_sReturn = "";
+      string a_sNewLine = "";
+      if( p_oVariableExpressionNode.IsReturn() )
+      {
+         int a_nChildCount = p_oVariableExpressionNode.Parent().ChildCount;
+         if( a_nChildCount > 1 )
+         {
+            a_sNewLine = "\n";
+         }
+         a_sReturn = "return ";
+      }
+      a_sVariableExpression +=
+         a_sNewLine + a_sIndent + a_sReturn +
+         p_oVariableExpressionNode.GenerateExpression( p_oGenerator ) +
+         MaybeAppendSemicolon( p_oVariableExpressionNode );
+   }
+
+   return a_sVariableExpression;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateScalarArrayExpression(
+
+   VariableExpressionNode p_oVariableExpressionNode,
+   bool p_bInMainFunction,
+   int p_iSpaces,
+   string p_sType,
+   TypeInformation p_oGeneratorType
+
+   )
+{
+   string a_sScalarArrayExpression;
+   string a_sIndent;
+   string a_sArrayInfo;
+   int a_nArrayDimension = p_oVariableExpressionNode.Count;
+   if( a_nArrayDimension )
+   {
+      a_sArrayInfo = "[" + a_nArrayDimension + "]";
+   }
+
+   if( !( p_oVariableExpressionNode.IsFunctionDeclaration() ) )
+   {
+      a_sScalarArrayExpression += p_oVariableExpressionNode.GetUnaryOperatorString();
+   }
+
+   if(   p_oVariableExpressionNode.IsFunctionDeclaration() ||
+         p_oVariableExpressionNode.IsFunctionPrototype() )
+   {
+      a_sScalarArrayExpression += p_sType + a_sArrayInfo + " " + p_oVariableExpressionNode.FunctionName;
+   }
+   else
+   if( p_oVariableExpressionNode.IsFunction() )
+   {
+      a_sScalarArrayExpression += p_oVariableExpressionNode.FunctionName + "(";
+      if( p_oVariableExpressionNode.ChildCount )
+      {
+         a_sScalarArrayExpression += " ";
+      }
+      return a_sScalarArrayExpression;
+   }
+   else
+   if( p_oVariableExpressionNode.ChildCount && IsConstructor( p_oVariableExpressionNode ) )
+   {
+      a_sScalarArrayExpression += p_sType + a_sArrayInfo + "( ";
+      return a_sScalarArrayExpression;
+   }
+   else
+   {
+      if( !( p_oVariableExpressionNode.Parent().IsDerived( ConditionNode ) ) )
+      {
+         a_sIndent = GetExpressionIndent( p_oVariableExpressionNode, p_iSpaces );
+      }
+      string a_sReturn = "";
+      string a_sNewLine = "";
+      if( p_oVariableExpressionNode.IsReturn() )
+      {
+         int a_nChildCount = p_oVariableExpressionNode.Parent().ChildCount;
+         if( a_nChildCount > 1 )
+         {
+            a_sNewLine = "\n";
+         }
+         a_sReturn = "return ";
+      }
+
+      a_sIndent = GetExpressionIndent( p_oVariableExpressionNode, p_iSpaces );
+
+      a_sScalarArrayExpression +=
+         a_sNewLine + a_sIndent + a_sReturn +
+         p_oVariableExpressionNode.GenerateExpression( p_oGeneratorType ) +
+         MaybeAppendSemicolon( p_oVariableExpressionNode );
+   }
+
+   return a_sScalarArrayExpression;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateVectorTypeExpression(
+
+   VariableExpressionNode p_oVariableExpressionNode,
+   bool p_bInMainFunction,
+   int p_iSpaces,
+   string p_sType,
+   TypeInformation p_oGeneratorType
+
+   )
+{
+   string a_sVectorTypeExpression;
+   string a_sIndent;
+   string a_sExpressionInfo = p_sType + p_oVariableExpressionNode.Dimension;
+
+   if( !( p_oVariableExpressionNode.IsFunctionDeclaration() ) )
+   {
+      a_sVectorTypeExpression +=
+         p_oVariableExpressionNode.GetUnaryOperatorString();
+   }
+
+   if(   p_oVariableExpressionNode.IsFunctionDeclaration() ||
+         p_oVariableExpressionNode.IsFunctionPrototype() )
+   {
+      a_sVectorTypeExpression +=
+         a_sExpressionInfo +
+         " " +
+         p_oVariableExpressionNode.FunctionName;
+   }
+   else
+   if( p_oVariableExpressionNode.IsFunction() )
+   {
+      a_sVectorTypeExpression +=
+         p_oVariableExpressionNode.FunctionName + "( ";
+      return a_sVectorTypeExpression;
+   }
+   else
+   if(   p_oVariableExpressionNode.ChildCount &&
+         IsConstructor( p_oVariableExpressionNode ) )
+   {
+      a_sVectorTypeExpression += a_sExpressionInfo + "( ";
+      return a_sVectorTypeExpression;
+   }
+   else
+   {
+      if( !( p_oVariableExpressionNode.Parent().IsDerived( ConditionNode ) ) )
+      {
+         a_sIndent = GetExpressionIndent(
+            p_oVariableExpressionNode,
+            p_iSpaces );
+      }
+
+      string a_sReturn = "";
+      string a_sNewLine = "";
+      if( p_oVariableExpressionNode.IsReturn() )
+      {
+         int a_nChildCount = p_oVariableExpressionNode.Parent().ChildCount;
+         if( a_nChildCount > 1 )
+         {
+            a_sNewLine = "\n";
+         }
+         a_sReturn = "return ";
+      }
+
+      a_sVectorTypeExpression +=
+         a_sNewLine +
+         a_sIndent +
+         a_sReturn +
+         p_oVariableExpressionNode.GenerateExpression( p_oGeneratorType ) +
+         MaybeAppendSemicolon( p_oVariableExpressionNode );
+   }
+
+   return a_sVectorTypeExpression;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateVectorArrayTypeExpression(
+
+   VariableExpressionNode p_oVariableExpressionNode,
+   bool p_bInMainFunction,
+   int p_iSpaces,
+   string p_sType,
+   TypeInformation p_oGeneratorType
+
+   )
+{
+   string a_sVectorArrayTypeExpression;
+   string a_sIndent;
+   string a_sArrayInfo;
+   int a_nArrayDimension = p_oVariableExpressionNode.Count;
+   if( a_nArrayDimension )
+   {
+      a_sArrayInfo = "[" + a_nArrayDimension + "]";
+   }
+
+   if( !( p_oVariableExpressionNode.IsFunctionDeclaration() ) )
+   {
+      a_sVectorArrayTypeExpression += p_oVariableExpressionNode.GetUnaryOperatorString();
+   }
+
+   if(   p_oVariableExpressionNode.IsFunctionDeclaration() ||
+         p_oVariableExpressionNode.IsFunctionPrototype() )
+   {
+      a_sVectorArrayTypeExpression +=
+         p_sType +
+         p_oVariableExpressionNode.Dimension +
+         a_sArrayInfo +
+         " " +
+         p_oVariableExpressionNode.FunctionName;
+   }
+   else
+   if( p_oVariableExpressionNode.IsFunction() )
+   {
+      a_sVectorArrayTypeExpression += p_oVariableExpressionNode.FunctionName + "( ";
+   }
+   else
+   if( p_oVariableExpressionNode.ChildCount && IsConstructor( p_oVariableExpressionNode ) )
+   {
+      a_sArrayInfo = "[" + a_nArrayDimension + "]";
+      a_sVectorArrayTypeExpression += p_sType + p_oVariableExpressionNode.Dimension + a_sArrayInfo + "( ";
+      return a_sVectorArrayTypeExpression;
+   }
+   else
+   {
+      string a_sReturn = "";
+      string a_sNewLine = "";
+      if( p_oVariableExpressionNode.IsReturn() )
+      {
+         int a_nChildCount = p_oVariableExpressionNode.Parent().ChildCount;
+         if( a_nChildCount > 1 )
+         {
+            a_sNewLine = "\n";
+         }
+         a_sReturn = "return ";
+      }
+
+      a_sIndent = GetExpressionIndent( p_oVariableExpressionNode, p_iSpaces );
+      a_sVectorArrayTypeExpression += a_sNewLine + a_sIndent + a_sReturn +
+         p_oVariableExpressionNode.GenerateExpression( p_oGeneratorType ) +
+         MaybeAppendSemicolon( p_oVariableExpressionNode );
+   }
+
+   return a_sVectorArrayTypeExpression;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateMatrixExpression(
+
+   MatrixExpressionNode p_oMatrixExpressionNode,
+   bool p_bInMainFunction,
+   int p_iSpaces
+
+   )
+{
+   string a_sMatrixExpression;
+   string a_sIndent;
+   string a_sExpressionInfo = "mat" + p_oMatrixExpressionNode.Cols + "x" + p_oMatrixExpressionNode.Rows;
+
+   if( !( p_oMatrixExpressionNode.IsFunctionDeclaration() ) )
+   {
+      a_sMatrixExpression += p_oMatrixExpressionNode.GetUnaryOperatorString();
+   }
+
+   if(   p_oMatrixExpressionNode.IsFunctionDeclaration() ||
+         p_oMatrixExpressionNode.IsFunctionPrototype() )
+   {
+      a_sMatrixExpression += 
+         a_sExpressionInfo +
+         " " +
+         p_oMatrixExpressionNode.FunctionName;
+   }
+   else
+   if( p_oMatrixExpressionNode.IsFunction() )
+   {
+      a_sMatrixExpression += p_oMatrixExpressionNode.FunctionName + "( ";
+      return a_sMatrixExpression;
+   }
+   else
+   if( p_oMatrixExpressionNode.ChildCount && IsConstructor( p_oMatrixExpressionNode ) )
+   {
+      a_sMatrixExpression += a_sExpressionInfo + "( ";
+      return a_sMatrixExpression;
+   }
+   else
+   {
+      if( !( p_oMatrixExpressionNode.Parent().IsDerived( ConditionNode ) ) )
+      {
+         a_sIndent = GetExpressionIndent( p_oMatrixExpressionNode, p_iSpaces );
+      }
+
+      string a_sReturn = "";
+      string a_sNewLine = "";
+      if( p_oMatrixExpressionNode.IsReturn() )
+      {
+         int a_nChildCount = p_oMatrixExpressionNode.Parent().ChildCount;
+         if( a_nChildCount > 1 )
+         {
+            a_sNewLine = "\n";
+         }
+         a_sReturn = "return ";
+      }
+
+      a_sIndent = GetExpressionIndent( p_oMatrixExpressionNode, p_iSpaces );
+      a_sMatrixExpression += a_sNewLine + a_sIndent + a_sReturn + 
+         p_oMatrixExpressionNode.GenerateExpression( MatrixExpressionGenerator ) +
+         MaybeAppendSemicolon( p_oMatrixExpressionNode );
+   }
+
+   return a_sMatrixExpression;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateMatrixArrayExpression(
+
+   MatrixArrayExpressionNode p_oMatrixArrayExpressionNode,
+   bool p_bInMainFunction,
+   int p_iSpaces
+
+   )
+{
+   string a_sMatrixArrayExpression;
+   string a_sIndent;
+   string a_sArrayInfo;
+   int a_nArrayDimension = p_oMatrixArrayExpressionNode.Count;
+   string a_sExpressionInfo = "mat" +
+      p_oMatrixArrayExpressionNode.Cols + "x" + p_oMatrixArrayExpressionNode.Rows;
+
+   if( a_nArrayDimension )
+   {
+      a_sArrayInfo = "[" + a_nArrayDimension + "]";
+   }
+
+   if( !( p_oMatrixArrayExpressionNode.IsFunctionDeclaration() ) )
+   {
+      a_sMatrixArrayExpression += p_oMatrixArrayExpressionNode.GetUnaryOperatorString();
+   }
+
+   if(   p_oMatrixArrayExpressionNode.IsFunctionDeclaration() ||
+         p_oMatrixArrayExpressionNode.IsFunctionPrototype() )
+   {
+      a_sMatrixArrayExpression +=
+         a_sExpressionInfo +
+         a_sArrayInfo +
+         " " +
+         p_oMatrixArrayExpressionNode.FunctionName;
+   }
+   else
+   if( p_oMatrixArrayExpressionNode.IsFunction() )
+   {
+      a_sMatrixArrayExpression += p_oMatrixArrayExpressionNode.FunctionName + "( ";
+   }
+   else
+   if( p_oMatrixArrayExpressionNode.ChildCount && IsConstructor( p_oMatrixArrayExpressionNode ) )
+   {
+      a_sMatrixArrayExpression +=
+         a_sExpressionInfo +
+         a_sArrayInfo + "( ";
+
+      return a_sMatrixArrayExpression;
+   }
+   else
+   {
+      string a_sReturn = "";
+      string a_sNewLine = "";
+      if( p_oMatrixArrayExpressionNode.IsReturn() )
+      {
+         int a_nChildCount = p_oMatrixArrayExpressionNode.Parent().ChildCount;
+         if( a_nChildCount > 1 )
+         {
+            a_sNewLine = "\n";
+         }
+         a_sReturn = "return ";
+      }
+
+      a_sIndent = GetExpressionIndent( p_oMatrixArrayExpressionNode, p_iSpaces );
+
+      a_sMatrixArrayExpression +=
+         a_sNewLine +
+         a_sIndent +
+         a_sReturn +
+         p_oMatrixArrayExpressionNode.GenerateExpression( MatrixArrayExpressionGenerator ) +
+         MaybeAppendSemicolon( p_oMatrixArrayExpressionNode );
+   }
+
+   return a_sMatrixArrayExpression;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateSamplerExpression(
+
+   SamplerExpressionNode p_oSamplerExpressionNode,
+   bool p_bInMainFunction,
+   int p_iSpaces
+
+   )
+{
+   string a_sIndent;
+   a_sIndent = GetExpressionIndent( p_oSamplerExpressionNode, p_iSpaces );
+   return a_sIndent + p_oSamplerExpressionNode.GenerateExpression( SamplerExpressionGenerator );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateStructExpression(
+
+   StructExpressionNode p_oStructExpressionNode,
+   bool p_bInMainFunction,
+   int p_iSpaces
+
+   )
+{
+   string a_sStructExpression;
+   string a_sIndent;
+   string a_sArrayInfo;
+   int a_nArrayDimension = p_oStructExpressionNode.ArrayDimension;
+   a_sArrayInfo = "[" + a_nArrayDimension + "]";
+   if( a_nArrayDimension == 0 && p_oStructExpressionNode.IsArray == false )
+   {
+      a_sArrayInfo = "";
+   }
+   else
+   if( a_nArrayDimension == -1 || ( a_nArrayDimension == 0 && p_oStructExpressionNode.IsArray == true ) )
+   {
+      a_sArrayInfo = "[" + ( p_oStructExpressionNode.ChildCount ) + "]";
+   }
+
+   if(   p_oStructExpressionNode.IsFunctionDeclaration() ||
+         p_oStructExpressionNode.IsFunctionPrototype() )
+   {
+      a_sStructExpression +=
+         p_oStructExpressionNode.StructTypeName +
+         a_sArrayInfo +
+         " " +
+         p_oStructExpressionNode.FunctionName;
+   }
+   else
+   if( p_oStructExpressionNode.IsFunction() )
+   {
+      a_sStructExpression += p_oStructExpressionNode.FunctionName + a_sArrayInfo + "( ";
+      return a_sStructExpression;
+   }
+   else
+   if( p_oStructExpressionNode.ChildCount && IsConstructor( p_oStructExpressionNode ) )
+   {
+      string a_sStructTypeName = p_oStructExpressionNode.GetTypeNameFromDeclaration();
+      if( a_sStructTypeName == "" )
+      {
+         a_sStructTypeName = p_oStructExpressionNode.StructTypeName;
+      }
+
+      if( p_oStructExpressionNode.Parent().IsDerived( StructExpressionNode ) )
+      {
+         Node a_oIsInstanceDataSource = (Node)p_oStructExpressionNode.DataSource;
+         string a_sDeclarationInfo;
+         if( a_oIsInstanceDataSource && a_oIsInstanceDataSource.IsDerived( StructInstanceNode ) )
+         {
+            StructInstanceNode a_oStructInstanceNode =
+               (StructInstanceNode)p_oStructExpressionNode.GetDataSource();
+            a_sDeclarationInfo = a_oStructInstanceNode.Variable;
+         }
+         if( a_sDeclarationInfo == "" )
+         {
+            a_sDeclarationInfo = a_sStructTypeName;
+         }
+         
+         Group a_oParent = (Group)p_oStructExpressionNode.Parent();
+
+         string a_sArrayComment = "[" + p_oStructExpressionNode.ChildIndex() + "]";
+         a_sStructExpression += "\n";
+         auto Str a_oInitComment = new Str( "/* Init " + a_sDeclarationInfo + a_sArrayComment + " */\n" );
+         string a_sInitCommentHeader = GenerateIndent( p_iSpaces ) + GenerateInitCommentHeader( a_oInitComment.Length() );
+         a_sStructExpression += a_sInitCommentHeader;
+         a_sStructExpression += GenerateIndent( p_iSpaces );
+         a_sStructExpression += a_oInitComment.Value;
+         a_sStructExpression += a_sInitCommentHeader;
+         a_sStructExpression += GenerateIndent( p_iSpaces );
+      }
+
+      a_sStructExpression += a_sStructTypeName + a_sArrayInfo + "( ";
+      return a_sStructExpression;
+   }
+   else
+   {
+      string a_sReturn = "";
+      string a_sNewLine = "";
+      if( p_oStructExpressionNode.IsReturn() )
+      {
+         int a_nChildCount = p_oStructExpressionNode.Parent().ChildCount;
+         if( a_nChildCount > 1 )
+         {
+            a_sNewLine = "\n";
+         }
+         a_sReturn = "return ";
+      }
+
+      a_sIndent = GetExpressionIndent( p_oStructExpressionNode, p_iSpaces );
+      a_sStructExpression += a_sNewLine + a_sIndent + a_sReturn +
+         p_oStructExpressionNode.GenerateExpression( StructExpressionGenerator ) +
+         MaybeAppendSemicolon( p_oStructExpressionNode );
+   }
+
+   return a_sStructExpression;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateComment( ShaderCommentNode p_oShaderCommentNode, int p_iSpaces )
+{
+   string ___FANCY_COMMENT_HEADER___ =
+      "/////////////////////////////////////////////////////////////////////////////////\n";
+   string a_sComment;
+   Node a_oCommentClosure = p_oShaderCommentNode.CommentClosure;
+
+   // If the comment is not the first child, add a new line.
+   if( p_oShaderCommentNode.ChildIndex() > 0 )
+   {
+      a_sComment += "\n";
+   }
+
+   // Open the fancy header if specified.
+   if( p_oShaderCommentNode.UseFancyHeader )
+   {
+      a_sComment += GenerateIndent( p_iSpaces ) + ___FANCY_COMMENT_HEADER___;
+   }
+
+   if( p_oShaderCommentNode.SingleLineComment )
+   {
+      a_sComment += GenerateIndent( p_iSpaces ) + "// " + p_oShaderCommentNode.Comment + "\n";
+   }
+   else
+   {
+      int a_nMaxCol = 80;
+      auto Str a_oFormattedComment = new Str( p_oShaderCommentNode.Comment );
+      string a_sFormattedComment;
+         
+      a_sFormattedComment += a_oFormattedComment.FormatParagraph( p_oShaderCommentNode.Comment, a_nMaxCol );
+      string a_sCommentLeader = "// ";
+      if( a_oFormattedComment.Length() > a_nMaxCol )
+      {
+         a_sComment += "/* ";
+         a_sCommentLeader = "";
+      }
+
+      a_sComment += GenerateIndent( p_iSpaces ) + a_sCommentLeader + a_sFormattedComment;
+      if( a_oFormattedComment.Length() < a_nMaxCol )
+      {
+         a_sComment += "\n";
+      }
+      else
+      if( a_oFormattedComment.Length() > a_nMaxCol )
+      {
+         a_sComment += " */\n";
+      }
+   }
+
+   // Close the fancy header if specified.
+   if( p_oShaderCommentNode.UseFancyHeader )
+   {
+      a_sComment += GenerateIndent( p_iSpaces ) + ___FANCY_COMMENT_HEADER___;
+   }
+
+   return a_sComment;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool EvaluateExpression( Node p_oNode )
+{
+   ExpressionNode a_oExpressionNode = (ExpressionNode)p_oNode;
+   if( a_oExpressionNode.Enabled )
+   {
+      auto Variant a_oReturnValue;
+      a_oExpressionNode.GetLastResult( a_oReturnValue );
+      return a_oReturnValue.Int;
+   }
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void TraverseShaderSource(
+
+   Node p_oNode,
+   bool p_bInsertNewline,
+   int p_iSpaces,
+   int p_iSpacesPerTab,
+   bool p_bInMainFunction,
+   ref bool p_bInFunction,
+   ref bool p_bInConstructor,
+   ref string p_sCode
+
+   )
+{
+   // Are we inside a function or constructor?
+   if( p_oNode.IsDerived( VariableExpressionNode ) )
+   {
+      VariableExpressionNode a_oVariableExpressionNode =
+         (VariableExpressionNode)p_oNode;
+      if( a_oVariableExpressionNode.IsFunction() )
+      {
+         p_bInFunction = true;
+      }
+      else
+      if( a_oVariableExpressionNode.IsConstructor() )
+      {
+         p_bInConstructor = true;
+      }
+   }
+
+   // Are we at the last parameter of a function or constructor?
+   if( p_oNode.IsDerived( VariableExpressionNode ) )
+   {
+      Node a_oParent = (Node)p_oNode.Parent();
+      if( p_oNode.Parent().IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oParentExpression =
+            (VariableExpressionNode)p_oNode.Parent();
+         if( a_oParentExpression.IsFunction() )
+         {
+            if( p_oNode.IsLastChild() )
+            {
+               p_bInFunction = false;
+            }
+         }
+         else
+         if( a_oParentExpression.IsConstructor() )
+         {
+            if( p_oNode.IsLastChild() )
+            {
+               p_bInConstructor = false;
+            }
+         }
+      }
+   }
+
+   // Is p_oNode a NodeLink?
+   if( p_oNode.IsDerived( NodeLink ) )
+   {
+      NodeLink a_oLink = (NodeLink)p_oNode;
+      if( a_oLink.Load( 1 ) )
+      {
+         Node a_oNode = (Node)a_oLink.Node;
+         if( a_oNode && a_oNode.IsDerived( VariableExpressionNode ) )
+         {
+            p_oNode = a_oNode;
+         }
+         if( a_oNode && a_oNode.IsDerived( UniformPaletteNode ) )
+         {
+            p_oNode = a_oNode;
+         }
+         else
+         if( a_oNode && a_oNode.IsDerived( ShaderSourceNode ) )
+         {
+            p_sCode += p_oNode.Name;
+            if( !( p_oNode.IsLastChild() ) )
+            {
+               p_sCode += "\n";
+            }
+         }
+      }
+   }
+
+   if( p_oNode.IsDerived( IteratorNode ) )
+   {
+      p_sCode += GenerateIndent( p_iSpaces ) + "for( ";
+   }
+   else
+   if( p_oNode.IsDerived( StatementNode ) )
+   {
+      string a_sStatement;
+      StatementNode a_oStatementNode = (StatementNode)p_oNode;
+      if( a_oStatementNode.StatementType == 2 )
+      {
+         a_sStatement = "if";
+      }
+      else
+      if( a_oStatementNode.StatementType == 3 )
+      {
+         a_sStatement = "else";
+      }
+
+      p_sCode += GenerateIndent( p_iSpaces ) + a_sStatement;
+   }
+   else
+   if( p_oNode.IsDerived( ConditionNode ) )
+   {
+      if( !( p_oNode.Parent().IsDerived( IteratorNode ) ) )
+      {
+         p_sCode += "( ";
+      }
+   }
+   else
+   if( p_oNode.IsDerived( FunctionParameterNode ) )
+   {
+      FunctionParameterNode a_oFunctionParameterNode =
+         (FunctionParameterNode)p_oNode;
+      string a_sParam = a_oFunctionParameterNode.GetQualifierString();
+      if( a_sParam != "" )
+      {
+         p_sCode += a_sParam + " ";
+      }
+   }
+   else
+   if( p_oNode.IsDerived( StatementBlockNode ) )
+   {
+      p_sCode += GenerateOpeningBrace( p_iSpaces, p_bInsertNewline );
+      p_iSpaces += p_iSpacesPerTab;
+      // This is the same as being in MainFunctionNode
+      // even though it's just the local scope of a function
+      // declaration.
+      p_bInMainFunction = true;
+   }
+   else
+   if( p_oNode.IsDerived( ParameterListNode ) )
+   {
+      p_iSpaces += p_iSpacesPerTab;
+      ParameterListNode a_oParameterListNode =
+         (ParameterListNode)p_oNode;
+      p_sCode += "(";
+      if( a_oParameterListNode.ChildCount > 3 )
+      {
+         p_sCode += "\n";
+      }
+   }
+   else
+   if( p_oNode.IsDerived( ExtensionNode ) )
+   {
+      ExtensionNode a_oExtensionNode = (ExtensionNode)p_oNode;
+      p_sCode += GenerateExtensionDeclaration( a_oExtensionNode, p_iSpaces );
+   }
+   else
+   if( p_oNode.IsDerived( BinaryOperatorNode ) )
+   {
+      BinaryOperatorNode a_oBinaryOperatorNode = (BinaryOperatorNode)p_oNode;
+      p_sCode += a_oBinaryOperatorNode.GetOperatorString();
+   }
+   else
+   if( p_oNode.IsDerived( StructNode ) )
+   {
+      StructNode a_oStructNode = (StructNode)p_oNode;
+      p_sCode += GenerateIndent( p_iSpaces );
+      p_sCode += a_oStructNode.GetDeclarationString();
+      p_sCode += GenerateOpeningBrace( p_iSpaces, p_bInsertNewline );
+      p_iSpaces += p_iSpacesPerTab;
+   }
+   else
+   if( p_oNode.IsDerived( UniformBufferNode ) )
+   {
+      UniformBufferNode a_oUniformBufferNode = (UniformBufferNode)p_oNode;
+      p_sCode += a_oUniformBufferNode.QualifierList.GetQualifierString();
+      p_sCode += a_oUniformBufferNode.Block.BlockName;
+      p_sCode += GenerateOpeningBrace( p_iSpaces, p_bInsertNewline );
+      p_iSpaces += p_iSpacesPerTab;
+   }
+   else
+   if( p_oNode.IsDerived( InterfaceBlockNode ) )
+   {
+      InterfaceBlockNode a_oInterfaceBlockNode = (InterfaceBlockNode)p_oNode;
+      p_sCode += a_oInterfaceBlockNode.QualifierList.GetQualifierString();
+      p_sCode += a_oInterfaceBlockNode.Block.BlockName;
+      p_sCode += GenerateOpeningBrace( p_iSpaces, p_bInsertNewline );
+      p_iSpaces += p_iSpacesPerTab;
+   }
+   else
+   if( p_oNode.IsDerived( VariableNode ) )
+   {
+      VariableNode a_oVariableNode = (VariableNode)p_oNode;
+      p_sCode += GenerateVariableName( a_oVariableNode, p_bInMainFunction, p_iSpaces );
+   }
+   else
+   if( p_oNode.IsDerived( JumpStatementNode ) )
+   {
+      JumpStatementNode a_oJumpStatementNode = (JumpStatementNode)p_oNode;
+      p_sCode += GenerateJumpStatement( a_oJumpStatementNode, p_bInMainFunction, p_iSpaces );
+   }
+   else
+   if( p_oNode.IsDerived( GlslQualifierNode ) )
+   {
+      GlslQualifierNode a_oGlslQualifierNode = (GlslQualifierNode)p_oNode;
+      p_sCode += GenerateQualifierName( a_oGlslQualifierNode, p_iSpaces );
+   }
+   else
+   if( p_oNode.IsDerived( LayoutNode ) )
+   {
+      LayoutNode a_oLayoutNode = (LayoutNode)p_oNode;
+      p_sCode += GenerateLayoutDeclaration( a_oLayoutNode, p_iSpaces );
+   }
+   else
+   if( p_oNode.IsDerived( ShaderPragmaNode ) )
+   {
+      ShaderPragmaNode a_oShaderPragmaNode = (ShaderPragmaNode)p_oNode;
+      p_sCode += a_oShaderPragmaNode.GetDeclarationString();
+   }
+   else
+   if( p_oNode.IsDerived( ShaderVersionNode ) )
+   {
+      ShaderVersionNode a_oShaderVersionNode = (ShaderVersionNode)p_oNode;
+      if( !( a_oShaderVersionNode.ChildCount ) )
+      {
+         p_sCode += a_oShaderVersionNode.GetDeclarationString();
+      }
+   }
+   else
+   if( p_oNode.IsDerived( ShaderIncludeNode ) )
+   {
+      ShaderIncludeNode a_oShaderIncludeNode = (ShaderIncludeNode)p_oNode;
+      p_sCode += a_oShaderIncludeNode.GetDeclarationString();
+   }
+   else
+   if( p_oNode.IsDerived( ShaderDefineNode ) )
+   {
+      if( p_oNode.ChildIndex() != 0 )
+      {
+         Group a_oParent = (Group)p_oNode.Parent();
+         Node a_oPrevious = (Node)a_oParent.Children[ p_oNode.ChildIndex() - 1 ];
+         if( a_oPrevious && !( a_oPrevious.IsDerived( PreprocessorNode ) ) )
+         {
+            p_sCode += "\n";
+         }
+      }
+      ShaderDefineNode a_oShaderDefineNode = (ShaderDefineNode)p_oNode;
+      p_sCode += a_oShaderDefineNode.GetDeclarationString() + "\n";
+   }
+   else
+   if( p_oNode.IsDerived( ShaderEndifNode ) )
+   {
+      p_sCode += "\n#endif\n";
+   }
+   else
+   if( p_oNode.IsDerived( ShaderIfndefNode ) )
+   {
+      ShaderIfndefNode a_oShaderIfndefNode = (ShaderIfndefNode)p_oNode;
+      p_sCode += "#ifndef " + a_oShaderIfndefNode.Identifier + "\n";
+   }
+   else
+   if( p_oNode.IsDerived( ShaderUndefNode ) )
+   {
+      ShaderUndefNode a_oShaderUndefNode = (ShaderUndefNode)p_oNode;
+      p_sCode += a_oShaderUndefNode.GetDeclarationString();
+   }
+   else
+   if( p_oNode.IsDerived( ShaderCommentNode ) )
+   {
+      ShaderCommentNode a_oShaderCommentNode = (ShaderCommentNode)p_oNode;
+      p_sCode += GenerateComment( a_oShaderCommentNode, p_iSpaces );
+   }
+   else
+   if( p_oNode.IsDerived( MainFunctionNode ) )
+   {
+      p_bInMainFunction = true;
+      MainFunctionNode a_oMainFunctionNode = (MainFunctionNode)p_oNode;
+      p_sCode += "\nvoid main(void)";
+      p_sCode += GenerateOpeningBrace( p_iSpaces, p_bInsertNewline );
+      p_iSpaces += p_iSpacesPerTab;
+   }
+   else
+   if( p_oNode.IsDerived( MatrixExpressionNode ) )
+   {
+      MatrixExpressionNode a_oMatrixExpressionNode =
+         (MatrixExpressionNode)p_oNode;
+      p_sCode += GenerateMatrixExpression(
+         a_oMatrixExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces );
+   }
+   else
+   if( p_oNode.IsDerived( MatrixArrayExpressionNode ) )
+   {
+      MatrixArrayExpressionNode a_oMatrixArrayExpressionNode =
+         (MatrixArrayExpressionNode)p_oNode;
+      p_sCode += GenerateMatrixArrayExpression(
+         a_oMatrixArrayExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces );
+   }
+   else
+   if( p_oNode.IsDerived( VectorExpressionNode ) )
+   {
+      VectorExpressionNode a_oVectorExpressionNode =
+         (VectorExpressionNode)p_oNode;
+      p_sCode += GenerateVectorTypeExpression(
+         a_oVectorExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "vec",
+         VectorExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( VectorArrayExpressionNode ) )
+   {
+      VectorArrayExpressionNode a_oVectorArrayExpressionNode =
+         (VectorArrayExpressionNode)p_oNode;
+      p_sCode += GenerateVectorArrayTypeExpression(
+         a_oVectorArrayExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "vec",
+         VectorArrayExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( FloatExpressionNode ) )
+   {
+      FloatExpressionNode a_oFloatExpressionNode =
+         (FloatExpressionNode)p_oNode;
+      p_sCode += GenerateScalarExpression(
+         a_oFloatExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "float",
+         FloatExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( FloatArrayExpressionNode ) )
+   {
+      FloatArrayExpressionNode a_oFloatArrayExpressionNode =
+         (FloatArrayExpressionNode)p_oNode;
+      p_sCode += GenerateScalarArrayExpression(
+         a_oFloatArrayExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "float",
+         FloatArrayExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( BooleanExpressionNode ) )
+   {
+      BooleanExpressionNode a_oBooleanExpressionNode =
+         (BooleanExpressionNode)p_oNode;
+      p_sCode += GenerateScalarExpression(
+         a_oBooleanExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "bool",
+         BooleanExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( BooleanArrayExpressionNode ) )
+   {
+      BooleanArrayExpressionNode a_oBooleanArrayExpressionNode =
+         (BooleanArrayExpressionNode)p_oNode;
+      p_sCode += GenerateScalarArrayExpression(
+         a_oBooleanArrayExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "bool",
+         BooleanArrayExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( BooleanVectorExpressionNode ) )
+   {
+      BooleanVectorExpressionNode a_oBooleanVectorExpressionNode =
+         (BooleanVectorExpressionNode)p_oNode;
+      p_sCode += GenerateVectorTypeExpression(
+         a_oBooleanVectorExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "bvec",
+         BooleanVectorExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( BooleanVectorArrayExpressionNode ) )
+   {
+      BooleanVectorArrayExpressionNode a_oBooleanVectorArrayExpressionNode =
+         (BooleanVectorArrayExpressionNode)p_oNode;
+      p_sCode += GenerateVectorArrayTypeExpression(
+         a_oBooleanVectorArrayExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "bvec",
+         BooleanVectorArrayExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( IntegerExpressionNode ) )
+   {
+      IntegerExpressionNode a_oIntegerExpressionNode =
+         (IntegerExpressionNode)p_oNode;
+      p_sCode += GenerateScalarExpression(
+         a_oIntegerExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "int",
+         IntegerExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( IntegerArrayExpressionNode ) )
+   {
+      IntegerArrayExpressionNode a_oIntegerArrayExpressionNode =
+         (IntegerArrayExpressionNode)p_oNode;
+      p_sCode += GenerateScalarArrayExpression(
+         a_oIntegerArrayExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "int",
+         IntegerArrayExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( IntegerVectorExpressionNode ) )
+   {
+      IntegerVectorExpressionNode a_oIntegerVectorExpressionNode =
+         (IntegerVectorExpressionNode)p_oNode;
+      p_sCode += GenerateVectorTypeExpression(
+         a_oIntegerVectorExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "ivec",
+         IntegerVectorExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( IntegerVectorArrayExpressionNode ) )
+   {
+      IntegerVectorArrayExpressionNode a_oIntegerVectorArrayExpressionNode =
+         (IntegerVectorArrayExpressionNode)p_oNode;
+      p_sCode += GenerateVectorArrayTypeExpression(
+         a_oIntegerVectorArrayExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "ivec",
+         IntegerVectorArrayExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( UnsignedIntegerExpressionNode ) )
+   {
+      UnsignedIntegerExpressionNode a_oUnsignedIntegerExpressionNode =
+         (UnsignedIntegerExpressionNode)p_oNode;
+      p_sCode += GenerateScalarExpression(
+         a_oUnsignedIntegerExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "int",
+         UnsignedIntegerExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( UnsignedIntegerArrayExpressionNode ) )
+   {
+      UnsignedIntegerArrayExpressionNode a_oUnsignedIntegerArrayExpressionNode =
+         (UnsignedIntegerArrayExpressionNode)p_oNode;
+      p_sCode += GenerateScalarArrayExpression(
+         a_oUnsignedIntegerArrayExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "uint",
+         UnsignedIntegerArrayExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( UnsignedIntegerVectorExpressionNode ) )
+   {
+      UnsignedIntegerVectorExpressionNode a_oUnsignedIntegerVectorExpressionNode =
+         (UnsignedIntegerVectorExpressionNode)p_oNode;
+      p_sCode += GenerateVectorTypeExpression(
+         a_oUnsignedIntegerVectorExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "uvec",
+         UnsignedIntegerVectorExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( UnsignedIntegerVectorArrayExpressionNode ) )
+   {
+      UnsignedIntegerVectorArrayExpressionNode a_oUnsignedIntegerVectorArrayExpressionNode =
+         (UnsignedIntegerVectorArrayExpressionNode)p_oNode;
+      p_sCode += GenerateVectorArrayTypeExpression(
+         a_oUnsignedIntegerVectorArrayExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces,
+         "uvec",
+         UnsignedIntegerVectorArrayExpressionGenerator );
+   }
+   else
+   if( p_oNode.IsDerived( SamplerExpressionNode ) )
+   {
+      SamplerExpressionNode a_oSamplerExpressionNode =
+         (SamplerExpressionNode)p_oNode;
+      p_sCode += GenerateSamplerExpression(
+         a_oSamplerExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces );
+   }
+   else
+   if( p_oNode.IsDerived( StructExpressionNode ) )
+   {
+      StructExpressionNode a_oStructExpressionNode =
+         (StructExpressionNode)p_oNode;
+      p_sCode += GenerateStructExpression(
+         a_oStructExpressionNode,
+         p_bInMainFunction,
+         p_iSpaces );
+   }
+   else
+   if( p_oNode.IsDerived( DeclarationNode ) )
+   {
+      Node a_oParent = (Node)p_oNode.Parent();
+      if(   a_oParent && a_oParent.IsDerived( ShaderSourceNode ) ||
+            a_oParent && a_oParent.IsDerived( ShaderDeclarationNode ) )
+      {
+         p_sCode += "\n";
+      }
+   }
+
+   // Traverse groups.
+   if( p_oNode.IsDerived( ShaderImportNode ) )
+   {
+      ShaderImportNode a_oShaderImportNode = (ShaderImportNode)p_oNode;
+      for( int data = 0; data < a_oShaderImportNode.GetCount(); ++data )
+      {
+         Group a_oGroup = (Group)a_oShaderImportNode.GetDataSource( data );
+         if( a_oGroup )
+         {
+            for( int i = 0; i < a_oGroup.ChildCount; ++i )
+            {
+               TraverseShaderSource(
+                  a_oGroup.Children[i],
+                  p_bInsertNewline,
+                  p_iSpaces,
+                  p_iSpacesPerTab,
+                  p_bInMainFunction,
+                  p_bInFunction,
+                  p_bInConstructor,
+                  p_sCode );
+            }
+            p_sCode += "\n";
+         }
+      }
+   }
+   else
+   if(   p_oNode.IsDerived( Group ) &&
+         p_oNode.IsDerived( UniformBufferBindNode ) == false )
+   {
+      Group a_oGroup = (Group)p_oNode;
+      bool a_bTraverseInto = true;
+      if( a_oGroup.IsDerived( ExpressionNode ) )
+      {
+         a_bTraverseInto = EvaluateExpression( a_oGroup );
+         // DEBUG
+         //Console.Out( a_oGroup.Name + " " + a_bTraverseInto );
+      }
+
+      if( a_bTraverseInto )
+      {
+         for( int i = 0; i < a_oGroup.ChildCount; ++i )
+         {
+            TraverseShaderSource(
+               a_oGroup.Children[i],
+               p_bInsertNewline,
+               p_iSpaces,
+               p_iSpacesPerTab,
+               p_bInMainFunction,
+               p_bInFunction,
+               p_bInConstructor,
+               p_sCode );
+         }
+      }
+   }
+
+   // Decrement spaces as we unwind frames.
+   p_iSpaces -= p_iSpacesPerTab;
+
+   // Close any open scope / expression items such as ) and }.
+   if( p_oNode.IsDerived( InitializationNode ) )
+   {
+      p_sCode += "; ";
+   }
+   else
+   if( p_oNode.IsDerived( LoopNode ) )
+   {
+      p_sCode += " )";
+   }
+   else
+   if( p_oNode.IsDerived( ConditionNode ) )
+   {
+      if( !( p_oNode.Parent().IsDerived( IteratorNode ) ) )
+      {
+         p_sCode += " )";
+      }
+      else
+      {
+         p_sCode += "; ";
+      }
+   }
+   else
+   if( p_oNode.IsDerived( FunctionParameterNode ) )
+   {
+      if( !( p_oNode.IsLastChild() ) )
+      {
+         p_sCode += ", ";
+      }
+   }
+   else
+   if( p_oNode.IsDerived( ParameterListNode ) )
+   {
+      ParameterListNode a_oParameterListNode = (ParameterListNode)p_oNode;
+      if( a_oParameterListNode.ChildCount > 0 )
+      {
+         p_sCode += " ";
+      }
+      
+      p_sCode += ")";
+      
+      if( a_oParameterListNode.IsLastChild() )
+      {
+         p_sCode += ";\n";
+      }
+   }
+   else
+   if( p_oNode.IsDerived( StatementBlockNode ) )
+   {
+      p_sCode += GenerateClosingBrace( p_oNode, p_iSpaces, p_bInsertNewline ) + "\n";
+   }
+   else
+   if( p_oNode.IsDerived( StructNode ) )
+   {
+      StructNode a_oStructNode = (StructNode)p_oNode;
+      if( a_oStructNode.IsInstance() == false )
+      {
+         p_sCode += GenerateClosingBrace( p_oNode, p_iSpaces, p_bInsertNewline );
+         p_sCode += GenerateNewLine( a_oStructNode, false );
+      }
+   }
+   else
+   if( p_oNode.IsDerived( UniformBufferNode ) )
+   {
+      UniformBufferNode a_oUniformBufferNode = (UniformBufferNode)p_oNode;
+      p_sCode += GenerateClosingBrace( p_oNode, p_iSpaces, p_bInsertNewline );
+      p_sCode += GenerateNewLine( a_oUniformBufferNode, false );
+   }
+   else
+   if( p_oNode.IsDerived( InterfaceBlockNode ) )
+   {
+      InterfaceBlockNode a_oInterfaceBlockNode = (InterfaceBlockNode)p_oNode;
+      p_sCode += GenerateClosingBrace( p_oNode, p_iSpaces, p_bInsertNewline );
+      p_sCode += GenerateNewLine( a_oInterfaceBlockNode, false );
+   }
+   else
+   if( p_oNode.IsDerived( LayoutNode ) )
+   {
+      p_sCode += " )";
+      if( p_oNode.IsLastChild() == false && p_oNode.Parent().IsDerived( DeclarationNode ) )
+      {
+         p_sCode += " ";
+      }
+      else
+      {
+         p_sCode += ";\n";
+      }
+   }
+   else
+   if( p_oNode.IsDerived( MainFunctionNode ) )
+   {
+      MainFunctionNode a_oMainFunctionNode = (MainFunctionNode)p_oNode;
+      p_sCode += "}\n";
+   }
+   else
+   if( p_oNode.IsDerived( ExpressionNode ) )
+   {
+      if( EvaluateExpression( p_oNode ) )
+      {
+         ExpressionNode a_oExpressionNode = (ExpressionNode)p_oNode;
+         if( a_oExpressionNode.ChildCount > 0 && a_oExpressionNode.Visible )
+         {
+            p_sCode += ";\n";
+         }
+      }
+   }
+   else
+   if( p_oNode.IsDerived( DeclarationNode ) )
+   {
+      DeclarationNode a_oDeclarationNode = (DeclarationNode)p_oNode;
+      if( a_oDeclarationNode.ChildCount > 0 && a_oDeclarationNode.Visible )
+      {
+         int a_nLastChildIndex = a_oDeclarationNode.ChildCount - 1;
+         if( a_nLastChildIndex > 0 )
+         {
+            Node a_oLastChild = (Node)a_oDeclarationNode.Children[ a_nLastChildIndex ];
+            if( a_oLastChild && a_oLastChild.IsDerived( VariableExpressionNode ) )
+            {
+               p_sCode += ";\n";
+            }
+         }
+      }
+   }
+   else
+   if( p_oNode.IsDerived( VariableExpressionNode ) )
+   {
+      Group a_oParent = (Group)p_oNode.Parent();
+      VariableExpressionNode a_oVariableExpressionNode = (VariableExpressionNode)p_oNode;
+
+      // Insert commas after function and constructor parameters.
+      if( a_oVariableExpressionNode.IsFunction() )
+      {
+         p_sCode += " )";
+         if( p_oNode.IsLastChild() == false && !( a_oVariableExpressionNode.OperatorDataSource ) )
+         {
+            p_sCode += ", ";
+         }
+      }
+      else
+      if(   a_oVariableExpressionNode.IsFunctionParameter() ||
+            a_oVariableExpressionNode.IsConstructorParameter() )
+      {
+         if( p_oNode.IsLastChild() == false )
+         {
+            p_sCode += ",";
+            if( a_oParent.ChildCount > 3 )
+            {
+               p_sCode += "\n";
+               p_sCode += GenerateIndent( p_iSpacesPerTab + p_iSpacesPerTab );
+            }
+            else
+            {
+               p_sCode += " ";
+            }
+         }
+      }
+      else
+      if( a_oVariableExpressionNode.IsConstructor() )
+      {
+         p_sCode += " )" + GetMemberSelectionString( a_oVariableExpressionNode );
+
+         if( p_oNode.IsLastChild() == false )
+         {
+            int a_nChildIndex = p_oNode.ChildIndex();
+            Node a_oNext = (Node)a_oParent.Children[ a_nChildIndex + 1 ];
+            if( a_oNext.IsDerived( VariableExpressionNode ) )
+            {
+               p_sCode += ", ";
+            }
+         }
+      }
+      else
+      if(   !( a_oVariableExpressionNode.IsExpression() ) &&
+            !( a_oVariableExpressionNode.IsFunctionDeclaration() ) &&
+            !( a_oVariableExpressionNode.IsFunctionPrototype() ) &&
+            !( a_oVariableExpressionNode.IsFunction() ) &&
+            !( a_oVariableExpressionNode.IsReturn() ) )
+      {
+         if( p_oNode.IsLastChild() == false && a_oVariableExpressionNode.OperatorDataSource == false )
+         {
+            p_sCode += ", ";
+         }
+
+         p_sCode += " )" + GetMemberSelectionString( a_oVariableExpressionNode );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateCode( ShaderSourceNode p_oShaderSourceNode )
+{
+   string a_sCode;
+   bool a_bInsertNewline = p_oShaderSourceNode.CodeFormat.NewlineBeforeOpeningBrace;
+   bool a_bInMainFunction = false;
+   bool a_bInFunction = false;
+   bool a_bInConstructor = false;
+   int a_iSpaces = 0;
+   int a_iSpacesPerTab = p_oShaderSourceNode.CodeFormat.SpacesPerTab;
+
+   TraverseShaderSource(
+      p_oShaderSourceNode,
+      a_bInsertNewline,
+      a_iSpaces,
+      a_iSpacesPerTab,
+      a_bInMainFunction,
+      a_bInFunction,
+      a_bInConstructor,
+      a_sCode );
+
+   return a_sCode;
+}

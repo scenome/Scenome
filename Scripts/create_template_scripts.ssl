@@ -1,0 +1,1964 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             CREATE_TEMPLATE_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements commands for creating new files using existing files as templates.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+library TemplateUtil;
+import library "application_util.ssl";
+import library "build_util.ssl";
+import library "expression_util.ssl";
+import library "file_util.ssl";
+import library "graph_util.ssl";
+import library "list_util.ssl";
+import library "menu_util.ssl";
+import library "str_list_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateMenu(
+
+   CommandBarEvent event,
+   string p_sDatabaseLibrary,
+   string p_sTransformedCallback
+
+   )
+{
+   string a_sCommandGuid = "{E5628056-83F5-474B-9338-2460FE3AD435}";
+   auto Model3D a_oRemoteDatabase;
+   a_oRemoteDatabase.OpenFile( p_sDatabaseLibrary );
+
+   if( !a_oRemoteDatabase )
+   {
+      string a_sFileName = Application.GetFileName ( p_sDatabaseLibrary );
+      string a_sNullGuid = "{00000000-0000-0000-0000-000000000000}";
+
+      event.Bar.InsertItem( 0, "Unable to find: " + a_sFileName,
+         a_sNullGuid, -1, false, true );
+   }
+   
+   // Try to load the template group from the remote database.
+   Node a_oTemplateNode;
+   if( SpaApplicationUtil.IsShaderApplicationLoaded() )
+   {
+      if( p_sTransformedCallback == "CreateShaderFromTemplate" )
+      {
+         a_oTemplateNode = (Node)a_oRemoteDatabase.GetTypedNodeByPath(
+            "Catalog//Types//Default", Node );
+      }
+      else
+      if( p_sTransformedCallback == "CreateModuleFromTemplate" )
+      {
+         a_oTemplateNode = (Node)a_oRemoteDatabase.GetTypedNodeByPath(
+            "Catalog//Types//Module", Node );
+      }
+   }
+   else
+   if( SpaApplicationUtil.IsProductApplicationLoaded() )
+   {
+      a_oTemplateNode = (Node)a_oRemoteDatabase.GetTypedNodeByPath(
+         "Catalog//Types//Application", Node );
+   }
+   else
+   if( SpaApplicationUtil.IsTerrainApplicationLoaded() )
+   {
+      a_oTemplateNode = (Node)a_oRemoteDatabase.GetTypedNodeByPath(
+         "Catalog//Types//Terrain", Node );
+   }
+   else
+   {
+      a_oTemplateNode = null;
+   }
+
+   // Unable to find the template group.
+   bool a_bIncludeTypename;
+   if( !a_oTemplateNode )
+   {
+      auto Node a_oTemplateStub;
+      a_oTemplateStub.Name = "Unable to load template!";
+      SpaMenuUtil.BuildMenuFromNodeSet(
+         event.Bar,
+         a_sCommandGuid,
+         Script,
+         p_sTransformedCallback,
+         a_oTemplateStub,
+         StringNode,
+         "",
+         a_bIncludeTypename );
+
+      return;
+   }
+
+   // We're using a library that references files on disk.
+   // We need to make sure that the files exist before using.
+   Group a_oTemplateRefs = (Group)a_oTemplateNode;
+
+   auto Group a_oFilteredTemplates;
+   for( int c = 0; c < a_oTemplateRefs.ChildCount; ++c )
+   {
+      StringNode a_oTemplateAddress = (StringNode)a_oTemplateRefs.Children[c];
+      auto FilePath a_oTemplateExists = new FilePath ( a_oTemplateAddress.Value );
+      a_oTemplateExists.ResolveToModel( a_oTemplateAddress );
+      if( a_oTemplateExists.FileExists() == false )
+      {
+         a_oTemplateRefs.DeleteChild( a_oTemplateAddress );
+      }
+   }
+
+   SpaMenuUtil.BuildMenuFromNodeSet(
+      event.Bar,
+      a_sCommandGuid,
+      Script,
+      p_sTransformedCallback,
+      a_oTemplateRefs,
+      StringNode,
+      "",
+      a_bIncludeTypename );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateDataFromTemplateLibrary_OnShowPopupMenu( CommandBarEvent event )
+[HandleEvent="SPA.ShellUIEvents.ShowPopupMenu"]
+{
+   CommandItem a_oNewProjectPopup   = event.Bar.GetItemByText( 0, "CreateProjectFromTemplate" );
+   CommandItem a_oNewShaderPopup    = event.Bar.GetItemByText( 0, "CreateShaderFromTemplate" );
+   CommandItem a_oNewModulePopup    = event.Bar.GetItemByText( 0, "CreateModuleFromTemplate" );
+   CommandItem a_oNewTerrainPopup   = event.Bar.GetItemByText( 0, "CreateTerrainFromTemplate" );
+
+   if( a_oNewProjectPopup )
+   {
+      a_oNewProjectPopup.Text = "&New Product";
+      a_oNewProjectPopup.IsPopup = true;
+      event.Bar.InsertSeparator( event.Bar.GetItemIndex( a_oNewProjectPopup ) + 1  );
+   }
+
+   if( event.Bar.Title == "&New Product" )
+   {
+      event.Bar.RemoveAllItems();
+      string a_sCallback = "CreateApplicationFromTemplate";
+      string a_sDatabaseLibrary = SpaApplicationUtil.GetTypeLibraryPath();
+      GenerateMenu( event, a_sDatabaseLibrary, a_sCallback );
+   }
+
+   if( a_oNewShaderPopup )
+   {
+      a_oNewShaderPopup.Text = "&New Shader";
+      a_oNewShaderPopup.IsPopup = true;
+   }
+
+   if( event.Bar.Title == "&New Shader" )
+   {
+      event.Bar.RemoveAllItems();
+      string a_sCallback = "CreateShaderFromTemplate";
+      string a_sDatabaseLibrary = SpaApplicationUtil.GetTypeLibraryPath();
+      GenerateMenu( event, a_sDatabaseLibrary, a_sCallback );
+   }
+
+   if( a_oNewModulePopup )
+   {
+      a_oNewModulePopup.Text = "New &Module";
+      a_oNewModulePopup.IsPopup = true;
+      event.Bar.InsertSeparator( event.Bar.GetItemIndex( a_oNewModulePopup ) + 1  );
+   }
+
+   if( event.Bar.Title == "New &Module" )
+   {
+      event.Bar.RemoveAllItems();
+      string a_sCallback = "CreateModuleFromTemplate";
+      string a_sDatabaseLibrary = SpaApplicationUtil.GetTypeLibraryPath();
+      GenerateMenu( event, a_sDatabaseLibrary, a_sCallback );
+   }
+
+   if( a_oNewTerrainPopup )
+   {
+      a_oNewTerrainPopup.Text = "&New Terrain";
+      a_oNewTerrainPopup.IsPopup = true;
+      event.Bar.InsertSeparator( event.Bar.GetItemIndex( a_oNewTerrainPopup ) + 1  );
+   }
+
+   if( event.Bar.Title == "&New Terrain" )
+   {
+      event.Bar.RemoveAllItems();
+      string a_sCallback = "CreateTerrainFromTemplate";
+      string a_sDatabaseLibrary = SpaApplicationUtil.GetTypeLibraryPath();
+      GenerateMenu( event, a_sDatabaseLibrary, a_sCallback );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string TransferPath(
+
+   string p_sPathToTransfer,
+   string p_sTransferPointOfOrigin,
+   Model3D model
+
+   )
+{
+   string a_sReturnPath =
+      Application.ResolveRelativePath(
+         p_sPathToTransfer,
+         Application.GetFilePath( p_sTransferPointOfOrigin ) );
+
+   return Application.MakeRelativePath( a_sReturnPath, model.Filename );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string CopyTextFileToProjectDestination( string p_sFileToCopy, string p_sDestinationFile )
+{
+   Graph.CopyTextFile( p_sFileToCopy, p_sDestinationFile );
+   Application.MakeRelativePath(
+      p_sDestinationFile,
+      Application.GetFileName( Model.Filename ) );
+   return p_sDestinationFile;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string ResolveRemoteStringPathToModel( Model3D model, string p_sDatabasePath )
+{
+   StringNode a_oRemoteReference =
+      (StringNode)model.GetTypedNodeByPath( p_sDatabasePath, StringNode );
+
+   if( a_oRemoteReference )
+   {
+      string a_sFilePath =
+         Application.ResolveRelativePath(
+            a_oRemoteReference.Value,
+            Application.GetFilePath( model.Filename ) );
+
+      auto FilePath n_oFilePath = new FilePath( a_sFilePath  );
+      n_oFilePath.MakeRelativeToModel( Model );
+      return n_oFilePath.GetPath();
+   }
+
+   return "StringNode in library does not exist or contains a bad value.";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ResolveDatabaseIdentification( string p_sDatabaseClass )
+{
+   if( p_sDatabaseClass == "SHADER" )
+   {
+      Model.Name = "Shader";
+   }
+   else
+   if( p_sDatabaseClass == "MODULE" )
+   {
+      Model.Name = "Include";
+   }
+   else
+   if( p_sDatabaseClass == "MATERIAL" )
+   {
+      Model.Name = "Material";
+   }
+   else
+   if( p_sDatabaseClass == "TERRAIN" )
+   {
+      Model.Name = "Terrain";
+   }
+   else
+   if( p_sDatabaseClass == "SCENE" )
+   {
+      Model.Name = "Scene";
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ToggleScriptNodes( List p_lScripts, bool bEnabled )
+{
+   for( int i = 0; i < p_lScripts.GetCount(); ++i )
+   {
+      ScriptNode a_oScriptNode = (ScriptNode)p_lScripts.Get(i);
+      a_oScriptNode.ScriptFile = ".\\generate_shader_code.ssl";
+      a_oScriptNode.Enabled = bEnabled;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CopyProgramSource( Group p_oTemplateRoot, Node p_oRemoteDatabase )
+{
+   auto List a_lPrograms;
+   auto List a_lScripts;
+   Graph.GetNodesFromDatabase( p_oTemplateRoot, a_lPrograms, Program );
+   Graph.GetNodesFromDatabase( p_oTemplateRoot, a_lScripts, ScriptNode );
+   ToggleScriptNodes( a_lScripts, false );
+   Program a_oProgram;
+   Node a_oExpression;
+
+   for( int j = 0; j < a_lPrograms.GetCount(); ++j )
+   {
+      a_oProgram = (Program)a_lPrograms.Get(j);
+      a_oExpression = (Node)a_oProgram.PreRenderHook;
+      string a_sPathToShaderSource = Application.GetFilePath( Model.Filename );
+
+      if( a_oProgram )
+      {
+         if( a_oProgram.GetVertexFile() != "" )
+         {
+            string a_sAbsolutePathToVertexShader =
+               Application.ResolveRelativePath( a_oProgram.GetVertexFile(),
+                  a_sPathToShaderSource );
+            CopyTextFileToProjectDestination( a_sAbsolutePathToVertexShader,
+            a_sPathToShaderSource + Application.GetFileName( a_sAbsolutePathToVertexShader ) );
+            a_oProgram.SetVertexFile( Application.MakeRelativePath( a_sPathToShaderSource +
+               Application.GetFileName( a_sAbsolutePathToVertexShader ), a_sPathToShaderSource ) );
+         }
+
+         if( a_oProgram.GetControlFile() != "" )
+         {
+            string a_sAbsolutePathToControlShader =
+               Application.ResolveRelativePath( a_oProgram.GetControlFile(),
+                  a_sPathToShaderSource );
+            CopyTextFileToProjectDestination( a_sAbsolutePathToControlShader,
+               a_sPathToShaderSource + Application.GetFileName( a_sAbsolutePathToControlShader ) );
+            a_oProgram.SetControlFile( Application.MakeRelativePath( a_sPathToShaderSource +
+               Application.GetFileName( a_sAbsolutePathToControlShader ), a_sPathToShaderSource ) );
+         }
+
+         if( a_oProgram.GetEvaluationFile() != "" )
+         {
+            string a_sAbsolutePathToTessEvaluationShader =
+               Application.ResolveRelativePath( a_oProgram.GetEvaluationFile(),
+                  a_sPathToShaderSource );
+            CopyTextFileToProjectDestination( a_sAbsolutePathToTessEvaluationShader,
+               a_sPathToShaderSource + Application.GetFileName( a_sAbsolutePathToTessEvaluationShader ) );
+            a_oProgram.SetEvaluationFile( Application.MakeRelativePath( a_sPathToShaderSource +
+               Application.GetFileName( a_sAbsolutePathToTessEvaluationShader ), a_sPathToShaderSource ) );
+         }
+
+         if( a_oProgram.GetGeometryFile() != "" )
+         {
+            string a_sAbsolutePathToGeometryShader =
+               Application.ResolveRelativePath( a_oProgram.GetGeometryFile(),
+                  a_sPathToShaderSource );
+            CopyTextFileToProjectDestination( a_sAbsolutePathToGeometryShader,
+               a_sPathToShaderSource + Application.GetFileName( a_sAbsolutePathToGeometryShader ) );
+            a_oProgram.SetGeometryFile( Application.MakeRelativePath( a_sPathToShaderSource +
+               Application.GetFileName( a_sAbsolutePathToGeometryShader ), a_sPathToShaderSource ) );
+         }
+
+         if( a_oProgram.GetFragmentFile() != "" )
+         {
+            string a_sAbsolutePathToFragmentShader =
+               Application.ResolveRelativePath( a_oProgram.GetFragmentFile(),
+                  a_sPathToShaderSource );
+            CopyTextFileToProjectDestination( a_sAbsolutePathToFragmentShader,
+               a_sPathToShaderSource + Application.GetFileName( a_sAbsolutePathToFragmentShader ) );
+            a_oProgram.SetFragmentFile( Application.MakeRelativePath( a_sPathToShaderSource +
+               Application.GetFileName( a_sAbsolutePathToFragmentShader ), a_sPathToShaderSource ) );
+         }
+      }
+   }
+
+   if( a_oExpression )
+   {
+      auto FilePath a_oResolveVertex = new FilePath( a_oProgram.GetVertexFile() );
+      a_oResolveVertex.RemoveFileName();
+      Expression.GenerateExpressionTemplates( a_oResolveVertex.GetPath() );
+      //Console.Out( a_oResolveVertex.GetPath() );
+   }
+
+   Expression.SyncShadersToHardware();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CopyLocalIncludes( Group p_oTemplateRoot, Node p_oRemoteDatabase )
+{
+   // Any BOX file template may reference content from within the .BOX file.
+   // For example, the BOX file may reference a texture on the hard disk,
+   // or the BOX file may reference shader source code on the hard disk.
+   // In this manner, the BOX file stores a fairly complete set of references.
+   // However, it is possible that the BOX file does not describe the
+   // complete set of references.
+   
+   // For example, a GLSL file may reference another GLSL file, and the 
+   // BOX file will know nothing about this reference. For this reason, we
+   // need to allow the user to store such references insiude the BOX file, 
+   // and we need to know when to copy such references.
+
+   // Fortunately, there exists a fairly simple criteria for when to
+   // copy any such references. If the reference is to a file in the
+   // same directory as the template, then we must copy that reference.
+   // This follows the principle of least surprise, in that the software
+   // attempts to preserve the set of references required by the database.
+
+   Group a_oRemoteRoot;
+   if( p_oRemoteDatabase.IsDerived( Model3D ) )
+   {
+      a_oRemoteRoot = (Group)p_oRemoteDatabase;
+   }
+
+   Node a_oIsIncludesGroupNode =
+      (Node)a_oRemoteRoot.GetTypedNodeByPath( Main.GetDatabaseIncludePath(), Node );
+
+   if( a_oIsIncludesGroupNode && a_oIsIncludesGroupNode.IsDerived( Group ) )
+   {
+      Group a_oIncludesGroup = (Group)a_oIsIncludesGroupNode;
+      auto List a_lFileNodes;
+      Graph.GetNodesFromDatabase( a_oIncludesGroup, a_lFileNodes, FileNode );
+
+      for( int includes = 0; includes < a_lFileNodes.GetCount(); ++includes )
+      {
+         Node a_oIsFileNode = (Node)a_lFileNodes.Get( includes );
+         if( a_oIsFileNode && a_oIsFileNode.IsDerived( FileNode ) )
+         {
+            FileNode a_oIncludeRef = (FileNode)a_oIsFileNode;
+            string a_sIncludeRefExtension =
+               Application.GetFileExtension( a_oIncludeRef.FilePath );
+            auto FilePath a_oTemplateFilePath =
+               new FilePath( Application.GetFilePath( a_oRemoteRoot.GetModel().Filename ) );
+            auto StrList a_slTemplateFolderContents;
+            a_oTemplateFilePath.FindFiles( a_slTemplateFolderContents,
+               "*." + a_sIncludeRefExtension, true, false );
+
+            for( int files = 0; files < a_slTemplateFolderContents.GetCount(); ++files )
+            {
+               string a_sFile = Application.GetFileName( a_slTemplateFolderContents.Get( files ) );
+               if( a_sFile == Application.GetFileName( a_oIncludeRef.FilePath ) )
+               {
+                  string a_sAbsolutePathToAttributesDeclaration =
+                     Application.GetFilePath( p_oRemoteDatabase.Filename ) + a_sFile;
+                  if( Application.FileExists( a_sAbsolutePathToAttributesDeclaration ) )
+                  {
+                     string a_sModelFileName = Application.GetFilePath( Model.Filename );
+                     string a_sRemoteTemplateAttributesFileName =
+                        Application.GetFileName( a_sAbsolutePathToAttributesDeclaration );
+                     Application.CopyFile( a_sAbsolutePathToAttributesDeclaration,
+                        a_sModelFileName + a_sRemoteTemplateAttributesFileName );
+                  }
+               }
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function Group CreateVirtualProgram(
+
+   Group p_oTemplateRoot,
+   Group p_oTemplateLeaf,
+   Node p_oRemoteTemplateDatabase
+
+   )
+{
+   // Fetch the material and program node from the cloned template graph.
+   auto List a_lPrograms;
+   auto List a_lMaterials;
+   Graph.GetNodesFromDatabase( p_oTemplateRoot, a_lPrograms, Program );
+   Graph.GetNodesFromDatabase( p_oTemplateRoot, a_lMaterials, Material );
+  
+   // Get the remote program from the template database so we can copy its full node-path.
+   auto List a_lRemotePrograms;
+   Graph.GetNodesFromDatabase( p_oRemoteTemplateDatabase, a_lRemotePrograms, Program );
+   Program a_oRemoteProgram = (Program)a_lRemotePrograms.Get(0);
+
+   // Create a new template leaf group that will contain the virtual program.
+   Group a_oTemplateLeaf = (Group)p_oTemplateLeaf;
+   Group a_oVirtualProgram = new Group;
+   a_oVirtualProgram.Name = "Render";
+
+   // Construct the program so we can use its attributes to set up the virtual program link.
+   Program a_oProgram = (Program)a_lPrograms.Get(0);
+
+   // Create a new link and configure its attributes from the program.
+   NodeLink a_oNodeLink = new NodeLink;
+   a_oNodeLink.Name = a_oProgram.Name;
+   a_oNodeLink.PathToNode = a_oRemoteProgram.GetPathToNode();
+   a_oNodeLink.PathToFile = p_oRemoteTemplateDatabase.Filename;
+   a_oNodeLink.LinkType = a_oProgram.GetType();
+   
+   // Iterate the program children and transfer any children that are link nodes.
+   // Transfer the link node children to the new virtual program link node.
+   // Do not transfer any other children, because they are private uniforms that
+   // should not be available in a material graph.
+   for( int i = 0; i < a_oProgram.ChildCount; ++i )
+   {
+      Node a_oNode = (Node)a_oProgram.Children[i];
+      if( a_oNode && a_oNode.IsDerived( NodeLink ) )
+      {
+         Model.AddNode( a_oNode, a_oNodeLink, -1 );
+      }
+   }
+
+   // Add the virtual program link to the new virtual program group.
+   Model.AddNode( a_oNodeLink, a_oVirtualProgram, -1 );
+
+   // Construct the material and change its program to the virtual program.
+   Material a_oMaterial = (Material)a_lMaterials.Get(0);
+   a_oMaterial.ProgramLink = a_oNodeLink;
+
+   return a_oVirtualProgram;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ResetLocalFileNodes( Group p_oTemplateRoot, Node p_oRemoteDatabase )
+{
+   // First, get a list of the local FileNodes and the remote FileNodes.
+   auto List a_lLocalFileNodes;
+   Graph.GetNodesFromDatabase( p_oTemplateRoot, a_lLocalFileNodes, FileNode );
+   auto List a_lRemoteFileNodes;
+   Graph.GetNodesFromDatabase( p_oRemoteDatabase, a_lRemoteFileNodes, FileNode );
+
+   // Since we are copying from the template to the new file, we
+   // should have the same count.
+
+   if( a_lLocalFileNodes.GetCount() == a_lRemoteFileNodes.GetCount() )
+   {
+      for( int files = 0; files < a_lRemoteFileNodes.GetCount(); ++files )
+      {
+         FileNode a_oFileNode = (FileNode)a_lRemoteFileNodes.Get( files );
+
+         if( Application.GetFilePath( a_oFileNode.FilePath ) == ".\\" )
+         {
+            // DEBUG
+            //Console.Message( "Found local include: " + a_oFileNode.FilePath );
+            FileNode a_oLocalFileNode = (FileNode)a_lLocalFileNodes.Get( files );
+            a_oLocalFileNode.FilePath = a_oFileNode.FilePath;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int TransferNodeSelector( Node p_oNodeInModel, NodeSelector p_oNodeSelector )
+{
+   p_oNodeSelector.SetContainer( p_oNodeInModel );
+
+   // Iterate the NodeSelector and transfer
+   // embedded NodeLink objects.
+   int a_nTransferCount;
+   for( int i = 0; i < p_oNodeSelector.NamespaceLinks.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_oNodeSelector.NamespaceLinks.Get( i );
+      if( a_oNode && a_oNode.IsDerived( NodeLink ) )
+      {
+         NodeLink a_oLink = (NodeLink)a_oNode;
+         auto FilePath a_oLinkPath = new FilePath( a_oLink.PathToFile );
+         a_oLinkPath.ResolveToModel( p_oNodeInModel );
+         a_oLink.PathToFile = a_oLinkPath.GetPath();
+         ++a_nTransferCount;
+      }
+   }
+
+   return a_nTransferCount;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void TransferModelPointers( Model3D p_oModel, List p_lNodes )
+{
+   for( int j = 0; j < p_lNodes.GetCount(); ++j )
+   {
+      Node a_oChild= (Node)p_lNodes.Get( j );
+
+      // Handle these cases independently.
+      // This makes sure all pointers are transferred.
+      if( a_oChild && a_oChild.IsDerived( StructInstanceNode ) )
+      {
+         StructInstanceNode a_oStructInstanceNode =
+            (StructInstanceNode)a_oChild;
+         a_oStructInstanceNode.NodeSelector.ChangeModel(
+            p_oModel,
+            a_oStructInstanceNode );
+      }
+
+      if( a_oChild && a_oChild.IsDerived( VariableNode ) )
+      {
+         VariableNode a_oVariableNode =
+            (VariableNode)a_oChild;
+         a_oVariableNode.Capture.ChangeModel( a_oVariableNode );
+      }
+
+      if( a_oChild && a_oChild.IsDerived( UniformBufferBindNode ) )
+      {
+         UniformBufferBindNode a_oUniformBufferBindNode =
+            (UniformBufferBindNode)a_oChild;
+         a_oUniformBufferBindNode.NodeSelector.ChangeModel(
+            p_oModel,
+            a_oUniformBufferBindNode);
+      }
+      else
+      if( a_oChild && a_oChild.IsDerived( StructInstanceNode ) )
+      {
+         StructInstanceNode a_oStructInstanceNode =
+            (StructInstanceNode)a_oChild;
+         a_oStructInstanceNode.NodeSelector.ChangeModel(
+            p_oModel,
+            a_oStructInstanceNode );
+      }
+      else
+      if( a_oChild && a_oChild.IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oVariableExpressionNode =
+            (VariableExpressionNode)a_oChild;
+         a_oVariableExpressionNode.NodeSelector.ChangeModel(
+            p_oModel,
+            a_oVariableExpressionNode );
+      }
+      else
+      if( a_oChild && a_oChild.IsDerived( QualifierNode ) )
+      {
+         QualifierNode a_oQualifierNode = (QualifierNode)a_oChild;
+         a_oQualifierNode.NodeSelector.ChangeModel(
+            p_oModel,
+            a_oQualifierNode );
+      }
+      else
+      if( a_oChild && a_oChild.IsDerived( GlslQualifierNode ) )
+      {
+         GlslQualifierNode a_oGlslQualifierNode = (GlslQualifierNode)a_oChild;
+         a_oGlslQualifierNode.NodeSelector.ChangeModel(
+            p_oModel,
+            a_oGlslQualifierNode );
+      }
+      else
+      if( a_oChild && a_oChild.IsDerived( VariableArrayNode ) )
+      {
+         VariableArrayNode a_oVariableArrayNode =
+            (VariableArrayNode)a_oChild;
+         a_oVariableArrayNode.NodeSelector.ChangeModel(
+            p_oModel,
+            a_oVariableArrayNode );
+      }
+      else
+      if( a_oChild && a_oChild.IsDerived( InterfaceBlockNode ) )
+      {
+         InterfaceBlockNode a_oInterfaceBlockNode =
+            (InterfaceBlockNode)a_oChild;
+         a_oInterfaceBlockNode.Block.ArrayParameters.NodeSelector.ChangeModel(
+            p_oModel,
+            a_oInterfaceBlockNode );
+      }
+      else
+      if( a_oChild && a_oChild.IsDerived( ShaderBufferNode ) )
+      {
+         ShaderBufferNode a_oShaderBufferNode =
+            (ShaderBufferNode)a_oChild;
+         a_oShaderBufferNode.Block.ArrayParameters.NodeSelector.ChangeModel(
+            p_oModel,
+            a_oShaderBufferNode );
+      }
+      else
+      if( a_oChild && a_oChild.IsDerived( StructNode ) )
+      {
+         StructNode a_oStructNode =
+            (StructNode)a_oChild;
+         a_oStructNode.Block.ArrayParameters.NodeSelector.ChangeModel(
+            p_oModel,
+            a_oStructNode );
+      }
+      else
+      if( a_oChild && a_oChild.IsDerived( UniformBufferNode ) )
+      {
+         UniformBufferNode a_oUniformBufferNode =
+            (UniformBufferNode)a_oChild;
+         a_oUniformBufferNode.Block.ArrayParameters.NodeSelector.ChangeModel(
+            p_oModel,
+            a_oUniformBufferNode );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddShaderTemplateContent(
+
+   List p_lNodes,
+   Group p_oLocalGraphRoot,
+   string p_sDatabaseClass,
+   Node p_oRemoteDatabase
+
+   )
+{
+   Group a_oTemplateRoot;
+
+   for( int i = 0; i < p_lNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lNodes.Get(i);
+      
+      if( a_oNode.IsDerived( Group ) )
+      {
+         a_oTemplateRoot = (Group)a_oNode;
+         CopyProgramSource( a_oTemplateRoot, p_oRemoteDatabase );
+         CopyLocalIncludes( a_oTemplateRoot, p_oRemoteDatabase );
+         ResetLocalFileNodes( a_oTemplateRoot, p_oRemoteDatabase );
+         auto List a_lNodes;
+         Graph.GetNodesFromDatabase( a_oTemplateRoot, a_lNodes, Node );
+         TransferModelPointers( Model, a_lNodes );
+         Model.AddNode( a_oTemplateRoot, Model, -1 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void UpdateTemplateContent( string p_sFilename, List p_lNodes )
+{
+   // Get the filename and remove the file path
+   // and extension so that we can have a title
+   // for the module. For example, the user wants
+   // to create C:\Modules\MyRender.box. In this
+   // case the module name will be 'MyRender'.
+   auto FilePath a_oDocumentName = new FilePath( p_sFilename );
+   a_oDocumentName.RemoveFilePath();
+   a_oDocumentName.RemoveFileExtension();
+   string a_sFileToGenerate = a_oDocumentName.GetPath() + ".glsl";
+
+   // Convert the module name to upper case. This
+   // converts the module name from 'MyRender' to
+   // 'MYRENDER' so that we can follow convention
+   // and use '#define MYRENDER'.
+   auto Str a_oModuleTitle = new Str( a_oDocumentName.GetPath() );
+   for( int j = 0; j < a_oModuleTitle.Length(); ++j )
+   {
+      a_oModuleTitle.Objects[ j ] = Str.ToUpper( a_oModuleTitle.Objects[ j ] );
+   }
+
+   // Iterate the new nodes and change the names
+   // and parameters of the nodes accordingly.
+   for( int i = 0; i < p_lNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lNodes.Get( i );
+      if( a_oNode && a_oNode.IsDerived( IncludeSourceNode ) )
+      {
+         ShaderSourceNode a_oShaderSourceNode =
+            (ShaderSourceNode)a_oNode;
+         a_oShaderSourceNode.Name = a_oDocumentName.GetPath();
+         a_oShaderSourceNode.FilePath = ".\\" + a_sFileToGenerate;
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( ShaderDefineNode ) )
+      {
+         ShaderDefineNode a_oShaderDefineNode =
+            (ShaderDefineNode)a_oNode;
+         a_oShaderDefineNode.Identifier = a_oModuleTitle.Value;
+         a_oShaderDefineNode.Name = "#define " + a_oModuleTitle.Value;
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( ShaderIfndefNode ) )
+      {
+         ShaderIfndefNode a_oShaderIfndefNode =
+            (ShaderIfndefNode)a_oNode;
+         a_oShaderIfndefNode.Identifier = a_oModuleTitle.Value;
+         a_oShaderIfndefNode.Name = "#ifndef " + a_oModuleTitle.Value;
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( ShaderCommentNode ) )
+      {
+         if( a_oNode.Name == "!MODULE_NAME" )
+         {
+            ShaderCommentNode a_oShaderCommentNode =
+               (ShaderCommentNode)a_oNode;
+            a_oShaderCommentNode.Comment = a_oModuleTitle.Value;
+            a_oShaderCommentNode.Name = "!" + a_oModuleTitle.Value;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddModuleTemplateContent(
+
+   List p_lNodes,
+   Group p_oLocalGraphRoot,
+   string p_sFilename,
+   string p_sDatabaseClass,
+   Node p_oRemoteDatabase
+
+   )
+{
+   Group a_oTemplateRoot;
+
+   for( int i = 0; i < p_lNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lNodes.Get(i);
+      
+      if( a_oNode.IsDerived( Group ) )
+      {
+         a_oTemplateRoot = (Group)a_oNode;
+         ResetLocalFileNodes( a_oTemplateRoot, p_oRemoteDatabase );
+         CopyLocalIncludes( a_oTemplateRoot, p_oRemoteDatabase );
+         auto List a_lNodes;
+         Graph.GetNodesFromDatabase( a_oTemplateRoot, a_lNodes, Node );
+         TransferModelPointers( Model, a_lNodes );
+         UpdateTemplateContent( p_sFilename, a_lNodes );
+         Model.AddNode( a_oTemplateRoot, Model, -1 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddTerrainTemplateContent(
+
+   List p_lNodes,
+   Group p_oLocalGraphRoot,
+   string p_sDatabaseClass,
+   Node p_oRemoteDatabase
+
+   )
+{
+   Group a_oTemplateRoot;
+
+   for( int i = 0; i < p_lNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lNodes.Get(i);
+      
+      if( a_oNode.IsDerived( Group ) )
+      {
+         a_oTemplateRoot = (Group)a_oNode;
+         ResetLocalFileNodes( a_oTemplateRoot, p_oRemoteDatabase );
+         auto List a_lNodes;
+         Graph.GetNodesFromDatabase( a_oTemplateRoot, a_lNodes, Node );
+         TransferModelPointers( Model, a_lNodes );
+         Model.AddNode( a_oTemplateRoot, Model, -1 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddApplicationTemplateContent(
+
+   List p_lNodes,
+   Group p_oLocalDatabase,
+   string p_sDatabaseClass,
+   Node p_oRemoteDatabase
+
+   )
+{
+   Group a_oTemplateRoot;
+   auto StrList a_slAppendSubFolders;
+   if( p_oRemoteDatabase && p_oRemoteDatabase.IsDerived( Model3D ) )
+   {
+      Model3D a_oModel = (Model3D)p_oRemoteDatabase;
+      for( int c = 0; c < a_oModel.ChildCount; ++c  )
+      {
+         ConfigNode a_oConfigNode = (ConfigNode)a_oModel.Children[ c ];
+         a_oConfigNode.BasePath = Graph.SetConfigNodeBasePath( a_oConfigNode,
+            a_oConfigNode.DefaultPath, a_oModel, a_slAppendSubFolders );
+         //Console.Out( a_oConfigNode.Name + "   " + a_oConfigNode.BasePath );
+      }
+      string a_sFilename = a_oModel.Filename;
+      //Console.Out( a_sFilename );
+   }
+
+   // Set the name of the root node to the name specified by the user.
+   // For example: MyApplication.box suggests "MyApplication" as a
+   // suitable name for the root node.
+   string a_sTitle = Application.GetStrippedFileName( p_oLocalDatabase.GetModel().Filename );
+   Model.Name = a_sTitle;
+
+   // Get any AppScaffoldNodes and set their name to match the Root.
+   // Configure AppScaffoldNode and create new content as required.
+
+   auto List a_lAppDefinitions;
+   Graph.GetNodesFromListByType( p_lNodes, a_lAppDefinitions, AppScaffoldNode );
+
+   for( int apps = 0; apps < a_lAppDefinitions.GetCount(); ++apps )
+   {
+      Node a_oNode = (Node)a_lAppDefinitions.Get( apps );
+      if( a_oNode && a_oNode.IsDerived( AppScaffoldNode ) )
+      {
+         AppScaffoldNode a_oAppScaffoldNode = (AppScaffoldNode)a_oNode;
+         a_oAppScaffoldNode.Name = a_sTitle;
+         string a_sBasePath = Application.GetFilePath(
+            Application.GetApplicationDocumentsPath() ) + "Applications\\";
+
+         if( !Application.FileExists( a_sBasePath + a_sTitle ) )
+         {
+            Application.CreateDirectory( a_sBasePath + a_sTitle );
+         }
+
+         // Create content for the new app.
+         auto StrList a_slAppContentAbsolutePaths;
+         
+         // Create a StrList of file extensions that
+         // matches the AppScaffoldNode param order.
+         auto StrList a_slExtensions;
+         a_slExtensions.Add( ".scenomeapp" );
+         a_slExtensions.Add( ".xml" );
+         a_slExtensions.Add( ".ico" );
+         a_slExtensions.Add( ".bmp" );
+         a_slExtensions.Add( ".box" );
+
+         // Iterate the extensions and configure
+         // the AppScaffoldNode as we go. Rename
+         // and copy application content as needed.
+         for( int paths = 0; paths < a_slExtensions.GetCount(); ++paths )
+         {
+            string a_sExtension = a_slExtensions.Get( paths );
+            string a_sStrippedSourceName = Application.GetStrippedFileName( a_oAppScaffoldNode.GetFilePath( paths ) );
+            string a_sContentSourcePath = Application.GetFilePath( p_oRemoteDatabase.Filename ) + a_sStrippedSourceName + a_sExtension;
+            string a_sAppDestinationPath = a_sBasePath + a_sTitle + "\\" + a_sTitle + a_sExtension;
+
+            if( Application.CopyFile( a_sContentSourcePath, a_sAppDestinationPath ) )
+            {
+               string a_sMessage = "Failed to copy file: \n";
+               a_sMessage += "Source file: " + a_sContentSourcePath + "\n";
+               a_sMessage += "Destination file: " + a_sAppDestinationPath;
+               Console.Error( a_sMessage );
+            }
+            a_slAppContentAbsolutePaths.Add( a_sAppDestinationPath );
+            a_oAppScaffoldNode.SetFilePath( paths, Application.MakeRelativePath( a_sAppDestinationPath, p_oLocalDatabase.Filename  ) );
+         }
+
+         // Create new Documentation and Installer project files.
+
+         // Build the new app.
+         bool a_bSuppressMessages = true;
+         bool a_bGenerateInterface = false;
+         auto StrList a_slMessages;
+         SpaBuildUtil.BuildApps( a_lAppDefinitions, a_slMessages, a_bSuppressMessages, a_bGenerateInterface );
+      }
+   }
+
+   // Get the FileConfigNodes from the template database
+   // and accumulate their absolute paths into a StrList.
+   auto StrList a_slTemplateFilePaths;
+   Graph.GetConfigNodePathsFromDatabase( p_oRemoteDatabase, a_slTemplateFilePaths );
+   //Console.Out( p_oRemoteDatabase.Filename );
+   //SpaStrListUtil.Out( a_slTemplateFilePaths );
+
+   // Create a FilePath storing the template database filename.
+   auto FilePath a_oTemplateFilePath = new FilePath( p_oRemoteDatabase.Filename );
+   a_oTemplateFilePath.Canonicalize();
+   a_oTemplateFilePath.RemoveFileName();
+   //Console.Out( a_oTemplateFilePath.GetPath() );
+
+   // Create a FilePath storing the destination database filename.
+   auto FilePath a_oDestinationFolderPath = new FilePath( p_oLocalDatabase.Filename );
+   a_oDestinationFolderPath.Canonicalize();
+   a_oDestinationFolderPath.RemoveFileName();
+   //Console.Out( a_oDestinationFolderPath.GetPath() );
+
+   // We have a conundrum. We have not yet parented the template
+   // nodes in the destination database. This means we can't yet
+   // resolve the file paths for the ConfigNodes. Furthermore, even
+   // if we do parent them, we can't be _certain_ of the final path
+   // because we are in the middle of an editing action. To solve
+   // this problem cleanly, we're going to do a little string surgery.
+
+   // A = Fully qualified path to template content.
+   // B = a_oTemplateFilePath.GetPath()
+
+   // string A = C:\release6\content\templates\types\application\web\help\introduction\introduction.htm
+   // string B = C:\release6\content\templates\types\application\
+   // A - B = web\help\introduction\introduction.htm ( we'll refer to this below as a_strTrimmedPath )
+
+   // Luckily, we are _certain_ about the path in a_oDestinationFolderPath:
+   // string C = C:\release6\content\projects\constellation\
+   // C + A = C:\release6\content\projects\constellation\web\help\introduction\introduction.htm
+
+   // There may be paths in the template content that are not resolveable. This may
+   // or may not matter ( but probably doesn't matter ). We're going to iterate the
+   // template file paths, do a test to make sure the file path is relevant, and then
+   // we're going to do the string math outlined in the comments above.
+   auto StrList a_slSourceFilePaths;
+   auto StrList a_slDestinationFilePaths;
+   auto Str a_oTemplateFolderPath = new Str( a_oTemplateFilePath.GetPath() );
+   //SpaStrListUtil.Out( a_slTemplateFilePaths );
+   for( int path = 0; path < a_slTemplateFilePaths.GetCount(); ++path )
+   {
+      auto Str a_strTemplateFilePath = new Str( a_slTemplateFilePaths.GetAt( path ) );
+      string a_sIsTemplateContent = a_strTemplateFilePath.Left( a_oTemplateFolderPath.Length() );
+
+      // This test makes sure the path is relevant. We only want to try to copy content
+      // from sub-directories of the template folder. Anything else we'll resolve below.
+     //Console.Out( a_sIsTemplateContent + "   " + a_oTemplateFolderPath.Value );
+      if( a_sIsTemplateContent == a_oTemplateFolderPath.Value )
+      {
+         a_slSourceFilePaths.Add( a_strTemplateFilePath.Value );
+         auto Str a_strTrimmedPath =
+            new Str( a_strTemplateFilePath.Right( a_oTemplateFolderPath.Length() ) );
+         a_slDestinationFilePaths.Add( a_oDestinationFolderPath.GetPath() + a_strTrimmedPath.Value );
+         //Console.Out( a_oDestinationFolderPath.GetPath() + a_strTrimmedPath.Value );
+      }
+   }
+
+   // DEBUG
+   //SpaStrListUtil.Out( a_slSourceFilePaths );
+   //SpaStrListUtil.Out( a_slDestinationFilePaths );
+
+   // Iterate source paths and create destination directories.
+   // Copy files from source to destination.
+   //Console.Out( a_slSourceFilePaths.GetCount() );
+   for( int file = 0; file < a_slSourceFilePaths.GetCount(); ++file )
+   {
+      string a_sSrc = a_slSourceFilePaths.GetAt( file );
+      string a_sDst = a_slDestinationFilePaths.GetAt( file );
+
+      string a_sFolder = Application.GetFilePath( a_sDst );
+      string a_sExtension = Application.GetFileExtension( a_sDst );
+      string a_sFilename = Application.GetFileName( a_sDst );
+     //Console.Out( a_sFolder + a_sFilename + " - " + a_sExtension );
+     //Console.Out( a_sExtension );
+      // Do a little math to check if we have a path. We might not
+      // always have a trailing \ depending on how the user has things configured.
+      if( a_sFolder + a_sFilename == a_sExtension )
+      {
+         // It's a path, so append a \.
+         a_sDst += "\\";
+      }
+     //Console.Out( Application.GetFilePath( a_sDst ) );
+      Application.CreateDirectory( Application.GetFilePath( a_sDst ) );
+      Application.CopyFile( a_sSrc, a_sDst );
+   }
+
+   // Iterate the ConfigNodes and configure their base paths appropriately.
+   // These are the ConfigNodes directly below the root and they must have an absolute path.
+   // This is generally easy, as a we have several possible sources for names.
+   // 1. We can use the ConfigNode's DefaultPath value. ( ConfigNode.DefaultPath )
+   // 2. We can inherit from the ConfigNode's Default Path Data Source ( ConfigNode.ParameterGroup )
+   // 3. We can use the existing base path ( which may or may not be valid ).
+   // 4. We can set the base path to nothing.
+
+   // DEBUG
+   //SpaStrListUtil.Out( a_slAppendSubFolders );
+   for( int nodes = 0; nodes < p_lNodes.GetCount(); ++nodes )
+   {
+      Node a_oNode = (Node)p_lNodes.Get( nodes );
+      if( a_oNode && a_oNode.IsDerived( ConfigNode ) )
+      {
+         ConfigNode a_oConfigNode = (ConfigNode)a_oNode;
+
+         if( a_oConfigNode && a_oConfigNode.DefaultPath )
+         {
+            if( a_oConfigNode.ParameterGroup )
+            {
+               Node a_oIsConfigNode  = (Node)a_oConfigNode.ParameterGroup;
+               if( a_oIsConfigNode && a_oIsConfigNode.IsDerived( ConfigNode ) )
+               {
+                  ConfigNode a_oParameters = (ConfigNode)a_oIsConfigNode;
+                  auto FilePath a_oPathFromDataSource = new FilePath( a_oParameters.GetAbsolutePath() );
+                  a_oPathFromDataSource.Canonicalize();
+                  a_oConfigNode.BasePath = a_oPathFromDataSource.GetPath() + "\\" + a_slAppendSubFolders.GetAt( nodes );
+               }
+            }
+            else
+            {
+               string a_sAppendSubFolder = a_slAppendSubFolders.GetAt( nodes );
+               if( a_oConfigNode.DefaultPath == 1 )
+               {
+                  auto FilePath a_oNewBasePath = new FilePath( Application.GetApplicationPath() + "\\" + a_sAppendSubFolder );
+                  a_oNewBasePath.Canonicalize();
+                  a_oConfigNode.BasePath = a_oNewBasePath.GetPath();
+               }
+               else
+               if( a_oConfigNode.DefaultPath == 2 )
+               {
+                  auto FilePath a_oNewBasePath = new FilePath( Application.GetApplicationDataPath() + "\\" + a_sAppendSubFolder );
+                  a_oNewBasePath.Canonicalize();
+                  a_oConfigNode.BasePath = a_oNewBasePath.GetPath();
+               }
+               else
+               if( a_oConfigNode.DefaultPath == 3 )
+               {
+                  auto FilePath a_oNewBasePath = new FilePath( Application.GetApplicationDocumentsPath() + "\\" + a_sAppendSubFolder );
+                  a_oNewBasePath.Canonicalize();
+                  a_oConfigNode.BasePath = a_oNewBasePath.GetPath();
+               }
+               else
+               if( a_oConfigNode.DefaultPath == 4 )
+               {
+                  auto FilePath a_oNewBasePath = new FilePath( Application.GetFilePath( Model.Filename ) + "\\" + a_sAppendSubFolder );
+                  a_oNewBasePath.Canonicalize();
+                  a_oConfigNode.BasePath = a_oNewBasePath.GetPath();
+               }
+            }
+         }
+         else
+         {
+            // Set the base path value to nothing, as this is safest.
+            // The user can set the value after the template is created.
+            // NOTE: If you end up here, you probably should think about
+            // re-configuring your template.
+            a_oConfigNode.BasePath = "";
+         }
+
+         Model.AddNode( a_oConfigNode, Model, -1 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddMaterialTemplateContent(
+
+   List p_lNodes,
+   Group p_oLocalGraphRoot,
+   string p_sDatabaseClass,
+   Node p_oRemoteTemplateDatabase
+
+   )
+{
+   Group a_oTemplateRoot;
+
+   for( int i = 0; i < p_lNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lNodes.Get(i);
+      if( a_oNode.IsDerived( Group ) )
+      {
+         a_oTemplateRoot = (Group)a_oNode;
+
+         for( int j = 0; j < a_oTemplateRoot.ChildCount; ++j )
+         {
+            Node a_oTemplateLeaf = (Node)a_oTemplateRoot.Children[j];
+
+            if( a_oTemplateLeaf.Name != "Render" && a_oTemplateLeaf.Name != "Expression" )
+            {
+               Model.AddNode( a_oTemplateLeaf, p_oLocalGraphRoot, -1 );
+            }
+            else
+            if( a_oTemplateLeaf.Name == "Render" && a_oTemplateLeaf.IsDerived( Group ) )
+            {
+               Group a_oVirtualProgram =
+                  (Group)CreateVirtualProgram( a_oTemplateRoot,
+                     (Group)a_oTemplateLeaf, p_oRemoteTemplateDatabase );
+               Model.AddNode( a_oVirtualProgram, p_oLocalGraphRoot, -1 );
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CloneTemplateContent(
+
+   Model3D p_oRemoteTemplateDatabase,
+   Group p_oLocalGraphRoot,
+   string p_sDatabaseClass
+
+   )
+{
+   // Clean up first. There may be existing data in the file, and it
+   // must be deleted before we can create a new template.
+   if( p_oLocalGraphRoot.ChildCount )
+   {
+      for( int c = 0; c < p_oLocalGraphRoot.ChildCount; ++c )
+      {
+         Node a_oNode = (Node)p_oLocalGraphRoot.Children[c];
+         if( !a_oNode.IsDerived( Light ) )
+         {
+            Model.DeleteNode( a_oNode );
+         }
+      }
+   }
+
+   // An absolute path to a template such as "C:\Scenome\Content\Templates\My Template.box";
+   // Extract the file path component from the full path. The extracted file path 
+   // component will be something such as 'C:\Scenome\Content\Templates'
+   string a_sTemplatePathOnly =
+      Application.GetFilePath( p_oRemoteTemplateDatabase.Filename );
+
+   // Extract the stripped filename component from the full path. This stripped
+   // filename component will be something such as 'My Template' if the original filename was 'My Template.box'
+   string a_sTemplateStrippedFilename =
+      Application.GetStrippedFileName( p_oRemoteTemplateDatabase.Filename );
+
+   //Console.Message( a_sTemplatePathOnly + a_sTemplateStrippedFilename );
+
+   // Create a list and pass in a modified string
+   // such as 'C:\Scenome\Content\Templates\My Template'
+   List n_lNodes = new List;
+   ValidateNodeCreateContext.CreateNodesFromTemplate(
+      Model,
+      a_sTemplatePathOnly + a_sTemplateStrippedFilename,
+      n_lNodes,
+      false );
+
+   // Construct the local root and add the template content to the graph.
+   Group a_oLocalGraphRoot = (Group)Model.GetTypedNodeByPath( "\\Graph", Group );
+   string a_sDatabaseClass;
+
+   if( p_sDatabaseClass == "APPLICATION" )
+   {
+      // For APPLICATION, go ahead an rename the
+      // root to match the user's specified name.
+      AddApplicationTemplateContent(
+         n_lNodes,
+         Model,
+         p_sDatabaseClass,
+         p_oRemoteTemplateDatabase );
+   }
+   else
+   if( p_sDatabaseClass == "SHADER" )
+   {
+      AddShaderTemplateContent(
+         n_lNodes,
+         Model,
+         p_sDatabaseClass,
+         p_oRemoteTemplateDatabase );
+   }
+   else
+   if( p_sDatabaseClass == "MODULE" )
+   {
+      AddModuleTemplateContent(
+         n_lNodes,
+         Model,
+         Model.Filename,
+         p_sDatabaseClass,
+         p_oRemoteTemplateDatabase );
+   }
+   else
+   if( p_sDatabaseClass == "TERRAIN" )
+   {
+      AddTerrainTemplateContent(
+         n_lNodes,
+         Model,
+         p_sDatabaseClass,
+         p_oRemoteTemplateDatabase );
+   }
+   else
+   if( p_sDatabaseClass == "MATERIAL" )
+   {
+      AddMaterialTemplateContent(
+         n_lNodes,
+         a_oLocalGraphRoot,
+         p_sDatabaseClass,
+         p_oRemoteTemplateDatabase );
+   }
+
+   // Custom shell loading. If you want
+   // to load a custom shell for the new
+   // file, set the name below.
+   a_sDatabaseClass = p_oRemoteTemplateDatabase.Class;
+   if( p_oRemoteTemplateDatabase.Class == "Include" )
+   {
+      a_sDatabaseClass = "v3_shader";
+   }
+   SpaApplicationUtil.GetShellForClass( a_sDatabaseClass );
+
+   // Delete the local graph root.
+   Model.DeleteNode( a_oLocalGraphRoot );
+   delete n_lNodes;
+
+   // Set the class of the new database root to the class of the template root.
+   Model.Class = p_oRemoteTemplateDatabase.Class;
+   Model.ID = p_oRemoteTemplateDatabase.ID;
+
+   ResolveDatabaseIdentification( p_sDatabaseClass );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int CreateTemplateLeaf(
+
+   Group p_oContainerGroup,
+   StrList p_slShaderTemplateResources,
+   string p_sPathToNode
+
+   )
+{
+   Node a_oTemplateResource = (Node)p_oContainerGroup.GetTypedNodeByPath( p_sPathToNode, Node );
+
+   if( !a_oTemplateResource )
+   {
+      string a_sMessage = "Unable to find a specific <Node> as expected at the following graph address: " + "MODELROOT" + p_sPathToNode;
+      Console.Error( a_sMessage );
+      return 0;
+   }
+
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateTemplateResourceStrings(
+
+   StrList p_slTemplateResources,
+   string p_sTemplateFileName
+
+   )
+{
+   if( p_sTemplateFileName == "Application.box" )
+   {
+      p_slTemplateResources.Add( "\\Scripts" );
+      p_slTemplateResources.Add( "\\Types" );
+      p_slTemplateResources.Add( "\\Commands" );
+      p_slTemplateResources.Add( "\\Applications" );
+      p_slTemplateResources.Add( "\\Web" );
+      p_slTemplateResources.Add( "\\Help" );
+   }
+   else
+   if( p_sTemplateFileName == "New v1 Shader.box" )
+   {
+      p_slTemplateResources.Add( "\\Graph" );
+      p_slTemplateResources.Add( "\\Graph\\Render" );
+      p_slTemplateResources.Add( "\\Graph\\Uniforms" );
+      p_slTemplateResources.Add( "\\Graph\\Materials" );
+      p_slTemplateResources.Add( "\\Graph\\Textures" );
+      p_slTemplateResources.Add( "\\Graph\\Geometry" );
+      p_slTemplateResources.Add( "\\Graph\\Geometry\\Mesh" );
+   }
+   else
+   if( p_sTemplateFileName == "New v2 Shader.box" )
+   {
+      p_slTemplateResources.Add( "\\Graph" );
+      p_slTemplateResources.Add( "\\Graph\\Render" );
+      p_slTemplateResources.Add( "\\Graph\\Render\\Program" );
+      p_slTemplateResources.Add( "\\Graph\\Render\\Program\\SPA_ViewBlock" );
+      p_slTemplateResources.Add( "\\Graph\\Render\\Program\\SPA_LightsBlock" );
+      p_slTemplateResources.Add( "\\Graph\\Render\\Program\\SPA_MaterialsBlock" );
+      p_slTemplateResources.Add( "\\Graph\\Uniforms" );
+      p_slTemplateResources.Add( "\\Graph\\Materials" );
+      p_slTemplateResources.Add( "\\Graph\\Textures" );
+      p_slTemplateResources.Add( "\\Graph\\Geometry" );
+      p_slTemplateResources.Add( "\\Graph\\Geometry\\Mesh" );
+   }
+   else
+   if( p_sTemplateFileName == "New v3 Shader.box" )
+   {
+      p_slTemplateResources.Add( "\\Graph" );
+      p_slTemplateResources.Add( "\\Graph\\Render" );
+      p_slTemplateResources.Add( "\\Graph\\Render\\Program" );
+      p_slTemplateResources.Add( "\\Graph\\Render\\Program\\SPA_ViewBlock" );
+      p_slTemplateResources.Add( "\\Graph\\Render\\Program\\SPA_LightsBlock" );
+      p_slTemplateResources.Add( "\\Graph\\Render\\Program\\SPA_MaterialsBlock" );
+      p_slTemplateResources.Add( "\\Graph\\Code" );
+      p_slTemplateResources.Add( "\\Graph\\Uniforms" );
+      p_slTemplateResources.Add( "\\Graph\\Materials" );
+      p_slTemplateResources.Add( "\\Graph\\Textures" );
+      p_slTemplateResources.Add( "\\Graph\\Geometry" );
+      p_slTemplateResources.Add( "\\Graph\\Geometry\\Mesh" );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int ValidateTemplateDatabaseStructure( Model3D p_oRemoteTemplateDatabase )
+{
+   // Create a list of strings with the graph addresses of the required resources.
+   auto StrList a_slTemplateResources;
+   string a_sTemplateFileName =
+      Application.GetFileName( p_oRemoteTemplateDatabase.Filename );
+   CreateTemplateResourceStrings( a_slTemplateResources, a_sTemplateFileName );
+
+   for( int i = 0; i < a_slTemplateResources.GetCount(); ++i )
+   {
+      // Create the expression leaf nodes.
+      if( !CreateTemplateLeaf(   p_oRemoteTemplateDatabase,
+                                 a_slTemplateResources,
+                                 a_slTemplateResources.GetAt( i ) ) ) {
+         return 0;
+      }
+   }
+
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int ValidateDatabaseStructure(
+
+   Model3D p_oRemoteTemplateDatabase,
+   Group a_oRemoteGraphRoot,
+   Group a_oLocalGraphRoot,
+   string p_sShaderTemplatePath
+
+   )
+{
+   if( !ValidateTemplateDatabaseStructure( p_oRemoteTemplateDatabase ) )
+   {
+      return 0;
+   }
+   
+   if( p_oRemoteTemplateDatabase.Class == "ApplicationProject" )
+   {
+      a_oLocalGraphRoot = Model;
+   }
+   else
+   {
+      a_oLocalGraphRoot = (Group)Model.GetTypedNodeByPath( "Graph", Group );
+   }
+
+   if( !a_oLocalGraphRoot )
+   {
+      string a_sMessage =
+         "Unable to find graph root in the local database.\n" +
+         "Please verify that a node of type <GROUP> named 'Graph' is " +
+         "located directly below the root.\n" +
+         "The failure originated in the current file.";
+
+      Console.Error( a_sMessage );
+
+      return 0;
+   }
+
+   if( a_oLocalGraphRoot && a_oLocalGraphRoot.IsDerived( Group ) )
+   {
+      return 1;
+   }
+   else
+   {
+      string a_sMessage =
+         "There was a problem: the remote graph root or local " +
+         "graph root does not exist or is not derived from type <GROUP>." +
+         "Please examine the local graph and check to see that there is a " +
+         "<GROUP> node named 'Graph' located directly below the root." +
+         "The failure may have originated in the current file: " + Model.Filename;
+
+      Console.Error( a_sMessage );
+
+      return 0;
+   }
+
+   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void OpenTemplateLibraryDatabase(
+
+   Model3D p_oRemoteDatabase,
+   string p_sDatabasePath,
+   string p_sDatabaseClass
+
+   )
+{
+   StringNode a_oRemoteReference =
+      (StringNode)p_oRemoteDatabase.GetTypedNodeByPath( p_sDatabasePath, StringNode );
+   string a_sShaderTemplatePath =
+      Application.ResolveModelRelativePath(
+         ResolveRemoteStringPathToModel( p_oRemoteDatabase, p_sDatabasePath ) );
+
+   auto Model3D a_oRemoteTemplateDatabase =
+      SpaRemoteDatabaseUtil.GetRemoteDatabase( a_sShaderTemplatePath );
+   Group a_oRemoteGraphRoot;
+   Group a_oLocalGraphRoot;
+
+   // Provide entry points for doing custom
+   // content clone operations.
+   if( a_oRemoteTemplateDatabase )
+   {
+      if( p_sDatabaseClass == "APPLICATION" )
+      {
+         if( ValidateDatabaseStructure( a_oRemoteTemplateDatabase, a_oRemoteGraphRoot,
+            a_oLocalGraphRoot, a_sShaderTemplatePath ) )
+         {
+            a_oLocalGraphRoot = Model;
+            CloneTemplateContent( a_oRemoteTemplateDatabase, a_oLocalGraphRoot,
+               p_sDatabaseClass );
+         }
+      }
+      else
+      if( p_sDatabaseClass == "SHADER" )
+      {
+         if( ValidateDatabaseStructure( a_oRemoteTemplateDatabase, a_oRemoteGraphRoot,
+            a_oLocalGraphRoot, a_sShaderTemplatePath ) )
+         {
+            a_oLocalGraphRoot = (Group)Model.GetTypedNodeByPath( "Graph", Group );
+            CloneTemplateContent( a_oRemoteTemplateDatabase, a_oLocalGraphRoot,
+               p_sDatabaseClass );
+         }
+      }
+      else
+      if( p_sDatabaseClass == "MODULE" )
+      {
+         if( ValidateDatabaseStructure( a_oRemoteTemplateDatabase, a_oRemoteGraphRoot,
+            a_oLocalGraphRoot, a_sShaderTemplatePath ) )
+         {
+            a_oLocalGraphRoot = (Group)Model.GetTypedNodeByPath( "Graph", Group );
+            CloneTemplateContent( a_oRemoteTemplateDatabase, a_oLocalGraphRoot,
+               p_sDatabaseClass );
+         }
+      }
+      else
+      if( p_sDatabaseClass == "TERRAIN" )
+      {
+         if( ValidateDatabaseStructure( a_oRemoteTemplateDatabase, a_oRemoteGraphRoot,
+            a_oLocalGraphRoot, a_sShaderTemplatePath ) )
+         {
+            a_oLocalGraphRoot = (Group)Model.GetTypedNodeByPath( "Graph", Group );
+            CloneTemplateContent( a_oRemoteTemplateDatabase, a_oLocalGraphRoot,
+               p_sDatabaseClass );
+         }
+      }
+      else
+      if( p_sDatabaseClass == "MATERIAL" )
+      {
+         if( ValidateDatabaseStructure( a_oRemoteTemplateDatabase, a_oRemoteGraphRoot,
+            a_oLocalGraphRoot, a_sShaderTemplatePath ) )
+         {
+            a_oLocalGraphRoot = (Group)Model.GetTypedNodeByPath( "Graph", Group );
+            CloneTemplateContent( a_oRemoteTemplateDatabase, a_oLocalGraphRoot,
+               p_sDatabaseClass );
+         }
+      }
+      else
+      if( p_sDatabaseClass == "SCENE" )
+      {
+         a_oLocalGraphRoot = (Group)Model.GetTypedNodeByPath( "Graph", Group );
+         CloneTemplateContent( a_oRemoteTemplateDatabase, a_oLocalGraphRoot,
+            p_sDatabaseClass );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ResolveTemplateDatabase(
+
+   string p_sDatabaseAddress,
+   string p_sDatabasePath,
+   string p_sDatabaseClass
+
+   )
+{
+   if( p_sDatabaseAddress != "" )
+   {
+      auto Model3D a_oRemoteDatabase =
+         SpaRemoteDatabaseUtil.GetRemoteDatabase( p_sDatabaseAddress );
+
+      if( a_oRemoteDatabase )
+      {
+         OpenTemplateLibraryDatabase(
+            a_oRemoteDatabase,
+            p_sDatabasePath,
+            p_sDatabaseClass );
+      }
+   }
+   else
+   {
+      string a_sMessage =  "Unable to resolve the following template database: " +
+         p_sDatabaseAddress + "\n" + 
+            "A blank space after the error message means that " +
+            "an empty template database address was specified.";
+
+      Console.Error( a_sMessage );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateContentFromTemplate( string p_sDatabasePath, string p_sDatabaseClass )
+{
+   string a_sDatabaseAddress;
+
+   if( p_sDatabaseClass == "APPLICATION" )
+   {
+      a_sDatabaseAddress =
+         Application.GetApplicationDocumentsPath() + "Library\\Types.box";
+   }
+   else
+   if( p_sDatabaseClass == "SHADER" )
+   {
+      a_sDatabaseAddress =
+         Application.GetApplicationDocumentsPath() + "Library\\Types.box";
+   }
+   else
+   if( p_sDatabaseClass == "MODULE" )
+   {
+      a_sDatabaseAddress =
+         Application.GetApplicationDocumentsPath() + "Library\\Types.box";
+   }
+   else
+   if( p_sDatabaseClass == "TERRAIN" )
+   {
+      a_sDatabaseAddress =
+         Application.GetApplicationDocumentsPath() + "Library\\Types.box";
+   }
+   else
+   if( p_sDatabaseClass == "MATERIAL" )
+   {
+      a_sDatabaseAddress =
+         Application.GetApplicationDocumentsPath() + "Library\\Shaders.box";
+   }
+   else
+   if( p_sDatabaseClass == "SCENE" )
+   {
+      a_sDatabaseAddress =
+         Application.GetApplicationDocumentsPath() + "Library\\Scenes.box";
+   }
+   else
+   if( p_sDatabaseClass == "EFFECT" )
+   {
+      a_sDatabaseAddress =
+         Application.GetApplicationDocumentsPath() + "Library\\Effects.box";
+   }
+
+   ResolveTemplateDatabase(
+      a_sDatabaseAddress,
+      p_sDatabasePath,
+      p_sDatabaseClass );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateContentOnDisk(
+
+   string p_sProjectName,
+   string p_sFileExtension,
+   string p_sDatabaseClass,
+   string p_sDatabasePath
+
+   )
+{
+   // Set the default text value and display the BrowseFileSave dialog.
+
+   string a_sInitialPath;
+   if( p_sProjectName == "MyApplicationProject" )
+   {
+      a_sInitialPath = Application.GetApplicationDocumentsPath() + "Projects\\";
+   }
+   else
+   if( p_sProjectName == "MyShaderProject" )
+   {
+      a_sInitialPath = Application.GetApplicationDocumentsPath() + "Templates\\Shaders";
+   }
+   else
+   if( p_sProjectName == "MyModuleProject" )
+   {
+      a_sInitialPath = Application.GetApplicationDocumentsPath() + "Templates\\Modules";
+   }
+   else
+   {
+      a_sInitialPath = p_sProjectName;
+   }
+
+   // DEBUG
+   //Console.Out( p_sProjectName );
+
+   string a_sOutput = Application.BrowseFileSave( 3, "", a_sInitialPath,
+      "Enter the name of your new project directory or filename:" );
+
+   // Create a string for the file path and file name components.
+   // Use the file path component ( such as MyNewProject ) as the filename.
+   auto FilePath a_oFilePath = new FilePath( a_sOutput );
+   auto FilePath a_oFileName = new FilePath( a_sOutput );
+   a_oFileName.RemoveFilePath();
+   string a_sFileExtension = a_oFilePath.GetFileExtension();
+
+   if( a_oFilePath.GetPath() == "" )
+   {
+      // Return and do nothing if the user does not specify a value. This might happen
+      // if the user hits ESC to exit the dialog and does not send in a string value.
+      return;
+   }
+
+   if( a_sFileExtension != p_sFileExtension )
+   {
+      // The user has specified a string such as "MyNewProject", that does not have
+      // a file extension. Interpret this as a new folder and derive the BOX file
+      // name from the folder name. Create a directory using the full path, such 
+      // as C:\Release6\Content\Templates\MyNewProject
+      Application.CreateDirectory( a_oFilePath.GetPath() );
+
+      // Combine the full path and stripped filename to produce a new absolute path
+      // and file name. Create a directory using the full path, such as
+      // C:\Release6\Content\Templates\MyNewProject\MyNewProject.box
+      string a_sCompletePath = a_oFilePath.GetPath() + "\\" + a_oFileName.GetPath() + "."
+         + p_sFileExtension;
+
+      // Save the file to disk in the correct directory.
+      Application.SaveFileAs( Model, a_sCompletePath );
+   }
+   else
+   if( a_sFileExtension == p_sFileExtension )
+   {
+      // The user has specified a filename such as "MyNewProject.box". In this
+      // case, just save the file to disk in the current directory.
+      Application.SaveFileAs( Model, a_oFilePath.GetPath() );
+   }
+
+   CreateContentFromTemplate( p_sDatabasePath, p_sDatabaseClass );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void BindCreateTemplate(
+
+   string p_sNewProjectName,
+   string p_sFileExtension,
+   string p_sProjectClass,
+   string p_sDatabasePath
+
+   )
+{
+   string a_sCurrentFileName;
+
+   if( Model.Filename != "" )
+   {
+      a_sCurrentFileName = Application.GetFilePath( Model.Filename );
+   }
+   else
+   {
+      a_sCurrentFileName = p_sNewProjectName;
+   }
+
+   CreateContentOnDisk(
+      a_sCurrentFileName,
+      p_sFileExtension,
+      p_sProjectClass,
+      p_sDatabasePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateApplicationFromTemplate(
+
+   ApplicationEventSource sender,
+   CommandExecutionEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   BindCreateTemplate( "MyApplicationProject", "box", "APPLICATION", p_sDatabasePath );
+}
+
+function void CreateApplicationFromTemplate_OnUpdate(
+
+   ApplicationEventSource sender,
+   CommandUpdateEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   // Pass through, hint goes here.
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateShaderFromTemplate(
+
+   ApplicationEventSource sender,
+   CommandExecutionEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   BindCreateTemplate( "MyShaderProject", "box", "SHADER", p_sDatabasePath );
+}
+
+function void CreateShaderFromTemplate_OnUpdate(
+
+   ApplicationEventSource sender,
+   CommandUpdateEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   event.Info.Status.SetHint( "Creates a new shader of the indicated type" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateModuleFromTemplate(
+
+   ApplicationEventSource sender,
+   CommandExecutionEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   BindCreateTemplate( "MyModuleProject", "box", "MODULE", p_sDatabasePath );
+}
+
+function void CreateModuleFromTemplate_OnUpdate(
+
+   ApplicationEventSource sender,
+   CommandUpdateEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   event.Info.Status.SetHint( "Creates a new module of the indicated type" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateTerrainFromTemplate(
+
+   ApplicationEventSource sender,
+   CommandExecutionEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   BindCreateTemplate( "MyTerrainProject", "box", "TERRAIN", p_sDatabasePath );
+}
+
+function void CreateTerrainFromTemplate_OnUpdate(
+
+   ApplicationEventSource sender,
+   CommandUpdateEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   // Pass through, hint goes here.
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+/*
+function void CreateMaterialFromTemplate(
+
+   ApplicationEventSource sender,
+   CommandExecutionEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   BindCreateTemplate( "MyMaterialProject", "box", "MATERIAL", p_sDatabasePath );
+}
+
+function void CreateMaterialFromTemplate_OnUpdate(
+
+   ApplicationEventSource sender,
+   CommandUpdateEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   // Pass through, hint goes here.
+}
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+/*
+function void CreateSceneFromTemplate(
+
+   ApplicationEventSource sender,
+   CommandExecutionEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   BindCreateTemplate( "MySceneProject", "box", "SCENE", p_sDatabasePath );
+}
+
+function void CreateSceneFromTemplate_OnUpdate(
+
+   ApplicationEventSource sender,
+   CommandUpdateEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   // Pass through, hint goes here.
+}
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+/*
+function void CreateEffectFromTemplate(
+
+   ApplicationEventSource sender,
+   CommandExecutionEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   BindCreateTemplate( "MyEffectProject", "box", "EFFECT", p_sDatabasePath );
+}
+
+function void CreateEffectFromTemplate_OnUpdate(
+
+   ApplicationEventSource sender,
+   CommandUpdateEvent event,
+   string p_sDatabasePath
+
+   )
+{
+   // Pass through, hint goes here.
+}
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro CreateDataFromTemplateLibrary( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{E5628056-83F5-474B-9338-2460FE3AD435}", Image=".\\icons\\root_icon.bmp"]
+{
+   // Stub to reserve the GUID and associate the image. 
+}

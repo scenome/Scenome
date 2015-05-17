@@ -1,0 +1,443 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             GROUP_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements commands for modifying nodes of type group.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "message_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+//  Handles common UI update functionality for Group commands.
+
+function void HandleOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group, hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ToggleVisible_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Toggle visible" );
+}
+
+macro ToggleVisible()
+[Category="Group Commands", Guid="{1F91F995-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\toggle_visible.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+         group.Visible = !group.Visible;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ToggleCollisions_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Toggle collisions" );
+}
+
+macro ToggleCollisions()
+[Category="Group Commands", Guid="{1F91F996-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\toggle_collisions.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+         group.Collisions = !group.Collisions;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ToggleCulling_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Toggle culling" );
+}
+
+macro ToggleCulling()
+[Category="Group Commands", Guid="{1F91F997-F612-46D4-A453-4B81096121A9}",  Image=".\\icons\\toggle_culling.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+         group.Cull = !group.Cull;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ToggleBoundingBoxFrozen_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Toggle bounding box frozen" );
+}
+
+macro ToggleBoundingBoxFrozen()
+[Category="Group Commands", Guid="{1F91FABD-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\toggle_bounding_box_frozen.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+         group.BoundFrozen = !group.BoundFrozen;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ToggleTransformLocked_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Toggle transformation locked" );
+}
+
+macro ToggleTransformLocked()
+[Category="Group Commands", Guid="{1F91F99E-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\unlock_transform.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+
+         group.Locked = !group.Locked;
+      }
+   }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void RemovePositionTransformation_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Remove position transformation" );
+}
+
+macro RemovePositionTransformation()
+[Category="Group Commands", Guid="{1F91F999-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\reset_position.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+         Matrix editTransform = group.GetTransform();
+         editTransform.Position[0] = 0;
+         editTransform.Position[1] = 0;
+         editTransform.Position[2] = 0;
+         group.SetTransform( editTransform );
+
+         if( (editTransform.Scale[0] == 1) && (editTransform.Scale[1] == 1) && (editTransform.Scale[2] == 1) &&
+             (editTransform.Orientation[0] == 0) && (editTransform.Orientation[1] == 0) && (editTransform.Orientation[2] == 0 ) )
+         {
+            group.ClearTransform();
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void RemoveOrientationTransformation_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Remove orientation transformation" );
+}
+
+macro RemoveOrientationTransformation()
+[Category="Group Commands", Guid="{1F91F99A-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\reset_orientation.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+         Matrix editTransform = group.GetTransform();
+         editTransform.Orientation[0] = 0;
+         editTransform.Orientation[1] = 0;
+         editTransform.Orientation[2] = 0;
+         group.SetTransform( editTransform );
+
+         if( (editTransform.Scale[0] == 1) && (editTransform.Scale[1] == 1) && (editTransform.Scale[2] == 1) &&
+             (editTransform.Position[0] == 0) && (editTransform.Position[1] == 0) && (editTransform.Position[2] == 0 ) )
+         {
+            group.ClearTransform();
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void RemoveScaleTransformation_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Remove scale transformation" );
+}
+
+macro RemoveScaleTransformation()
+[Category="Group Commands", Guid="{1F91F99B-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\reset_scale.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+         Matrix editTransform = group.GetTransform();
+         editTransform.Scale[0] = 1;
+         editTransform.Scale[1] = 1;
+         editTransform.Scale[2] = 1;
+         group.SetTransform( editTransform );
+
+         if( (editTransform.Orientation[0] == 0) && (editTransform.Orientation[1] == 0) && (editTransform.Orientation[2] == 0) &&
+             (editTransform.Position[0] == 0) && (editTransform.Position[1] == 0) && (editTransform.Position[2] == 0 ) )
+         {
+            group.ClearTransform();
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void RemoveAllTransformation_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Remove all transformations" );
+}
+
+macro RemoveAllTransformation()
+[Category="Group Commands", Guid="{1F91F99C-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\reset_all.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+         group.ClearTransform();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void PositionAtCamera_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Position at camera" );
+}
+
+macro PositionAtCamera()
+[Category="Group Commands", Guid="{1F91FA70-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\group_position_at_camera.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+         ModelView a_oView = Model.ActiveView;
+         Matrix editTransform = group.GetTransform();
+         editTransform.Position[0] = a_oView.Position.X;
+         editTransform.Position[1] = a_oView.Position.Y;
+         editTransform.Position[2] = a_oView.Position.Z;
+         editTransform.Orientation[0] = a_oView.Orientation.X;
+         editTransform.Orientation[1] = a_oView.Orientation.Y;
+         editTransform.Orientation[2] = a_oView.Orientation.Z;
+         group.SetTransform( editTransform );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void PositionAtGrid_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Position at grid" );
+}
+
+macro PositionAtGrid()
+[Category="Group Commands", Guid="{1F91FA71-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\group_position_at_grid.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+         ModelView a_oView = Model.ActiveView;
+         Matrix editTransform = Model.Grid.GetTransform();
+         Matrix groupTransform = new Matrix;
+         groupTransform.Position[0] = editTransform.Position[0];
+         groupTransform.Position[1] = editTransform.Position[1];
+         groupTransform.Position[2] = editTransform.Position[2];
+         groupTransform.Orientation[0] = editTransform.Orientation[0];
+         groupTransform.Orientation[1] = editTransform.Orientation[1];
+         groupTransform.Orientation[2] = editTransform.Orientation[2];
+         group.SetTransform( editTransform );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void PositionAtManipulator_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Position at manipulator" );
+}
+
+macro PositionAtManipulator()
+[Category="Group Commands", Guid="{1F91FA72-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\group_position_at_manipulator.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+         ModelView a_oView = Model.ActiveView;
+         Matrix editTransform = Model.Grid.GetManipulatorTransform();
+         Matrix groupTransform = new Matrix;
+         groupTransform.Position[0] = editTransform.Position[0];
+         groupTransform.Position[1] = editTransform.Position[1];
+         groupTransform.Position[2] = editTransform.Position[2];
+         groupTransform.Orientation[0] = editTransform.Orientation[0];
+         groupTransform.Orientation[1] = editTransform.Orientation[1];
+         groupTransform.Orientation[2] = editTransform.Orientation[2];
+         group.SetTransform( editTransform );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GroupSynchronizeBoundingBoxes_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Copies bounding box settings from one group to another." );
+}
+
+macro GroupSynchronizeBoundingBoxes()
+[Category="Group Commands", Guid="{3B8F23EF-44A1-45A9-86B7-923A6F97FE7F}", Image=".\\icons\\group_synchronize_bounding_boxes.bmp"]
+{
+   int selectCount = Model.GetSelectCount();
+   bool success = false;
+   if( selectCount == 2 )
+   {
+      // Get the selection.
+      Node sel1 = Model.GetSelectedNode( 0 ).GetNode();
+      Node sel2 = Model.GetSelectedNode( 1 ).GetNode();
+
+      if( sel1.IsDerived( Group ) && sel2.IsDerived( Group ) )
+      {
+         Group srcGroup = (Group)sel1;
+         Group dstGroup = (Group)Model.EditNode( sel2 );
+         dstGroup.BoundFrozen = true;
+         dstGroup.BoundMin[0] = srcGroup.BoundMin[0];
+         dstGroup.BoundMin[1] = srcGroup.BoundMin[1];
+         dstGroup.BoundMin[2] = srcGroup.BoundMin[2];
+         dstGroup.BoundMax[0] = srcGroup.BoundMax[0];
+         dstGroup.BoundMax[1] = srcGroup.BoundMax[1];
+         dstGroup.BoundMax[2] = srcGroup.BoundMax[2];
+         dstGroup.BoundFrozen = true;
+         success = true;
+      }
+   }
+
+   if( !success )
+   {
+      Console.Error( "You must have two Group nodes selected to invoke this command." );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ShowGroupInList_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Shows the selected group and hides all sibling groups" );
+}
+
+macro ShowGroupInList()
+[Category="Group Commands", Guid="{D3904711-B345-4F5E-82E4-9B7624F19EE3}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Node node = Model.GetSelectedNode( 0 ).GetNode();
+
+   if( node.IsDerived( Group ) )
+   {
+      DatabaseTreeViewEditor a_oEditor = (DatabaseTreeViewEditor)Application.GetEditor( "{1F91F9F6-F612-46D4-A453-4B81096121A9}" );
+      
+      Group a_oGroup = (Group)node.Parent();
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         Node child = a_oGroup.Children[ i ];
+         if( child.IsDerived( Group ) )
+         {
+            Group hideGroup = (Group)Model.EditNode( child );
+            a_oEditor.View.ExpandItem( child, false );
+            hideGroup.Visible = 0;
+         }
+      }
+
+      Group showGroup = (Group)Model.EditNode( node );
+      Group checkGroup = (Group)node;
+
+      for( int c = 0; c < checkGroup.ChildCount; ++c )
+      {
+         Node child = checkGroup.Children[ c ];
+         a_oEditor.View.ExpandItem( child, true );
+      }
+
+      a_oEditor.View.ExpandItem( node, true );
+      showGroup.Visible = 1;
+      Model.DeselectAll();
+   }
+}

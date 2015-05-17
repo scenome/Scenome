@@ -1,0 +1,12 @@
+#ifndef SPA_VARIABLES
+#define SPA_VARIABLES
+
+/////////////////////////////////////////////////////////////////////////////////
+// OpenGL Built-In Variable Declarations
+/////////////////////////////////////////////////////////////////////////////////
+
+// This file doesn't need to be generated because the built-in variables
+// are already declared at global scope for each shader stage.
+
+// !SPA_VARIABLES
+#endif

@@ -1,0 +1,85 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             HELP_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements commands for accessing help and connecting the user to purchase options.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "message_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro HelpLaunchApplicationDocumentation()
+[Category="Help Commands", Guid="{1F91FAF9-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\help_contents.bmp"]
+{
+   Application.LaunchHtmlPage ( "help/help.php" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HelpDisplayVersionInformation_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Displays version information for the current software." );
+}
+
+   macro HelpDisplayVersionInformation()
+[Category="Application Commands", Guid="{A12A258B-1747-48B1-BB4D-54A18B446BF6}"]
+{
+	int a_iRepositoryVersion = 6;
+	int a_iInnerVersion = 0;
+	int a_iSubVersion = 0;
+	int a_iFinalVersion = 2;
+	int a_iBuildNumber = 5000;
+	string a_sDate = "03/8/2014";
+	string a_sTime = "03:48 PST";
+	string a_sBuildName = "tiny pica";
+	string a_sVersion = a_iRepositoryVersion + "." + a_iInnerVersion + "." + a_iSubVersion + "." + a_iFinalVersion;
+
+	string a_sVersionInfo;
+	a_sVersionInfo += "\n" + 
+							"<Scenome Version Info>" + "\n" + "\n" +
+							"Version: " + a_sVersion + "\n" +
+							"Date   : " + a_sDate + "\n" +
+							"Time   : " + a_sTime + "\n" +
+							"Build  : " + a_iBuildNumber + "\n" +
+							"Name   : " + a_sBuildName + "\n";
+
+	Console.Message( a_sVersionInfo );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HelpBuyInternalUseLicense_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Takes you the Internal Use License purchase page." );
+}
+
+   macro HelpBuyInternalUseLicense()
+[Category="Help Commands", Guid="{1D367468-B3E2-4305-AD6B-263A81478A10}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+	Application.LaunchHtmlPage ( "products/internal_use_license/internal_use_license.php" );
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// macro
+//////////////////////////////////////////////////////////////////////////////
+
+function void HelpBuyExternalUseLicense_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Takes you the External Use License purchase page." );
+}
+
+   macro HelpBuyExternalUseLicense()
+[Category="Help Commands", Guid="{3DF2BC06-8843-47B9-9A86-971F69E15E27}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+	Application.LaunchHtmlPage ( "products/external_use_license/external_use_license.php" );
+}

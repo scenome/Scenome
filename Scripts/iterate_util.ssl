@@ -1,0 +1,67 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file         :   MENU_UTIL.SSL
+// $author       :   Scenomics
+// $privacy      :   PUBLIC
+// $description  :   This script implements basic menu creation functions.
+// $legal        :   Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////
+
+import library "application_util.ssl";
+import library "message_util.ssl";
+import library "graph_util.ssl";
+
+library Iterate;
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function void SetString( TypeInformation p_oTypeInfo, string p_sDataInterface,
+   string p_sValue )
+{
+   if( p_oTypeInfo.IsDerived( PreprocessorNode ) )
+   {
+      for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+      {
+         Node a_oSelNode = (Node)Model.GetSelectedNode( sel ).GetNode();
+         if( a_oSelNode )
+         {
+            PreprocessorNode a_oPreprocessorNode =
+               (PreprocessorNode)Model.EditNode( a_oSelNode );
+
+            if( p_sDataInterface == "Name" )
+            {
+               a_oPreprocessorNode.Name = p_sValue;
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function void SetEnumeration( TypeInformation p_oTypeInfo, string p_sDataInterface,
+   int p_iEnumerationValue )
+{
+   if( p_oTypeInfo.IsDerived( PreprocessorNode ) )
+   {
+      for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+      {
+         Node a_oSelNode = (Node)Model.GetSelectedNode( sel ).GetNode();
+         if( a_oSelNode )
+         {
+            PreprocessorNode a_oPreprocessorNode =
+               (PreprocessorNode)Model.EditNode( a_oSelNode );
+
+            if( p_sDataInterface == "Mode" )
+            {
+               a_oPreprocessorNode.Mode = p_iEnumerationValue;
+            }
+         }
+      }
+   }
+}

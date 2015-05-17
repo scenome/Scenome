@@ -1,0 +1,262 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// $file             IMAGE_UTIL.SSL
+// $author           Mike Richardson
+// $description      This script contains image processing functions.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+
+NOTICE OF PUBLIC DOMAIN INTELLECTUAL PROPERTY
+
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or
+distribute this software, either in source code form or as a compiled
+binary, for any purpose, commercial or non-commercial, and by any
+means.
+
+In jurisdictions that recognize copyright laws, the author or authors
+of this software dedicate any and all copyright interest in the
+software to the public domain. We make this dedication for the benefit
+of the public at large and to the detriment of our heirs and
+successors. We intend this dedication to be an overt act of
+relinquishment in perpetuity of all present and future rights to this
+software under copyright law.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+For more information, please refer to <http://unlicense.org/>
+
+*/
+
+library SpaImageUtil;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string ConvertImageToAscii(
+
+   Image p_oImageFile,
+   string p_sFileName,
+   ref int p_nTotalPixelsRead
+
+   )
+{
+   string a_sAsciiPixels;
+
+   // Append info about the file we
+   // read to produce the ASCII scanlines.
+   a_sAsciiPixels += "; " + p_sFileName + "\n";
+
+   // Declare a_nMaxCol as zero.
+   int a_nMaxCol = 0;
+
+   // Declare a StrList that will
+   // contain the ASCII scanlines.
+   // The StrList will contain one
+   // entry for each scanline in
+   // the image. Object lifetime
+   // is duration of this function.
+   auto StrList a_slScanlines;
+
+   // Iterate pixels and produce a 0 value for OFF
+   // and 1 value for ON.
+
+   // Declare a Color object
+   // with automatic storage
+   // duration. Object lifetime
+   // is duration of this function.
+   auto Color a_oColor;
+
+   for( int w = 0; w < p_oImageFile.Width; ++w )
+   {
+      string a_sScanline;
+      // Start each line with DW
+      // followed by three spaces.
+      //a_sScanline += "DW   ";
+
+      for( int h = 0; h < p_oImageFile.Height; ++h )
+      {
+         // Get the pixel at the w/h coordinates.
+         p_oImageFile.GetPixel( w, h, a_oColor );
+
+         // Sum the color values.
+         int a_nColor = a_oColor.R + a_oColor.G + a_oColor.B + a_oColor.A;
+
+         // We're using black for "LED ON" and
+         // white for "LED OFF" so the following
+         // tests might seem like they're
+         // reversed, but they aren't.
+         if( a_nColor )
+         {
+            // Pixel is white. Mark "LED OFF".
+            a_sScanline += "0";
+         }
+         else
+         {
+            // Pixel is black. Mark "LED ON".
+            a_sScanline += "1";
+
+            // Now check if the column in
+            // which we found pixel data
+            // is greater than the current
+            // value of a_nMaxCol. If so,
+            // update a_nMaxCol to the new
+            // value.
+            if( w + 1 > a_nMaxCol )
+            {
+               a_nMaxCol = w + 1;
+            }
+         }
+         ++p_nTotalPixelsRead;
+
+         // Insert line termination characters: 'B' and a newline.
+         if( h == p_oImageFile.Height - 1 )
+         {
+            //a_sScanline += "B\n";
+            a_sScanline += "\n";
+         }
+      }
+
+      // Add the complete scanline
+      // to the StrList.
+      a_slScanlines.Add( a_sScanline );
+   }
+   
+   // Append information about the maximum
+   // column that contains any '1' pixel data.
+   a_sAsciiPixels += "DW " + a_nMaxCol +  "\n";
+   auto StrList a_slRotatedScanlines;
+
+   for( int s = 0; s < p_oImageFile.Height; ++s )
+   {
+      string a_sRotate = "DW   ";
+      for( int t = 0; t < a_slScanlines.GetCount(); ++t )
+      {
+         auto Str a_oScanLine = new Str( a_slScanlines.GetAt( t ) );
+         if( a_oScanLine.Objects[ s ] == 48 )
+         {
+            a_sRotate += "0";
+         }
+         else
+         {
+            a_sRotate += "1";
+         }
+
+         if( t == a_slScanlines.GetCount() - 1 )
+         {
+            a_sRotate += "B\n";
+            a_slRotatedScanlines.Add( a_sRotate );
+         }
+      }
+   }
+
+   //SpaStrListUtil.Out( a_slRotatedScanlines );
+   //Console.Out( ">> " + a_slRotatedScanlines.GetCount() );
+
+   // We read the image from the bottom up,
+   // so we need to iterate the scanlines in 
+   // reverse and accumulate them into a_sAsciiPixels;
+   for( int r = a_slRotatedScanlines.GetCount() - 1; r >= 0; --r )
+   //for( int r = 0; r < a_slRotatedScanlines.GetCount(); ++r )
+   {
+      a_sAsciiPixels += a_slRotatedScanlines.GetAt( r );
+      //Console.Out( a_slRotatedScanlines.GetAt( r ) );
+   }
+
+   // Insert a newline at the end of the series.
+   a_sAsciiPixels += "\n";
+
+   return a_sAsciiPixels;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int BuildAsmFileFromImages( FileNode p_oFileNode )
+{
+   // Declare a string that will store the information
+   // we're going to save into an ASM file.
+   string a_sAsmFileContents = "";
+
+   // Append the header info...
+   a_sAsmFileContents += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+   a_sAsmFileContents += ";\n";
+   a_sAsmFileContents += ";	40 ROW BIG CHARACTER LOOK UP TABLE\n";
+   a_sAsmFileContents += ";\n";
+   a_sAsmFileContents += ";          (SS40)\n";
+   a_sAsmFileContents += "\n";
+   a_sAsmFileContents += ";BIGTAB: //Hex value?\n";
+   a_sAsmFileContents += "\n";
+
+   int a_nGuard = p_oFileNode.ChildCount;
+   int a_nTotalPixelsRead = 0;
+
+   // DEBUG ONLY!
+   // Comment this in to do a few images at a time.
+   /*
+   a_nGuard = 4;
+   // This statment bounds-checks a_nGuard
+   // if you've set the value manually...
+   if( a_nGuard < 0 || a_nGuard > p_oFileNode.ChildCount )
+   {
+      // If the range is bad, just set it
+      // to the FileNode's child count.
+      a_nGuard = p_oFileNode.ChildCount;
+   }
+   */
+
+   // Iterate the FileNode's child list. Produce
+   // an ASCII representation of each child Texture, where
+   // black pixels are indicated by '1' and white
+   // pixels are indicated by '0'.
+   for( int i = 0; i < a_nGuard; ++i )
+   {
+      Node a_oNode = (Node)p_oFileNode.Children[ i ];
+      if( a_oNode && a_oNode.IsDerived( Texture ) )
+      {
+         // Cast the Node object to a Texture object.
+         Texture a_oTexture = (Texture)a_oNode;
+
+         // Create a FilePath object that refers
+         // to the absolute path to the texture
+         // file on the hard disk. Object lifetime
+         // is duration of this statement block.
+         auto FilePath a_oTexturePath = new FilePath( a_oTexture.PathToFile );
+         a_oTexturePath.ResolveToModel( Model );
+
+         if( a_oTexturePath.FileExists() )
+         {
+            // Get the first image. We don't care
+            // if the texture is MIP mapped.
+            Image a_oFileImage = a_oTexture.GetImage( 0 );
+            // Create a new FilePath and strip the file path information
+            // off. This allows us to show which filename creates which
+            // ASCII representation. Object lifetime is duration of this
+            // statement block.
+            auto FilePath a_oInfo = new FilePath( a_oTexturePath.GetPath() );
+            a_oInfo.RemoveFilePath();
+            // Convert the image to ASCII form.
+            a_sAsmFileContents += ConvertImageToAscii(
+                                    a_oFileImage,
+                                    a_oInfo.GetPath(),
+                                    a_nTotalPixelsRead );
+         }
+      }
+   }
+
+   Console.Out( a_sAsmFileContents );
+   Console.Out( "\n\n\n" );
+   Console.Out( "Total pixels read: " + a_nTotalPixelsRead );
+   return 1;
+}

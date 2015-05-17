@@ -1,0 +1,13 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             GENERATE_GEOMETRY_SHADER_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements helper/worker functions for generating GLSL for the geometry shader stage.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+library SpaGeometryShaderUtil;
+
+// DEPRECATED MJR JULY 11 20014

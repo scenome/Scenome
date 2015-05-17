@@ -1,0 +1,2049 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             HIERARCHY_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script contains functions and macros that automate operations such as
+// $description      swapping the files referenced by nodes, and expanding/contract nodes that
+// $description      contain other nodes as children.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "build_util.ssl";
+import library "dialog_util.ssl";
+import library "file_util.ssl";
+import library "expression_util.ssl";
+import library "graph_util.ssl";
+import library "html_util.ssl";
+import library "interface_util.ssl";
+import library "main_util.ssl";
+import library "message_util.ssl";
+import library "node_util.ssl";
+import library "performance_util.ssl";
+import library "property_sheet_util.ssl";
+import library "remote_database_util.ssl";
+import library "str_list_util.ssl";
+import library "validation_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// Global Variables
+////////////////////////////////////////////////////////////////////////////////
+
+int InterfaceElements_Interface   = 0;
+int InterfaceElements_Menu        = 1;
+int InterfaceElements_Popup       = 2;
+int InterfaceElements_Item        = 3;
+int InterfaceElements_Separator   = 4;
+int InterfaceElements_Dockbar     = 5;
+int InterfaceElements_DockedView  = 6;
+int InterfaceElements_ActiveView  = 7;
+int InterfaceElements_Toolbar     = 8;
+int InterfaceElements_ContextMenu = 9;
+int InterfaceElements_Keyboard    = 10;
+int InterfaceElements_Accelerator = 11;
+
+int CommandStatusOption_Removed         = 0;
+int CommandStatusOption_Deprecated      = 1;
+int CommandStatusOption_Compatibility   = 2;
+int CommandStatusOption_Active          = 3;
+int CommandStatusOption_Disabled        = 4;
+
+int CommandModeOption_Release  = 0;
+int CommandModeOption_Debug    = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void HandleOnUpdate( CommandPresentationModuleInfo commandInfo, string hint, bool p_bSingleSelectionItem )
+{
+   bool enabled;
+   bool a_bValidSelectCount;
+   int a_iSelectCount = Model.GetSelectCount();
+
+   if( p_bSingleSelectionItem == true )
+   {
+      if( a_iSelectCount != 1 )
+      {
+         a_bValidSelectCount = false;
+         hint = "This command does not work on multiple nodes. Please select a single node.";
+      }
+      else
+      {
+         a_bValidSelectCount = true;
+      }
+   }
+   else
+   {
+      if( a_iSelectCount >= 1 )
+      {
+         a_bValidSelectCount = true;
+      }
+   }
+
+   if( Model.Filename != "" && a_bValidSelectCount )
+   {
+      enabled = true;
+   }
+   else
+   {
+      hint = "This command does not work when a file is new and has not yet been saved.";
+   }
+
+   commandInfo.SetEnabled( enabled );
+   commandInfo.Status.SetHint( hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ValidateModelSaved( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.Filename == "" )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "This command cannot be executed when the model is unsaved" );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchySetActivePalette_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group, "Set active palette" );
+}
+
+macro HierarchySetActivePalette()
+[Category="Hierarchy Commands", Guid="{CAF87D35-88CE-47C9-B2D1-EF057EBF4B0E}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      
+      if( node.IsDerived( Group ) )
+      {
+         Model.SetActivePalette( (Group)node );
+         break;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchySetActiveParent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group, "Set active parent" );
+}
+
+macro HierarchySetActiveParent()
+[Category="Hierarchy Commands", Guid="{1F91F9DB-F612-46d4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      
+      if( node.IsDerived( Group ) )
+      {
+         Model.SetActiveParent( (Group)node );
+         break;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchySetActiveMaterial_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Material, "Set active material" );
+}
+
+macro HierarchySetActiveMaterial()
+[Category="Hierarchy Commands", Guid="{1F91F9DC-F612-46d4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      
+      if( node.IsDerived( Material ) )
+      {
+         Model.SetActiveMaterial( (Material)node );
+         break;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchySetActiveMesh_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ParametricMesh, "Set active mesh" );
+}
+
+macro HierarchySetActiveMesh()
+[Category="Hierarchy Commands", Guid="{1F91F9DD-F612-46d4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      
+      if( node.IsDerived( ParametricMesh ) )
+      {
+         Model.SetActiveMesh( (ParametricMesh)node );
+         break;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyIsolateSelection_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group, "Isolate selected nodes" );
+}
+
+macro HierarchyIsolateSelection()
+[Category="Hierarchy Commands", Guid="{1F91FA86-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\isolate_selection.bmp"]
+{
+   if( Model.GetSelectCount() )
+   {
+      EnumerateTreeViewEditor a_oEditor = (EnumerateTreeViewEditor)Application.GetEditor( "{1F922100-F612-46D4-A453-4B81096121A9}" );
+      a_oEditor.View.SetRoot( Model.GetSelectedNode( 0 ).GetNode() );
+      a_oEditor.Activate();
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyDisplayDatabasePathFromRootToSelection_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Node,
+      "Display the database path from the root to the selected nodes" );
+}
+
+macro HierarchyDisplayDatabasePathFromRootToSelection()
+[Category="Hierarchy Commands", Guid="{1F91FAB8-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\display_database_path.bmp"]
+{
+   OutputViewEditor a_oOutputViewEditor = (OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" );
+   a_oOutputViewEditor.Activate();
+
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      string a_sMessage;
+      a_sMessage += node.GetPathToNode();
+      Console.GenerateOutputMessage( a_sMessage, "INFO" );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyLoadTexturesFromDisk_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group, "Import a texture from disk" );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchyLoadTexturesFromDisk()
+[Category="Texture Commands", Guid="{1F92099D-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\new_texture.bmp"]
+{
+   Node selNode = Model.GetSelectedNode( 0 ).GetNode();
+   Graph.HandleTextureCreateAndSwap( selNode, "2D", false );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyLoadCubeMapTextureFromDisk_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group, "Import a cube map texture from disk" );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchyLoadCubeMapTextureFromDisk()
+[Category="Texture Commands", Guid="{E5E5D00E-3524-4287-B665-A86C2CFFE075}", Image=".\\icons\\new_texture.bmp"]
+{
+   Node selNode = Model.GetSelectedNode( 0 ).GetNode();
+   Graph.HandleTextureCreateAndSwap( selNode, "Cube Map", false );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyLoadArrayTextureFromDisk_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group, "Import an array texture from disk" );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchyLoadArrayTextureFromDisk()
+[Category="Texture Commands", Guid="{E8A5B106-CBD0-4642-8F81-97D20F9431E0}", Image=".\\icons\\new_texture.bmp"]
+{
+   Node selNode = Model.GetSelectedNode( 0 ).GetNode();
+   Graph.HandleTextureCreateAndSwap( selNode, "Array", false );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyLoad3DTextureFromDisk_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group, "Import a 3D texture from disk" );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchyLoad3DTextureFromDisk()
+[Category="Texture Commands", Guid="{1F5AEB9D-196B-4DC8-B746-EC6EA524942E}", Image=".\\icons\\new_texture.bmp"]
+{
+   Node selNode = Model.GetSelectedNode( 0 ).GetNode();
+   Graph.HandleTextureCreateAndSwap( selNode, "3D", false );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyReplaceTextures_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Texture, "Replaces the texture nodes for a group" );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchyReplaceTextures()
+[Category="Hierarchy Commands", Guid="{9AFE3A3B-7707-4FDE-B8B2-E4A8F407215D}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Node selNode = Model.GetSelectedNode( 0 ).GetNode();
+   Graph.HandleTextureCreateAndSwap( selNode, "2D", true );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyCreateScriptNodeFromDisk_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group,
+      "Creates a script node that references a .SSL file on the hard disk" );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchyCreateScriptNodeFromDisk()
+[Category="Hierarchy Commands", Guid="{0204A7D6-AA99-468D-9919-5230AAA939E1}", Image=".\\icons\\create_script_node.bmp"]
+{
+   Node node = Model.GetSelectedNode( 0 ).GetNode();
+   Graph.LoadScriptFromDisk();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyCreateFileNodeFromDisk_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group,
+      "Creates a FileNode that references any type of file on the hard disk" );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchyCreateFileNodeFromDisk()
+[Category="Hierarchy Commands", Guid="{D07FD11A-1B8C-4F0F-83AF-52704E4F0EF9}", Image=".\\icons\\create_file_node.bmp"]
+{
+   Node node = Model.GetFirstSelectedNode().GetNode();
+   Graph.LoadFileFromDisk( node, FileNode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyCreateFileConfigNodeFromDisk_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group,
+      "Creates a FileConfigNode that references any type of file on the hard disk" );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchyCreateFileConfigNodeFromDisk()
+[Category="Hierarchy Commands", Guid="{01D48F2F-A637-4CC5-B4B8-1375CCD5A6EB}", Image=".\\icons\\create_file_config_node.bmp"]
+{
+   Node node = Model.GetFirstSelectedNode().GetNode();
+   Graph.LoadFileFromDisk( node, FileConfigNode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyCreateLinkNodeFromDisk_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group,
+      "Creates a link node that references a .BOX file on the hard disk" );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchyCreateLinkNodeFromDisk()
+[Category="Hierarchy Commands", Guid="{8D1058BB-B2C7-4120-AD32-00EB66D97B1E}", Image=".\\icons\\new_link.bmp"]
+{
+   Node node = Model.GetFirstSelectedNode().GetNode();
+   Graph.LoadLinkFromDisk();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyCreateProgramNodeFromDisk_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group,
+      "Creates a program node that references up to five GLSL files on the hard disk" );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchyCreateProgramNodeFromDisk()
+[Category="Hierarchy Commands", Guid="{83217534-E28E-441A-BE67-865C0B6FF0DF}", Image=".\\icons\\create_program_node_icon.bmp"]
+{
+   Node node = Model.GetFirstSelectedNode().GetNode();
+   Graph.HandleShaderCreateAndSwap( node, Application.GetFilePath( Model.Filename ),
+      "Choose application files:", false, true );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyCreateAppFromDisk_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ApplicationConfigNode,
+      "Creates an AppScaffoldNode that references application files on the hard disk" );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchyCreateAppFromDisk()
+[Category="Hierarchy Commands", Guid="{5C4D0037-C05E-40A3-B826-F4C3911E07D2}", Image=".\\icons\\new_app_definition_node.bmp"]
+{
+   ApplicationConfigNode a_oApplicationConfigNode =
+      (ApplicationConfigNode)Model.GetFirstSelectedNode().GetNode();
+   string a_sInitialFolder =
+      Application.GetApplicationDocumentsPath() + "Applications";
+   Graph.HandleAppCreate( a_oApplicationConfigNode, a_sInitialFolder,
+      "Choose application files:" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyExpandTreeItems_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group, "Expand selected tree items" );
+}
+
+macro HierarchyExpandTreeItems()
+[Category="Hierarchy Commands", Guid="{56F9073B-C58C-4D25-AF86-AA12E4FA5C15}", Image=".\\icons\\hierarchy_expand_tree_item.bmp"]
+{
+   DatabaseTreeViewEditor a_oEditor = (DatabaseTreeViewEditor)Application.GetEditor( "{1F91F9F6-F612-46D4-A453-4B81096121A9}" );
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      a_oEditor.View.ExpandItem( node, true );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyExpandAllTreeItemsBelowSelection_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group, "Expands all tree items below the selection" );
+}
+
+macro HierarchyExpandAllTreeItemsBelowSelection()
+[Category="Hierarchy Commands", Guid="{CEE7E646-17C6-4485-A44E-228D74D014DB}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived ( Group ) )
+      {
+         Graph.ExpandItems( node );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyContractAllTreeItemsBelowSelection_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group, "Contracts all tree items below the selection" );
+}
+
+macro HierarchyContractAllTreeItemsBelowSelection()
+[Category="Hierarchy Commands", Guid="{D3BFE4E3-931C-4C39-9C45-BAD902B6EA28}",Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived ( Group ) )
+      {
+         Graph.ContractItems( node );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyContractTreeItems_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group, "Contract selected tree items" );
+}
+
+macro HierarchyContractTreeItems()
+[Category="Hierarchy Commands", Guid="{0AD93D85-038A-4EB6-B190-C6EF73123CDD}", Image=".\\icons\\hierarchy_contract_tree_item.bmp"]
+{
+   DatabaseTreeViewEditor a_oEditor = (DatabaseTreeViewEditor)Application.GetEditor( "{1F91F9F6-F612-46D4-A453-4B81096121A9}" );
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      a_oEditor.View.ExpandItem( node, false );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyExpandAllTreeItems_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Expand all tree items" );
+}
+
+macro HierarchyExpandAllTreeItems()
+[Category="Hierarchy Commands", Guid="{2DA64747-6145-4083-84F2-9C889FD50BE1}", Image=".\\icons\\hierarchy_expand_all_tree_items.bmp"]
+{
+   DatabaseTreeViewEditor a_oEditor = (DatabaseTreeViewEditor)Application.GetEditor( "{1F91F9F6-F612-46D4-A453-4B81096121A9}" );
+   a_oEditor.View.ExpandAllItems( true );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyContractAllTreeItems_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Contract all tree items" );
+}
+
+macro HierarchyContractAllTreeItems()
+[Category="Hierarchy Commands", Guid="{7DBA53AB-B3AF-4775-A8D7-77BD5D9A9229}", Image=".\\icons\\hierarchy_contract_all_tree_items.bmp"]
+{
+   DatabaseTreeViewEditor a_oEditor = (DatabaseTreeViewEditor)Application.GetEditor( "{1F91F9F6-F612-46D4-A453-4B81096121A9}" );
+   a_oEditor.View.ExpandAllItems( false );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchySetAllPathsRelative_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Transform all external file paths in the model to relative paths" );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchySetAllPathsRelative()
+[Category="Hierarchy Commands", Guid="{7F3BADFB-30A4-4AF6-BFE4-DD5EC8F1276D}", Image=".\\icons\\hierarchy_set_all_paths_relative.bmp"]
+{
+   SpaNodeUtil.TransformAllExternalPaths( Model, 2 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchySetAllPathsAbsolute_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Transform all external file paths in the model to absolute paths" );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchySetAllPathsAbsolute()
+[Category="Hierarchy Commands", Guid="{FAC8F174-DD7E-48B4-A36E-3718428D3095}", Image=".\\icons\\hierarchy_set_all_paths_absolute.bmp"]
+{
+   SpaNodeUtil.TransformAllExternalPaths( Model, 1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyDisplayAllPaths_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Lists all paths in the current database" );
+}
+
+macro HierarchyDisplayAllPaths()
+[Category="Hierarchy Commands", Guid="{4E41D4A1-7975-4D7D-B76A-899DA6D25998}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.DisplayAllPaths( Model );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyReplaceDiskBasedContent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Changes the files referenced by the selected node to files you select from the hard disk.", true );
+}
+
+macro HierarchyReplaceDiskBasedContent()
+[Category="Hierarchy Commands", Guid="{E1073CC7-0C79-43C8-8578-491A40859388}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( Texture ) )
+      {
+         Texture a_oTexture = (Texture)node;
+         Graph.HandleTextureCreateAndSwap( a_oTexture, "", false );
+      }
+      else
+      if( node.IsDerived( Program ) )
+      {
+         bool bCreate = false;
+         bool bSwap = false;
+         Program a_oProgram = (Program)Model.EditNode( node );
+         auto FilePath a_oPathToSource = new FilePath( node.GetModel().Filename );
+         a_oPathToSource.ResolveToModel( node );
+         a_oPathToSource.RemoveFileName();
+
+         if( a_oProgram )
+         {
+            bCreate = false;
+         }
+         if( a_oPathToSource.GetPath() != "" )
+         {
+            bSwap = true;
+         }
+
+         Graph.HandleShaderCreateAndSwap( a_oProgram, a_oPathToSource.GetPath(),
+            "Choose shader files:", bSwap, bCreate );
+      }
+      else
+      if( node.IsDerived( NodeLink ) )
+      {
+         Graph.SwapDatabase( node );
+      }
+      else
+      if( node.IsDerived( DisplaceModifier ) )
+      {
+         Graph.SwapDisplace( node );
+      }
+      else
+      if( node.IsDerived( ScriptNode ) )
+      {
+         Graph.SwapScriptCode( node );
+      }
+      else
+      if( node.IsDerived( FileNode ) )
+      {
+         Graph.SwapFile( node );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyValidateContents_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Validates the active document and any connected documents." );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchyValidateContents()
+[Category="Hierarchy Commands", Guid="{547BD7B6-EF8D-4D87-BF4B-37AD9E4750CD}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   // Clear the output window.
+   Console.ClearOutputWindow();
+   SpaValidationUtil.ValidateGraph( Model, true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyShowConnectedDatabaseStructure_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Displays a hierarchy representing the entire document tree." );
+   ValidateModelSaved( commandInfo );
+}
+
+macro HierarchyShowConnectedDatabaseStructure()
+[Category="Hierarchy Commands", Guid="{B5BD90D5-64BC-492D-B3F1-6A2C3B42DBE8}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   // Find all connected graphs and display a text graph of the connections.
+   List n_lExternalModels = new List;
+   Console.Message( "\n<Local Database Connections>\n" );
+   Console.Message( Model.Filename );
+   string a_sLeader;
+   Graph.GetConnectedDatabases( Model, n_lExternalModels, a_sLeader, false );
+   delete n_lExternalModels;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function int BuildTypes(
+
+   ConfigNode p_oConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   auto StrList a_slMessages;
+   SpaBuildUtil.GenerateProjectBuildHeader( p_oConfigNode.Name, a_slMessages );
+   // Validate Nodes
+   auto List a_lNodes;
+   Graph.GetNodesFromDatabase( p_oConfigNode, a_lNodes, Node );
+   if( SpaValidationUtil.GetNodeErrors( false, a_lNodes ) )
+   {
+      return 0;
+   }
+
+   a_slMessages.Add( "Successfully built <" + p_oConfigNode.Name + ">" );
+   SpaBuildUtil.Out( a_slMessages );
+   
+   return 1;
+}
+
+function int GenericBuild(
+
+   ConfigNode p_oConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   // Generic build means check for errors and check for file closure if applicable.
+   // We don't have enough information to do anything specific.
+   auto StrList a_slMessages;
+   SpaBuildUtil.GenerateProjectBuildHeader( p_oConfigNode.Name, a_slMessages );
+
+   auto StrList a_slLocalFilenames;
+   auto StrList a_slAllFilenames;
+   auto StrList a_slBoxFiles;
+   SpaValidationUtil.GetAllReferencedFiles( p_oConfigNode, a_slLocalFilenames,
+      a_slBoxFiles, true, commandInfo );
+   SpaValidationUtil.GetAllReferencedFiles( p_oConfigNode, a_slAllFilenames,
+      a_slBoxFiles, false, commandInfo );
+   
+   // DEBUG
+   //SpaStrListUtil.Out( a_slLocalFilenames );
+
+   // DEBUG
+   //SpaStrListUtil.Out( a_slAllFilenames );
+
+   // DEBUG
+   //SpaStrListUtil.Out( a_slBoxFiles );
+
+   // Validate graph closure.
+   if( a_slBoxFiles.GetCount() )
+   {
+      if( SpaValidationUtil.ValidateModelList( a_slBoxFiles, commandInfo ) == false )
+      {
+         return 0;
+      }
+   }
+
+   // Validate Closure
+   if( SpaValidationUtil.ValidateClosure( a_slAllFilenames, a_slLocalFilenames,
+      commandInfo ) == false )
+   {
+      return 0;
+   }
+
+   // Validate Nodes
+   auto List a_lNodes;
+   Graph.GetNodesFromDatabase( p_oConfigNode, a_lNodes, Node );
+   if( SpaValidationUtil.GetNodeErrors( false, a_lNodes ) )
+   {
+      return 0;
+   }
+
+   a_slMessages.Add( "Successfully built <" + p_oConfigNode.Name + ">" );
+   SpaBuildUtil.Out( a_slMessages );
+   
+   return 1;
+}
+
+function int BuildDocumentation(
+
+   HelpConfigNode p_oHelpConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   auto StrList a_slMessages;
+   SpaBuildUtil.GenerateProjectBuildHeader( p_oHelpConfigNode.Name, a_slMessages );
+
+   auto FilePath a_oServerRoot = new FilePath( p_oHelpConfigNode.ServerRoot );
+   if( a_oServerRoot.IsRelative() )
+   {
+      a_oServerRoot.ResolveToPath( Application.GetFilePath( Model.Filename ) );
+      a_oServerRoot.Canonicalize();
+      //Console.Out( a_oServerRoot.GetPath() );
+   }
+
+   auto FilePath a_oHelpIndex = new FilePath( p_oHelpConfigNode.HelpIndexFile );
+   if( a_oHelpIndex.IsRelative() )
+   {
+      a_oHelpIndex.ResolveToPath( a_oServerRoot.GetPath() );
+      //Console.Out( a_oHelpIndex.GetPath() );
+   }
+
+   bool p_bStatic = false;
+   SpaHtmlUtil.WriteHelpLandingPages( p_oHelpConfigNode, a_oHelpIndex.GetPath() );
+   SpaHtmlUtil.WriteHelpContentsTree( p_oHelpConfigNode, a_oHelpIndex.GetPath(), p_bStatic );
+
+   a_slMessages.Add( "Successfully generated the help index file at the following location: " + a_oHelpIndex.GetPath() );
+   SpaBuildUtil.Out( a_slMessages );
+
+   return 1;
+}
+
+function int BuildApplications(
+
+   ConfigNode p_oConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   // This function builds all the applications
+   // stored as children of the AppConfigNode.
+   auto StrList a_slMessages;
+   SpaBuildUtil.GenerateProjectBuildHeader( p_oConfigNode.Name, a_slMessages );
+
+   // We need to generate the XML interface definitions
+   // for any shell variations before building the apps.
+   // Get the project's debug state.
+   bool a_bProjectIsDebug = p_oConfigNode.BuildMode;
+   bool a_bSupressMessages = false;
+
+   auto List a_lShellVariations;
+   Graph.GetInterfaceElementsByType( p_oConfigNode, a_lShellVariations, InterfaceElements_Interface );
+   for( int a_nShell = 0; a_nShell < a_lShellVariations.GetCount(); ++ a_nShell )
+   {
+      InterfaceElementNode a_oInterfaceRoot = (InterfaceElementNode)a_lShellVariations.Get( a_nShell );
+
+      if( a_oInterfaceRoot.ShellOverload != "" )
+      {
+         SpaBuildUtil.SaveShell( a_oInterfaceRoot, a_slMessages, a_bProjectIsDebug, a_bSupressMessages );
+      }
+   }
+
+   // Accumulate all AppScaffoldNodes and
+   // InterfaceElementNodes of type Interface.
+   auto List a_lAppDefinitions;
+   Graph.GetNodesFromDatabase( p_oConfigNode, a_lAppDefinitions, AppScaffoldNode );
+
+   SpaBuildUtil.BuildApps( a_lAppDefinitions, a_slMessages, false, true );
+   SpaBuildUtil.Out( a_slMessages );
+   return 1;
+}
+
+function int BuildInstaller(
+
+   ConfigNode p_oConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   // Do once, when we start to make the installer script.
+   if( p_oConfigNode.IsDerived( InstallerConfigNode ) )
+   {
+      return SpaBuildUtil.WriteInstaller( p_oConfigNode, commandInfo );
+   }
+
+   return 0;
+}
+
+function int ExecuteBuild(
+
+   ConfigNode p_oConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   // Create a variant array and variant.
+   // Use these to construct a list of input parameters.
+   auto VariantArray a_oParams;
+   auto Variant a_oReturnValue;
+   int a_iReturnVal = 0;
+
+   // Declare a script function that we're going to call.
+   if( p_oConfigNode.BuildFunction == "" )
+   {
+      return 1;
+   }
+
+   ScriptFunction a_oTarget = Script.FindFunction( p_oConfigNode.BuildFunction );
+
+   if( a_oTarget )
+   {
+      // Each build function requires two parameters.
+      //   ConfigNode
+      //   CommandPresentationModuleInfo
+      // Add these parameters to the variant array.
+      a_oParams.Count = 2;
+      a_oParams.Objects[0].SetObject( p_oConfigNode, p_oConfigNode.GetType() );
+      a_oParams.Objects[1].SetObject( commandInfo, CommandPresentationModuleInfo );
+
+      // Call the target function.
+
+      if( a_oParams.Count == 2 )
+      {
+         a_oTarget.Call( a_oReturnValue, a_oParams );
+         a_iReturnVal = a_oReturnValue.Int;
+
+         if( a_iReturnVal == 0 )
+         {
+            // Fail silently here, but
+            // hope the called function
+            // has error messages.
+            return 0;
+         }
+      }
+      else
+      {
+         string a_sMessage = "Failed while calling: " + p_oConfigNode.BuildFunction;
+         Console.Error( a_sMessage );
+         return 0;
+      }
+   }
+   else
+   {
+      string a_sMessage = "Unable to find function: " + p_oConfigNode.BuildFunction + "\n";
+      a_sMessage += "Error occurred at the following graph address: " + p_oConfigNode.GetPathToNode();
+      Console.Error( a_sMessage );
+   }
+
+   return 1;
+}
+
+function void HierarchyBuildAll_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Compiles the active document." );
+   SpaFileUtil.IsFileSaved( commandInfo );
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int BuildModel( Model3D p_oModel, CommandPresentationModuleInfo commandInfo )
+{
+   auto StrList a_slMessages;
+   SpaBuildUtil.GenerateProjectBuildHeader( Model.Name, a_slMessages );
+
+   if( SpaValidationUtil.ValidateGraph( Model, true ) == false )
+   {
+      return false;
+   }
+
+   for( int child = 0; child < Model.ChildCount; ++child )
+   {
+      Node a_oIsConfigNode = (Node)Model.Children[ child ];
+      if( a_oIsConfigNode && a_oIsConfigNode.IsDerived( ConfigNode ) )
+      {
+         ConfigNode a_oBuild = (ConfigNode)a_oIsConfigNode;
+         ExecuteBuild( a_oBuild, commandInfo );
+      }
+   }
+
+   SpaBuildUtil.Out( a_slMessages );
+   return true;
+}
+
+macro HierarchyBuildAll( CommandPresentationModuleInfo commandInfo )
+[Category="Hierarchy Commands", Guid="{ABEDC2AD-4325-4A6E-8362-2E548BC634FF}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Console.ClearOutputWindow();
+
+   if( Model.GetSelectCount() )
+   {
+      for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+      {
+         Node a_oSelNode = (Node)Model.GetSelectedNode( sel ).GetNode();
+         if( a_oSelNode && a_oSelNode.IsDerived( ConfigNode ) )
+         {
+            ConfigNode a_oConfigNode = (ConfigNode)a_oSelNode;
+            ExecuteBuild( a_oConfigNode, commandInfo );
+         }
+         else
+         if( a_oSelNode && a_oSelNode.IsDerived( Model3D ) )
+         {
+            if( BuildModel( Model, commandInfo ) == false )
+            {
+               return;
+            }
+         }
+      }
+   }
+   else
+   {
+      Node a_oNode = (Node)Model.GetActiveParent();
+      if( a_oNode && a_oNode.IsDerived( ConfigNode ) )
+      {
+         ConfigNode a_oConfigNode = (ConfigNode)a_oNode;
+         ExecuteBuild( a_oConfigNode, commandInfo );
+      }
+      else
+      if( BuildModel( Model, commandInfo ) == false )
+      {
+         return;
+      }
+   }
+}
+
+function void ConfigNodeBuild_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ConfigNode,
+      "Builds the selected project." );
+   ConfigNode a_oConfigNode = (ConfigNode)Model.GetSelectedNode(0).GetNode();
+   if( a_oConfigNode.BuildFunction == "" )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "This node does not have a build function ( and may not need one )." );
+   }
+}
+
+macro ConfigNodeBuild( CommandPresentationModuleInfo commandInfo )
+[Category="Node Commands", Guid="{2D81EAF0-214B-4625-866A-BA99B2EF483F}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int nodes = 0; nodes < Model.GetSelectCount(); ++nodes )
+   {
+      ConfigNode a_oConfigNode = (ConfigNode)Model.GetSelectedNode( nodes ).GetNode();
+      ExecuteBuild( a_oConfigNode, commandInfo );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetProjectRoot( Node p_oSelNode, ref Node p_oProjectRoot )
+{
+   if(   p_oSelNode && p_oSelNode.IsDerived( LibraryConfigNode )     ||
+         p_oSelNode && p_oSelNode.IsDerived( ApplicationConfigNode ) ||
+         p_oSelNode && p_oSelNode.IsDerived( HelpConfigNode )        ||
+         p_oSelNode && p_oSelNode.IsDerived( InstallerConfigNode ) )
+   {
+      p_oProjectRoot = (Node)p_oSelNode;
+   }
+   else
+   if( p_oSelNode )
+   {
+      GetProjectRoot( p_oSelNode.Parent(), p_oProjectRoot );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function int RefreshScriptClassDocs(
+
+   FolderConfigNode p_oFolderConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   return SpaBuildUtil.BuildDataInterfaceDocs( p_oFolderConfigNode, commandInfo );
+}
+
+function int RefreshCommands(
+
+   FolderConfigNode p_oFolderConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   auto StrList a_slDirectoryFileList;
+   SpaBuildUtil.RefreshCommandsDocumentation( p_oFolderConfigNode, commandInfo );
+   return 1;
+}
+
+function int RefreshNodes(
+
+   FolderConfigNode p_oFolderConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   auto StrList a_slDirectoryFileList;
+   SpaBuildUtil.RefreshNodesDocumentation( p_oFolderConfigNode, commandInfo );
+   return 1;
+}
+
+function int RefreshInterface(
+
+   FolderConfigNode p_oFolderConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+)
+{
+   // Make sure all directories exist.
+   auto List a_lParentsUntilHelpConfigNode;
+   Graph.GetParentUntilTypeIs(
+      p_oFolderConfigNode,
+      a_lParentsUntilHelpConfigNode,
+      HelpConfigNode );
+
+   auto StrList a_slConfigPaths;
+   SpaFileUtil.GetConfigPaths(
+      a_lParentsUntilHelpConfigNode,
+      a_slConfigPaths );
+
+   if( SpaFileUtil.FolderExists( a_slConfigPaths ) == false )
+   {
+      return 0;
+   }
+
+   Node a_oIsHelpConfigNode;
+   GetProjectRoot( p_oFolderConfigNode, a_oIsHelpConfigNode );
+   if( !( a_oIsHelpConfigNode ) || !( a_oIsHelpConfigNode.IsDerived( HelpConfigNode ) ) )
+   {
+      string a_sMessage = "Unable to find <HelpConfigNode>. This command can only be run when a <HelpConfigNode> is the root of the project.";
+      Console.Error( a_sMessage );
+      return 0;
+   }
+
+   HelpConfigNode a_oHelpRoot = (HelpConfigNode)a_oIsHelpConfigNode;
+
+   // Populate the folder.
+   Node a_oNode = (Node)p_oFolderConfigNode.DataSource;
+   if( a_oNode && a_oNode.IsDerived( AppScaffoldNode ) )
+   {
+      AppScaffoldNode a_oAppScaffoldNode = (AppScaffoldNode)a_oNode;
+      SpaBuildUtil.RefreshInterfaceDocumentation(
+         a_oHelpRoot,
+         p_oFolderConfigNode,
+         a_oAppScaffoldNode,
+         commandInfo );
+   }
+   else
+   {
+      string a_sMessage = "This folder does not have a data source. Unable to refresh interface documentation.\n";
+      a_sMessage += "This folder should be linked to a node of type <AppConfigNode> that contains an interface definition tree.";
+      Console.Error( a_sMessage );
+      return 0;
+   }
+
+   return 1;
+}
+
+function int RefreshContextMenu(
+
+   InterfaceSectionNode p_oInterfaceSectionNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   Node a_oDataSource = (Node)p_oInterfaceSectionNode.TypeConfigDataSource;
+   if( a_oDataSource == null || a_oDataSource.IsDerived( TypeConfigNode ) == false )
+   {
+      return 0;
+   }
+   TypeConfigNode a_oTypeConfigNode = (TypeConfigNode)a_oDataSource;
+   SpaInterfaceUtil.UpdateExistingCommandMenus(
+      p_oInterfaceSectionNode,
+      a_oTypeConfigNode,
+      commandInfo );
+
+   return 1;
+}
+
+function int RefreshKeyboard(
+
+   FolderConfigNode p_oFolderConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   // Populate the folder.
+   Node a_oNode = (Node)p_oFolderConfigNode.DataSource;
+   if( a_oNode && a_oNode.IsDerived( InterfaceElementNode ) )
+   {
+      InterfaceElementNode a_oInterfaceElementNode =
+         (InterfaceElementNode)a_oNode;
+      SpaBuildUtil.RefreshAcceleratorDocumentation( p_oFolderConfigNode,
+         a_oInterfaceElementNode, commandInfo );
+   }
+   else
+   {
+      string a_sMessage = "This folder does not have a data source. Unable to refresh interface documentation.\n";
+      a_sMessage += "This folder should be linked to an <InterfaceElementNode> or type <keyboard> that contains one or more <accelerator> items.";
+      Console.Error( a_sMessage );
+      return 0;
+   }
+
+   return 1;
+}
+
+function int RefreshFolder(
+
+   FolderConfigNode p_oFolderConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   // Create a variant array and variant.
+   // Use these to construct a list of input parameters.
+   auto VariantArray a_oParams;
+   auto Variant a_oReturnValue;
+   int a_iReturnVal = 0;
+
+   // Declare a script function that we're going to call.
+   ScriptFunction a_oTarget =
+      Script.FindFunction( p_oFolderConfigNode.RefreshFunction );
+
+   if( a_oTarget )
+   {
+      // Each build function requires two parameters.
+      //   ConfigNode
+      //   CommandPresentationModuleInfo
+      // Add these parameters to the variant array.
+      a_oParams.Count = 2;
+      a_oParams.Objects[0].SetObject( p_oFolderConfigNode, p_oFolderConfigNode.GetType() );
+      a_oParams.Objects[1].SetObject( commandInfo, CommandPresentationModuleInfo );
+
+      // Call the target function.
+
+      if( a_oParams.Count == 2 )
+      {
+         a_oTarget.Call( a_oReturnValue, a_oParams );
+         a_iReturnVal = a_oReturnValue.Int;
+
+         if( a_iReturnVal == 0 )
+         {
+            // Fail silently here, but
+            // hope the called function
+            // has error messages.
+            return 0;
+         }
+      }
+      else
+      {
+         string a_sMessage = "Failed while calling: " + p_oFolderConfigNode.RefreshFunction;
+         Console.Error( a_sMessage );
+         return 0;
+      }
+   }
+
+   return 1;
+}
+
+function int RefreshElements(
+
+   InterfaceSectionNode p_oInterfaceSectionNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   // Create a variant array and variant.
+   // Use these to construct a list of input parameters.
+   auto VariantArray a_oParams;
+   auto Variant a_oReturnValue;
+   int a_iReturnVal = 0;
+
+   // Declare a script function that we're going to call.
+   ScriptFunction a_oTarget =
+      Script.FindFunction( p_oInterfaceSectionNode.RefreshFunction );
+
+   if( a_oTarget )
+   {
+      // Each build function requires two parameters.
+      //   ConfigNode
+      //   CommandPresentationModuleInfo
+      // Add these parameters to the variant array.
+      a_oParams.Count = 2;
+      a_oParams.Objects[0].SetObject( p_oInterfaceSectionNode, p_oInterfaceSectionNode.GetType() );
+      a_oParams.Objects[1].SetObject( commandInfo, CommandPresentationModuleInfo );
+
+      // Call the target function.
+
+      if( a_oParams.Count == 2 )
+      {
+         a_oTarget.Call( a_oReturnValue, a_oParams );
+         a_iReturnVal = a_oReturnValue.Int;
+
+         if( a_iReturnVal == 0 )
+         {
+            // Fail silently here, but
+            // hope the called function
+            // has error messages.
+            return 0;
+         }
+      }
+      else
+      {
+         string a_sMessage = "Failed while calling: " + p_oInterfaceSectionNode.RefreshFunction;
+         Console.Error( a_sMessage );
+         return 0;
+      }
+   }
+   else
+   {
+      string a_sMessage = "Unable to find function: " + p_oInterfaceSectionNode.RefreshFunction;
+      Console.Error( a_sMessage );
+      return 0;
+   }
+
+   return 1;
+}
+
+function int RefreshAppConfig(
+
+   ApplicationConfigNode p_oApplicationConfigNode,
+   StrList p_slMessages,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   SpaBuildUtil.RefreshAppConfig( p_oApplicationConfigNode, p_slMessages, commandInfo );
+   return 1;
+}
+
+function void SetCommandStatus(
+
+   string p_sRefreshFunction,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   if( p_sRefreshFunction == "" )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "This node does not have a refresh function." );
+   }
+   else
+   {
+      commandInfo.Status.SetHint( "Refreshes the selected node." );
+      commandInfo.SetEnabled( true );
+   }
+}
+
+function void HierarchyRefreshNode_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() != 1 )
+   {
+      commandInfo.Status.SetHint( "You can only refresh one node at a time." );
+      commandInfo.SetEnabled( false );
+      return;
+   }
+   int a_nSelIndex = 0;
+
+   if( Model.GetSelectedNode( a_nSelIndex ).GetNode().IsDerived( FolderConfigNode ) )
+   {
+      FolderConfigNode a_oFolderConfigNode = (FolderConfigNode)Model.GetSelectedNode(0).GetNode();
+      SetCommandStatus( a_oFolderConfigNode.RefreshFunction, commandInfo );
+   }
+   else
+   if( Model.GetSelectedNode( a_nSelIndex ).GetNode().IsDerived( InterfaceSectionNode ) )
+   {
+      InterfaceSectionNode a_oInterfaceSectionNode = (InterfaceSectionNode)Model.GetSelectedNode(0).GetNode();
+      SetCommandStatus( a_oInterfaceSectionNode.RefreshFunction, commandInfo );
+   }
+   else
+   if( Model.GetSelectedNode( a_nSelIndex ).GetNode().IsDerived( ApplicationConfigNode ) )
+   {
+      SetCommandStatus( "AutoRefresh", commandInfo );
+   }
+   else
+   if( Model.GetSelectedNode( a_nSelIndex ).GetNode().IsDerived( TypeConfigNode ) )
+   {
+      SetCommandStatus( "AutoRefresh", commandInfo );
+   }
+   else
+   if( Model.GetSelectedNode( a_nSelIndex ).GetNode().IsDerived( CommandConfigNode ) )
+   {
+      SetCommandStatus( "AutoRefresh", commandInfo );
+   }
+   else
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "This node does not support Refresh functionality." );
+   }
+}
+
+macro HierarchyRefreshNode( CommandPresentationModuleInfo commandInfo )
+[Category="Hierarchy Commands", Guid="{DE80BC4D-523C-454E-A697-8092CE199C69}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int folders = 0; folders < Model.GetSelectCount(); ++folders )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode( folders ).GetNode();
+      if( a_oSelNode && a_oSelNode.IsDerived( FolderConfigNode ) )
+      {
+         FolderConfigNode a_oFolderConfigNode = (FolderConfigNode)a_oSelNode;
+         RefreshFolder( a_oFolderConfigNode, commandInfo );
+      }
+      else
+      if( a_oSelNode && a_oSelNode.IsDerived( InterfaceSectionNode ) )
+      {
+         InterfaceSectionNode a_oInterfaceSectionNode = (InterfaceSectionNode)a_oSelNode;
+         RefreshElements( a_oInterfaceSectionNode, commandInfo );
+      }
+      else
+      if( a_oSelNode && a_oSelNode.IsDerived( ApplicationConfigNode ) )
+      {
+         ApplicationConfigNode a_oAppConfigNode = (ApplicationConfigNode)a_oSelNode;
+         auto StrList a_slMessages;
+         SpaBuildUtil.GenerateCommandHeader( "HierarchyRefreshNode", a_slMessages );
+         RefreshAppConfig( a_oAppConfigNode, a_slMessages, commandInfo );
+         SpaBuildUtil.Out( a_slMessages );
+      }
+      else
+      if( a_oSelNode && a_oSelNode.IsDerived( TypeConfigNode ) )
+      {
+         TypeConfigNode a_oTypeConfigNode = (TypeConfigNode)a_oSelNode;
+         SpaBuildUtil.WriteTypeTreeCommand( a_oTypeConfigNode );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void AppScaffoldNodeBuild_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext(
+      commandInfo,
+      AppScaffoldNode,
+      "Builds the selected application." );
+}
+
+macro AppScaffoldNodeBuild()
+[Category="Node Commands", Guid="{46587B47-EEBF-45DF-B183-F3BDA878F06C}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   auto List a_lAppDefinitions;
+   auto List a_lShellVariations;
+   auto StrList a_slMessages;
+   string a_sNodeName;
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = (Node)Model.GetSelectedNode(i).GetNode();
+      a_sNodeName = a_oNode.Name;
+      a_lAppDefinitions.AddRef( a_oNode );
+      Graph.GetInterfaceElementsByType( a_oNode, a_lShellVariations, InterfaceElements_Interface );
+   }
+
+   // We need to generate the XML interface definitions
+   // for any shell variations before building the apps.
+   // Get the project's debug state.
+   bool a_bProjectIsDebug = false;
+   bool a_bSupressMessages = false;
+
+   for( int a_nShell = 0; a_nShell < a_lShellVariations.GetCount(); ++ a_nShell )
+   {
+      InterfaceElementNode a_oInterfaceRoot = (InterfaceElementNode)a_lShellVariations.Get( a_nShell );
+
+      if( a_oInterfaceRoot.ShellOverload != "" )
+      {
+         SpaBuildUtil.SaveShell( a_oInterfaceRoot, a_slMessages, a_bProjectIsDebug, a_bSupressMessages );
+      }
+   }
+
+   SpaBuildUtil.GenerateProjectBuildHeader( a_sNodeName, a_slMessages );
+   SpaBuildUtil.BuildApps( a_lAppDefinitions, a_slMessages, false, true );
+   SpaBuildUtil.Out( a_slMessages );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyCreateIncludeFromDisk_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group,
+      "Creates a FileNode that references a file on the hard disk" );
+}
+
+macro HierarchyCreateIncludeFromDisk()
+[Category="Hierarchy Commands", Guid="{2D8B1ABF-9A1C-4A1E-AAD4-A4EA0BE9B0E3}", Image=".\\icons\\create_file_node.bmp"]
+{
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+   Graph.LoadFileFromDisk( a_oSelNode, FileNode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void FileOpenDisableRender_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Disables rendering and shader features in order to facilitate troubleshooting." );
+}
+
+macro FileOpenDisableRender( CommandPresentationModuleInfo commandInfo )
+[Category="File Commands", Guid="{E83E27CC-34A6-4529-BC99-292B04E44551}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   // This macro disables rendering and shader features in order to facilitate troubleshooting.
+
+   // Prompt the user to select a BOX file on the hard disk.
+   string a_sBoxFilePath = Application.BrowseFileOpen( 3, 0,
+      "Scenome Database Files (*.box)|*.box|All Files (*.*)|*.*||", 
+      Application.GetApplicationDocumentsPath(),
+      "Select the BOX file for which you wish to disable rendering:", null );
+
+   if( a_sBoxFilePath == "" )
+   {
+      return;
+   }
+
+   // Open the database.
+   auto Model3D a_oRemoteDatabase;
+   a_oRemoteDatabase.OpenFile( a_sBoxFilePath );
+
+   // Make the database root invisible.
+   a_oRemoteDatabase.Visible = false;
+
+   /*
+   auto List a_lScriptNodes;
+   Graph.GetNodesFromDatabase( a_oRemoteDatabase, a_lScriptNodes, ScriptNode );
+   for( int i = 0; i < a_lScriptNodes.GetCount(); ++i )
+   {
+      ScriptNode a_oScriptNode = (ScriptNode)a_lScriptNodes.Get(i);
+      a_oScriptNode.Enabled = false;
+   }
+   */
+
+   a_oRemoteDatabase.SaveFile( a_sBoxFilePath );
+   //Console.Message( a_sMessage );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void DisplaySearchResults( string p_sFilename, List p_lNodeSearchResults,
+   StrList p_slSearchInfo, TypeInformation p_oTypeInfo )
+{
+   if( p_lNodeSearchResults.GetCount() )
+   {
+      SpaBuildUtil.MaybeAddNewline( p_slSearchInfo );
+      p_slSearchInfo.Add( "--- <Searched in file \'" + p_sFilename + "'> ---" );
+      string a_sSearchResults;
+      for( int n = 0; n < p_lNodeSearchResults.GetCount(); ++n )
+      {
+         Node a_oNode = (Node)p_lNodeSearchResults.Get( n );
+         /*
+         p_slSearchInfo.Add( "Found type <" + p_oTypeInfo.GetTypeName() +
+            "> at graph address: " + a_oNode.GetPathToNode() );
+         */
+         if( n == p_lNodeSearchResults.GetCount() - 1 )
+         {
+            p_slSearchInfo.Add( "" );
+         }
+      }
+   }
+}
+
+function void EditFindByTypeInFiles_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Finds all nodes of a specific type in the specified files." );
+}
+
+macro EditFindByTypeInFiles( CommandPresentationModuleInfo commandInfo )
+[Category="Edit Commands", Guid="{EBC6DDE3-B7DA-46D5-A6E6-00025BBDB303}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   // We're going to store all the search results here.
+   auto StrList a_slSearchResultsInfo;
+
+   // Display a dialog that allows the user to enter a node type.
+   auto Str a_oInputType = new Str( "node type" );
+   auto EnterTextDialog dialog;
+   auto Type a_oType;
+   TypeInformation typeInfo;
+
+   if( dialog.Show( "Search by node type", "Node type:", true, a_oInputType ) )
+   {
+      typeInfo = a_oType.GetType().FindClassType( a_oInputType.Value );
+      if( typeInfo == null )
+      {
+         string a_sMessage = "Unknown type <" + a_oInputType.Value + ">. ";
+         a_sMessage += "Please enter a valid node type.";
+         Console.Error( a_sMessage );
+         return;
+      }
+   }
+
+   // Return if the user cancels or doesn't enter any data.
+   if( a_oInputType.Value == "" || a_oInputType.Value == "node type" )
+   {
+      return;
+   }
+
+   // Two main cases of getting data. First, if the user has
+   // a selection, then we'll limit our search to the selected group.
+   // Otherwise, we'll search the entire document for nodes of the
+   // user specified type. In both cases, we'll accumulate a list of
+   // nodes that reference external documents, and we'll include
+   // search in the remote document search phase of this command.
+   auto List a_lLocalDatabaseNodes;
+   auto StrList a_slExternalFileRefs;
+   if( Model.GetSelectCount() )
+   {
+      // Find any node types that can reference
+      // external documents and get the file names
+      // of any external document references.
+      commandInfo.Status.SetHint( "Searching local database and external file references..." );
+      Group a_oSearchRootGroup;
+      for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+      {
+         Node a_oNode = (Node)Model.GetSelectedNode( sel ).GetNode();
+         if( a_oNode && a_oNode.IsDerived( Group ) )
+         {
+            a_oSearchRootGroup = (Group)a_oNode;
+            SpaValidationUtil.GetReferencedContentFileNames( a_oSearchRootGroup, a_slExternalFileRefs );
+         }
+      }
+      // Now search the selected group for nodes of the user-specified type.
+      Graph.GetNodesFromDatabase( a_oSearchRootGroup, a_lLocalDatabaseNodes, typeInfo );
+   }
+   else
+   {
+      commandInfo.Status.SetHint( "Searching local database and external file references..." );
+      // Nothing is selected. Get all the local nodes of the user-specified type
+      // and get any other node that can reference an external file.
+      Graph.GetNodesFromDatabase( Model, a_lLocalDatabaseNodes, typeInfo );
+      SpaValidationUtil.GetReferencedContentFileNames( (Group)Model, a_slExternalFileRefs );
+   }
+
+   // Display the results of the local search first.
+   DisplaySearchResults( Model.Filename, a_lLocalDatabaseNodes, a_slSearchResultsInfo, typeInfo );
+
+   // Get only the BOX files from the list of external file refs.
+   auto StrList a_slBoxFilePaths;
+   for( int box = 0; box < a_slExternalFileRefs.GetCount(); ++box )
+   {
+      commandInfo.Status.SetHint( "Finding any BOX files that need to be searched..." );
+      auto FilePath a_oDocument = new FilePath( a_slExternalFileRefs.Get( box ) );
+      a_oDocument.Canonicalize();
+      a_oDocument.RemoveFilePath();
+      if( Application.GetFileExtension( a_oDocument.GetPath() ) == "box" )
+      {
+         a_slBoxFilePaths.Add( a_slExternalFileRefs.Get( box ) );
+      }
+   }
+
+   // Open and search any .BOX document included in a_slExternalFileRefs.
+   for( int document = 0; document < a_slBoxFilePaths.GetCount(); ++document )
+   {
+      commandInfo.Status.SetHint( "Searching BOX files for nodes..." );
+      auto List a_lRemoteDatabaseNodes;
+      auto Model3D a_oRemoteDocument;
+      a_oRemoteDocument.OpenFile( a_slBoxFilePaths.Get( document ) );
+      if( a_oRemoteDocument )
+      {
+         Graph.GetNodesFromDatabase( a_oRemoteDocument, a_lRemoteDatabaseNodes, typeInfo );
+      }
+
+      if( a_lRemoteDatabaseNodes.GetCount() )
+      {
+         DisplaySearchResults( a_oRemoteDocument.Filename, a_lRemoteDatabaseNodes, a_slSearchResultsInfo, typeInfo );
+      }
+   }
+
+   if( a_slSearchResultsInfo.GetCount() )
+   {
+      SpaBuildUtil.Out( a_slSearchResultsInfo );
+   }
+   else
+   {
+      string a_sMessage = "Did not find any nodes of type <" + typeInfo.GetTypeName() + ">.";
+      Console.Info( a_sMessage );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddCommandInstance_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SpaSelectUtil.ValidateInterfaceElementSelection( commandInfo );
+}
+
+macro AddCommandInstance( CommandPresentationModuleInfo commandInfo )
+[Category="Interface Commands", Guid="{E2EEF414-0B8A-4A4C-B93A-B41435741D50}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+   if( a_oSelNode && a_oSelNode.IsDerived( Group ) )
+   {
+      Group a_oInterfaceElement = (Group)a_oSelNode;
+      
+      // Get the path to the command library.
+      auto FilePath a_oCommandLibrary = new FilePath( Application.GetApplicationDocumentsPath() );
+      a_oCommandLibrary.AppendPath( "projects" );
+      a_oCommandLibrary.AppendPath( "library" );
+      a_oCommandLibrary.AppendPath( "commands.box" );
+      a_oCommandLibrary.Canonicalize();
+
+      if( !( a_oCommandLibrary.FileExists() ) )
+      {
+         string a_sMessage = "Unable to find the command library document: " +
+            a_oCommandLibrary.GetPath();
+         Console.Error( a_sMessage );
+         return;
+      }
+
+      auto Model3D a_oCommands;
+      if( !( a_oCommands.OpenFile( a_oCommandLibrary.GetPath() ) ) )
+      {
+         string a_sMessage = "Unable to open the command library document: " +
+            a_oCommandLibrary.GetPath();
+         Console.Error( a_sMessage );
+         return;
+      }
+
+      auto List a_lSourceNodes;
+      auto List a_lDestinationNodes;
+      Graph.GetNodesFromDatabase( a_oCommands, a_lSourceNodes, CommandRepNode );
+      auto SelectNodeDialog a_oSelectFunctionDialog;
+
+      a_oSelectFunctionDialog.SourceSet = a_lSourceNodes;
+      a_oSelectFunctionDialog.DestSet = a_lDestinationNodes;
+      a_oSelectFunctionDialog.SelRequired = true;
+      a_oSelectFunctionDialog.SelAllowMultiple = true;
+
+      // Set a concise title and info tip for the dialog.
+      string a_sDialogTitle = "Select Command";
+      string a_sInfoTip = "Select the command you wish to add to the application:";
+
+      // Display the dialog and get the selected node from the source nodes.
+      // Set the selected node as the function we're going to call.
+      if( !( a_oSelectFunctionDialog.Show( a_sDialogTitle, a_sInfoTip ) ) )
+      {
+         // User cancelled operation by hitting ESC.
+         return;
+      }
+
+      // Add the new commands to the Model.
+      for( int i = 0; i < a_lDestinationNodes.GetCount(); ++i )
+      {
+         Node a_oNode = (Node)a_lDestinationNodes.Get( i );
+         if( a_oNode && a_oNode.IsDerived( CommandRepNode ) )
+         {
+            CommandRepNode a_oCommandRepNode = (CommandRepNode)a_oNode;
+            ItemElementNode a_oNewInterfaceItem = new ItemElementNode;
+            a_oNewInterfaceItem.Name = a_oCommandRepNode.CommandName;
+            a_oNewInterfaceItem.CommandName = a_oCommandRepNode.CommandName;
+            a_oNewInterfaceItem.CommandStatus = a_oCommandRepNode.CommandStatus;
+            a_oNewInterfaceItem.CommandMode = a_oCommandRepNode.CommandMode;
+            a_oNewInterfaceItem.Image = true;
+            a_oNewInterfaceItem.Text = true;
+            Guid a_oGuid = (Guid)a_oCommandRepNode.Guid();
+            a_oNewInterfaceItem.Guid = a_oGuid.Value;
+
+            if( a_oSelNode.IsDerived( ToolbarElementNode ) )
+            {
+               a_oNewInterfaceItem.Text = false;
+            }
+
+            Model.AddNode( a_oNewInterfaceItem, a_oInterfaceElement, -1 );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddMenuElementNode_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SpaSelectUtil.ValidateInterfaceSectionConfig(
+      commandInfo,
+      Enum.InterfaceSection_Menu(),
+      MenuElementNode );
+}
+
+macro AddMenuElementNode()
+[Category="Interface Commands", Guid="{F53ABB22-E57C-4894-AA75-F9C982C6E092}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Group a_oSelGroup = (Group)Model.GetFirstSelectedNode().GetNode();
+   MenuElementNode a_oMenuElementNode = new MenuElementNode;
+   a_oMenuElementNode.Name = "Menu Bar";
+   Model.AddNode( a_oMenuElementNode, a_oSelGroup, -1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddDockbarElementNode_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SpaSelectUtil.ValidateInterfaceSectionType(
+      commandInfo,
+      Enum.InterfaceSection_Dockbar(),
+      "DockbarElementNode",
+      "Dockbar" );
+
+}
+
+macro AddDockbarElementNode()
+[Category="Interface Commands", Guid="{6419F8E1-0891-4569-923C-F5B2945B6622}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Group a_oSelGroup = (Group)Model.GetFirstSelectedNode().GetNode();
+   DockbarElementNode a_oDockbarElementNode = new DockbarElementNode;
+   a_oDockbarElementNode.Name = "New Dockbar";
+   Model.AddNode( a_oDockbarElementNode, a_oSelGroup, -1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddToolbarElementNode_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SpaSelectUtil.ValidateInterfaceSectionType(
+      commandInfo,
+      Enum.InterfaceSection_Toolbar(),
+      "ToolbarElementNode",
+      "Toolbar" );
+}
+
+macro AddToolbarElementNode()
+[Category="Interface Commands", Guid="{7B39E340-C595-42BD-B89E-6F12102492BE}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Group a_oSelGroup = (Group)Model.GetFirstSelectedNode().GetNode();
+   DockbarElementNode a_oDockbarElementNode = new DockbarElementNode;
+   a_oDockbarElementNode.Name = "New Dockbar";
+   Model.AddNode( a_oDockbarElementNode, a_oSelGroup, -1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddContextMenuElementNode_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SpaSelectUtil.ValidateInterfaceSectionType(
+      commandInfo,
+      Enum.InterfaceSection_ContextMenu(),
+      "ContextMenuElementNode",
+      "ContextMenu" );
+}
+
+macro AddContextMenuElementNode()
+[Category="Interface Commands", Guid="{8AD3E17D-2E0B-47C3-8040-926DEF967222}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Group a_oSelGroup = (Group)Model.GetFirstSelectedNode().GetNode();
+   ContextMenuElementNode a_oContextMenuElementNode = new ContextMenuElementNode;
+   a_oContextMenuElementNode.Name = "New ContextMenu";
+   Model.AddNode( a_oContextMenuElementNode, a_oSelGroup, -1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddKeyboardElementNode_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SpaSelectUtil.ValidateInterfaceSectionType(
+      commandInfo,
+      Enum.InterfaceSection_Keyboard(),
+      "KeyboardElementNode",
+      "Keyboard" );
+}
+
+macro AddKeyboardElementNode()
+[Category="Interface Commands", Guid="{8F06C383-A5CC-49EF-AB63-B682EF260837}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Group a_oSelGroup = (Group)Model.GetFirstSelectedNode().GetNode();
+   KeyboardElementNode a_oKeyboardElementNode = new KeyboardElementNode;
+   a_oKeyboardElementNode.Name = "keyboard";
+   Model.AddNode( a_oKeyboardElementNode, a_oSelGroup, -1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void IsInterfaceElementContainer( CommandPresentationModuleInfo commandInfo )
+{
+   SpaSelectUtil.ValidateInterfaceElementSelection( commandInfo );
+}
+
+function bool GetCommandGuids( StrList p_slCommandGuids )
+{
+   auto Str a_strCommandGuid = new Str( "" );
+   auto EnterTextDialog a_oGuidInput;
+
+   if( a_oGuidInput.Show( "Enter GUID", "Type the command GUID here", true, a_strCommandGuid ) )
+   {
+      if( a_strCommandGuid.Value == "" )
+      {
+         return true;
+      }
+      else
+      {
+         p_slCommandGuids.Add( a_strCommandGuid.Value );
+         GetCommandGuids( p_slCommandGuids );
+      }
+   }
+
+   return false;
+}
+
+function void CreateInterfaceElementItemFromGuid_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, InterfaceElementNode,
+      "Creates an InterfaceElementNode of element type 'Item' that refers to the command represented by the GUID" );
+   IsInterfaceElementContainer( commandInfo );
+}
+
+macro CreateInterfaceElementItemFromGuid()
+[Category="Interface Commands", Guid="{9D4ED87B-3DCC-4536-9BDC-AF069FDB9603}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Group a_oSelInterfaceElement = (Group)Model.GetFirstSelectedNode().GetNode();
+   auto StrList a_slCommandGuids;
+
+   // Populate a StrList with GUIDS provided by the user.
+   GetCommandGuids( a_slCommandGuids );
+   if( !( a_slCommandGuids.GetCount() ) )
+   {
+      return;
+   }
+
+   // Populate the follow StrLists with command info.
+   auto StrList a_slCommandNameInfo;
+   auto StrList a_slCommandGuidInfo;
+   auto StrList a_slCommandCategoryInfo;
+   SpaModuleUtil.GetCommandInfo(
+      a_slCommandNameInfo,
+      a_slCommandGuidInfo,
+      a_slCommandCategoryInfo );
+
+   // Iterate the GUIDs provided by the user and find the corresponding command.
+   for( int a_nIndex = 0; a_nIndex < a_slCommandGuids.GetCount(); ++a_nIndex )
+   {
+      string a_sGuid = a_slCommandGuids.GetAt( a_nIndex );
+      int a_nFoundIndex = a_slCommandGuidInfo.Find( a_sGuid );
+      if( a_nFoundIndex != -1 )
+      {
+         string a_sCommandGuid = a_slCommandGuidInfo.GetAt( a_nFoundIndex );
+         string a_sCommandName = a_slCommandNameInfo.GetAt( a_nFoundIndex );
+
+         ItemElementNode a_oNewInterfaceItem =
+            SpaInterfaceUtil.CreateCommandItem(
+               a_sCommandName,
+               a_sCommandName,
+               a_sCommandGuid,
+               true,
+               true );
+
+         if( a_oSelInterfaceElement.IsDerived( ToolbarElementNode ) )
+         {
+            a_oNewInterfaceItem.Text = false;
+         }
+         Model.AddNode( a_oNewInterfaceItem, a_oSelInterfaceElement, -1 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddNodeReferenceFromFile_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, FileNode,
+      "Creates a NodeLink that refers to a node in the specified document" );
+}
+
+macro AddNodeReferenceFromFile( CommandPresentationModuleInfo commandInfo )
+[Category="Node Commands", Guid="{339B4DFD-8561-42BD-B080-34838CA9F246}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+   if( a_oSelNode && a_oSelNode.IsDerived( FileNode ) )
+   {
+      FileNode a_oIncludeFile = (FileNode)a_oSelNode;
+      
+      // Get the path to the target file.
+      auto FilePath a_oIncludeFilePath = new FilePath( a_oIncludeFile.FilePath );
+      auto FilePath a_oTargetFilePath = new FilePath( a_oIncludeFile.FilePath );
+      a_oIncludeFilePath.ResolveToModel( Model );
+
+      if( !( a_oIncludeFilePath.FileExists() ) )
+      {
+         string a_sMessage = "The file referenced by the FileNode does not exist: "
+            + a_oIncludeFilePath.GetPath();
+         Console.Error( a_sMessage );
+         return;
+      }
+
+      auto Model3D a_oIncludeDocument;
+      if( !( a_oIncludeDocument.OpenFile( a_oIncludeFilePath.GetPath() ) ) )
+      {
+         string a_sMessage = "The file referenced by the FileNode cannot be opened: "
+            + a_oIncludeFilePath.GetPath();
+         Console.Error( a_sMessage );
+         return;
+      }
+
+      auto List a_lSourceNodes;
+      auto List a_lDestinationNodes;
+      Graph.GetNodesFromDatabase( a_oIncludeDocument, a_lSourceNodes, Node );
+
+      auto SelectNodeDialog a_oSelectFunctionDialog;
+      a_oSelectFunctionDialog.SourceSet = a_lSourceNodes;
+      a_oSelectFunctionDialog.DestSet = a_lDestinationNodes;
+      a_oSelectFunctionDialog.SelRequired = true;
+      a_oSelectFunctionDialog.SelAllowMultiple = false;
+
+      // Set a concise title and info tip for the dialog.
+      string a_sDialogTitle = "Select Command";
+      string a_sInfoTip = "Select the command you wish to add to the application:";
+
+      // Display the dialog and get the selected node from the source nodes.
+      // Set the selected node as the function we're going to call.
+      if( a_oSelectFunctionDialog.Show( a_sDialogTitle, a_sInfoTip ) )
+      {
+         Node a_oNode = (Node)a_lDestinationNodes.GetFirst();
+         NodeLink a_oLink = new NodeLink;
+         a_oLink.Name = a_oNode.Name;
+         a_oLink.PathToNode = a_oNode.GetPathToNode();
+         a_oLink.PathToFile = a_oTargetFilePath.GetPath();
+         a_oLink.LinkType = a_oNode.GetType();
+         Model.AddNode( a_oLink, a_oIncludeFile, -1 );
+      }
+   }
+}

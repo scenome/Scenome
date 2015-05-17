@@ -1,0 +1,128 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file         :	NODE_UTIL.SSL                      
+// $author       :	Scenomics                                
+// $privacy      :	PUBLIC                                   
+// $description  :	This script implements common functions for nodes.
+// $legal        :   Reserved * r_rLegal                      
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+
+////////////////////////////////////////////////////////////////////////////
+
+// Declare the library data interface.
+library SpaNodeUtil;
+import library "message_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void TraverseAllNodes( Node node, DatabaseObjectSelector selector, Model3DSelectBuffer selectBuffer )
+{
+   selector.GetSelectionForType( node, selectBuffer );
+
+   if( node.IsDerived( Group ) )
+   {
+      // Traverse children.
+      Group group = (Group)node;
+      for( int i = 0; i < group.ChildCount; ++i )
+      {
+         TraverseAllNodes( group.Children[i], selector, selectBuffer );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string TransferRelativePath( string p_sSrcModelPath, string p_sDstModelPath, string p_sSrcPath )
+{
+   string a_sAbsolutePath = Application.ResolveRelativePath( p_sSrcPath, p_sSrcModelPath );
+   string a_sNewRelativePath = Application.MakeRelativePath( a_sAbsolutePath, p_sDstModelPath );
+   return a_sNewRelativePath;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void TransformExternalPathsWorker( Model3D model, List transformList, int transformType, string destPath )
+{
+   auto FilePathTransformModule transform;
+   auto FilePathTransformInfo toolInfo;
+   toolInfo.SetModel( (EditModel3D)model );
+   toolInfo.SetData( model );
+   toolInfo.SetTransformList( transformList );
+   toolInfo.StartActions( Model.GetOpenAction(), 0 );
+   toolInfo.PathTransformType = transformType;
+   toolInfo.DestModelPath = destPath;
+
+   transform.TransformSet( toolInfo );
+
+   toolInfo.CompleteActions();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void TransformExternalPaths( Model3D model, List transformList, int transformType )
+{
+   TransformExternalPathsWorker( model, transformList, transformType, "" );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void TransferExternalPaths( Model3D model, List transformList, string dstPath )
+{
+   TransformExternalPathsWorker( model, transformList, 3, dstPath );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void TransformAllExternalPaths( Model3D model, int transformType )
+{
+   auto DatabaseObjectSelector selector;
+   auto Model3DSelectBuffer transformList;
+
+   TraverseAllNodes( model, selector, transformList );
+   TransformExternalPaths( Model, transformList.GetSelectedNodes(), transformType );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int AddModifier( Modifier mod, int selIndex )
+{
+   Group parent;
+   if( Model.GetSelectCount() && Model.GetSelectedNode( selIndex ).IsDerived( MeshSelect ) )
+   {
+      ParametricMeshSelect meshSelect = (ParametricMeshSelect)Model.GetSelectedNode( selIndex );
+      parent = (Group)meshSelect.GetNode();
+      mod.SetParameters( meshSelect );
+   }
+   else
+   {
+      parent = Model;
+   }
+   Model.AddNode( mod, parent, -1 );
+   Model.Deselect( parent );
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int AddNode( Node new_node, Group parentNode )
+{
+   Model.AddNode( new_node, parentNode, -1 );
+   Model.Deselect( parentNode );
+   return 1;
+}

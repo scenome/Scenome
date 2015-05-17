@@ -1,0 +1,820 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file         :   INTERFACE_UTIL.SSL
+// $author       :   Scenomics
+// $privacy      :   PUBLIC
+// $description  :   This script implements basic interface utility functions.
+// $legal        :   Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////
+
+import library "html_util.ssl";
+import library "message_util.ssl";
+import library "module_util.ssl";
+import library "str_list_util.ssl";
+
+library SpaInterfaceUtil;
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void ClearOutputWindow()
+{
+   string a_sEditorGuid = "{1F922109-F612-46D4-A453-4B81096121A9}";
+   OutputViewEditor a_eOutputEditor =
+      (OutputViewEditor)Application.GetEditor( a_sEditorGuid );
+   a_eOutputEditor.Clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function string FilterSpecialChars( string p_sInput )
+{
+   string a_sOut;
+   auto Str a_oInput = new Str( p_sInput );
+   a_sOut = a_oInput.Replace( "'", "&apos;" );
+   a_oInput.Value = a_sOut;
+   a_sOut = a_oInput.Replace( ">", "&gt;" );
+   a_oInput.Value = a_sOut;
+   a_sOut = a_oInput.Replace( "<", "&lt;" );
+   a_oInput.Value = a_sOut;
+   a_sOut = a_oInput.Replace( "\"", "&quot;" );
+   return a_sOut;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void TraverseInterfaceGraph(
+
+   Node p_oNode,
+   ref string p_sInterfaceDefinition,
+   bool p_bProjectIsDebug,
+   int p_iSpaces,
+   string p_sMinify
+
+   )
+{
+   /*
+   // Temporary code to convert & to &amp;
+   // Comment out to disable or leave in
+   // if you need to fix interface items.
+   auto Str a_oName = new Str( p_oNode.Name );
+   int a_nFindIndex = a_oName.Find( "&amp", 0 );
+   if( a_nFindIndex == -1 )
+   {
+      a_nFindIndex = a_oName.Find( "&", 0 );
+      if( a_nFindIndex != -1 )
+      {
+         a_oName.Value = a_oName.Replace( "&", "&amp;" );
+         //Console.Out( a_nFindIndex + " " + a_oName.Value );
+         p_oNode.Name = a_oName.Value;
+      }
+   }
+   */
+
+   string a_sPaddingLeft;
+   string a_sPaddingRight;
+
+   // Compute optional padding for main
+   // menu items. Comment out to disable.
+   if(   p_oNode &&
+         p_oNode.IsDerived( PopupElementNode ) &&
+         p_oNode.Parent().IsDerived( MenuElementNode ) )
+   {
+      MenuElementNode a_oParentElement = (MenuElementNode)p_oNode.Parent();
+      a_sPaddingLeft = "  ";
+      a_sPaddingRight = "  ";
+   }
+
+   if( p_oNode.IsDerived( NodeLink ) )
+   {
+      NodeLink a_oNodeLink = (NodeLink)p_oNode;
+      a_oNodeLink.Load( 1 );
+      Node a_oLink = (Node)a_oNodeLink.Node;
+      p_oNode = a_oLink;
+   }
+
+   if( p_oNode && p_oNode.IsDerived( MenuElementNode ) )
+   {
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) +
+         "<menu name=\"" + p_oNode.Name + "\">\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( InterfaceElementNode ) )
+   {
+      InterfaceElementNode a_oInterfaceElementNode = (InterfaceElementNode)p_oNode;
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) +
+         "<interface version=\"" + a_oInterfaceElementNode.VersionString + "\">\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( PopupElementNode ) )
+   {
+      PopupElementNode a_oPopupElementNode = (PopupElementNode)p_oNode;
+      string a_sImage = "false";
+      string a_sText = "false";
+      if( a_oPopupElementNode.Image )
+      {
+         a_sImage = "true";
+      }
+      if( a_oPopupElementNode.Text )
+      {
+         a_sText = "true";
+      }
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) +
+         "<popup name=\"" + a_sPaddingLeft + p_oNode.Name + a_sPaddingRight +
+         "\" text=\"" + a_sText + "\" " + "image=\"" + a_sImage + "\">\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( ContextMenuElementNode ) )
+   {
+      ContextMenuElementNode a_oContextMenuElementNode = (ContextMenuElementNode)p_oNode;
+      string a_sImage = "false";
+      string a_sText = "false";
+      if( a_oContextMenuElementNode.Image )
+      {
+         a_sImage = "true";
+      }
+      if( a_oContextMenuElementNode.Text )
+      {
+         a_sText = "true";
+      }
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) +
+         "<contextmenu name=\"" + a_oContextMenuElementNode.MenuName +
+            "\" class=\"" + a_oContextMenuElementNode.ClassName +
+            "\" text=\"" + a_sText + "\" " + "image=\"" + a_sImage + "\">\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( SeparatorElementNode ) )
+   {
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) + "<separator/>\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( ItemElementNode ) )
+   {
+      ItemElementNode a_oItemElementNode = (ItemElementNode)p_oNode;
+      string a_sGuid = a_oItemElementNode.Guid;
+      string a_sImage = "false";
+      string a_sText = "false";
+      if( a_oItemElementNode.Image )
+      {
+         a_sImage = "true";
+      }
+      if( a_oItemElementNode.Text )
+      {
+         a_sText = "true";
+      }
+      string a_sName = FilterSpecialChars( p_oNode.Name );
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) +
+         "<item name=\"" + a_sName + "\" guid=\"" + a_sGuid + "\"" + " text=\"" + a_sText + "\"" + " image=\"" + a_sImage + "\"/>\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( DockbarElementNode ) )
+   {
+      DockbarElementNode a_oDockbarElementNode = (DockbarElementNode)p_oNode;
+      string a_sGuid = a_oDockbarElementNode.Guid;
+
+      string a_sDockPosition;
+
+      if( a_oDockbarElementNode.HorizontalPosition == 1 )
+      {
+         a_sDockPosition += "left";
+      }
+      else
+      if( a_oDockbarElementNode.HorizontalPosition == 2 )
+      {
+         a_sDockPosition += "right";
+      }
+
+      if( a_sDockPosition != "" )
+      {
+         a_sDockPosition += ",";
+      }
+
+      if( a_oDockbarElementNode.VerticalPosition == 1 )
+      {
+         a_sDockPosition += "top";
+      }
+      else
+      if( a_oDockbarElementNode.VerticalPosition == 2 )
+      {
+         a_sDockPosition += "bottom";
+      }
+      
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) +
+         "<dockbar name=\"" + a_oDockbarElementNode.Name + "\" guid=\"" + a_sGuid + "\" " + "dockposition=\"" + a_sDockPosition + "\">\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( DockedViewElementNode ) )
+   {
+      DockedViewElementNode a_oDockedViewElementNode = (DockedViewElementNode)p_oNode;
+      string a_sGuid = a_oDockedViewElementNode.Guid;
+      
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) +
+         "<dockedview name=\"" + a_oDockedViewElementNode.Name + "\" guid=\"" + a_sGuid + "\"/>\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( ActiveViewElementNode ) )
+   {
+      ActiveViewElementNode a_oActiveViewElementNode = (ActiveViewElementNode)p_oNode;
+      string a_sGuid = a_oActiveViewElementNode.Guid;
+      
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) +
+         "<activeview " + "guid=\"" + a_sGuid + "\"/>\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( ToolbarElementNode ) )
+   {
+      ToolbarElementNode a_oToolbarElementNode = (ToolbarElementNode)p_oNode;
+      
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) +
+         "<toolbar " + "name=\"" + a_oToolbarElementNode.Name + "\">\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( KeyboardElementNode ) )
+   {
+      KeyboardElementNode a_oKeyboardElementNode = (KeyboardElementNode)p_oNode;
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) +
+         "<keyboard>\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( AcceleratorElementNode ) )
+   {
+      AcceleratorElementNode a_oAcceleratorElementNode = (AcceleratorElementNode)p_oNode;
+      string a_sKeys = a_oAcceleratorElementNode.Keys;
+      string a_sGuid = a_oAcceleratorElementNode.Guid;
+      
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) +
+         "<accelerator keys=\"" + a_sKeys + "\" guid=\"" + a_sGuid + "\"/>\n";
+   }
+
+   if( p_oNode && p_oNode.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)p_oNode;
+      if( !( a_oGroup.IsDerived( InterfaceSectionNode ) ) )
+      {
+         p_iSpaces += 3;
+      }
+
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         TraverseInterfaceGraph(
+            a_oGroup.Children[i],
+            p_sInterfaceDefinition,
+            p_bProjectIsDebug,
+            p_iSpaces,
+            p_sMinify );
+      }
+   }
+
+   p_iSpaces -= 3;
+
+   if( p_oNode && p_oNode.IsDerived( MenuElementNode ) )
+   {
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) + "</menu>\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( PopupElementNode ) )
+   {
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) + "</popup>\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( InterfaceElementNode ) )
+   {
+      p_sInterfaceDefinition += "</interface>\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( DockbarElementNode ) )
+   {
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) + "</dockbar>\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( ToolbarElementNode ) )
+   {
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) + "</toolbar>\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( ContextMenuElementNode ) )
+   {
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) + "</contextmenu>\n";
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( KeyboardElementNode ) )
+   {
+      KeyboardElementNode a_oKeyboardElementNode = (KeyboardElementNode)p_oNode;
+      p_sInterfaceDefinition += SpaHtmlUtil.GetSpaces( p_iSpaces ) +
+         "</keyboard>\n";
+   }
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function int WriteInterfaceToDisk(
+
+   InterfaceElementNode p_oInterfaceRoot,
+   string p_sPathToFile,
+   StrList p_slMessages,
+   bool p_bProjectIsDebug,
+   bool p_bSupressMessages
+
+   )
+{
+   // Generate the interface definition file ( XML ) and save it to disk.
+   auto FilePath a_oWritePath = new FilePath( p_sPathToFile );
+   string a_sInterfaceDefinition;
+
+   TraverseInterfaceGraph(
+      p_oInterfaceRoot,
+      a_sInterfaceDefinition,
+      p_bProjectIsDebug,
+      0,
+      "\n" );
+
+   Expression.WriteFileToDisk(
+      a_oWritePath.GetPath(),
+      a_sInterfaceDefinition );
+
+   if( p_bSupressMessages )
+   {
+      p_slMessages.Add( "Wrote the interface definition to disk at the following location: " + a_oWritePath.GetPath() );
+   }
+
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function ItemElementNode CreateCommandItem(
+
+   string p_sName,
+   string p_sNameString,
+   string p_sGuidString,
+   bool p_bText,
+   bool p_bImage
+
+   )
+{
+   ItemElementNode a_oItemElementNode = new ItemElementNode;
+   a_oItemElementNode.Name = p_sName;
+   a_oItemElementNode.CommandName = p_sNameString;
+   a_oItemElementNode.Guid = p_sGuidString;
+   a_oItemElementNode.Text = p_bText;
+   a_oItemElementNode.Image = p_bImage;
+   return a_oItemElementNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function SeparatorElementNode CreateSeparatorCommandItem()
+{
+   SeparatorElementNode a_oSeparatorCommandItem = new SeparatorElementNode;
+   a_oSeparatorCommandItem.Name = "Separator";
+   return a_oSeparatorCommandItem;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function ItemElementNode CreateDeleteCommandItem()
+{
+   return CreateCommandItem(
+      "&amp;Delete",
+      "&amp;Delete",
+      "{1F91F9D2-F612-46D4-A453-4B81096121A9}",
+      true,
+      true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function ItemElementNode CreatePropertyCommandItem()
+{
+   return CreateCommandItem(
+      "&amp;Properties...",
+      "&amp;Properties...",
+      "{1F91F85C-F612-46D4-A453-4B81096121A9}",
+      true,
+      true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function ItemElementNode CreateNavigateCommandItem()
+{
+   return CreateCommandItem(
+      "&amp;Navigate",
+      "&amp;Navigate",
+      "{1F9209AE-F612-46D4-A453-4B81096121A9}",
+      true,
+      true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function ItemElementNode CreateSelectCommandItem()
+{
+   return CreateCommandItem(
+      "&amp;Select",
+      "&amp;Select",
+      "{1F91F897-F612-46D4-A453-4B81096121A9}",
+      true,
+      true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function ItemElementNode CreateTranslateCommandItem()
+{
+   return CreateCommandItem(
+      "&amp;Translate",
+      "&amp;Translate",
+      "{1F91F8D3-F612-46D4-A453-4B81096121A9}",
+      true,
+      true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function ItemElementNode CreateScaleCommandItem()
+{
+   return CreateCommandItem(
+      "&amp;Scale",
+      "&amp;Scale",
+      "{1F91F8F1-F612-46D4-A453-4B81096121A9}",
+      true,
+      true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function ItemElementNode CreateRotateCommandItem()
+{
+   return CreateCommandItem(
+      "&amp;Rotate",
+      "&amp;Rotate",
+      "{1F91F895-F612-46D4-A453-4B81096121A9}",
+      true,
+      true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function ItemElementNode CreateSelectAllCommandItem()
+{
+   return CreateCommandItem(
+      "Select All",
+      "Select All",
+      "{1F91F845-F612-46D4-A453-4B81096121A9}",
+      true,
+      true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void CreateDefaultNodeCommandMenu(
+
+   ContextMenuElementNode p_oContextMenuElementNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   p_oContextMenuElementNode.AddChild( CreateDeleteCommandItem() );
+   p_oContextMenuElementNode.AddChild( CreateSeparatorCommandItem() );
+   p_oContextMenuElementNode.AddChild( CreatePropertyCommandItem() );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void CreateDefaultModeCommandMenu(
+
+   ContextMenuElementNode p_oCommandMenu,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   p_oCommandMenu.AddChild( CreateNavigateCommandItem() );
+   p_oCommandMenu.AddChild( CreateSelectCommandItem() );
+   p_oCommandMenu.AddChild( CreateSeparatorCommandItem() );
+   p_oCommandMenu.AddChild( CreateTranslateCommandItem() );
+   p_oCommandMenu.AddChild( CreateScaleCommandItem() );
+   p_oCommandMenu.AddChild( CreateRotateCommandItem() );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void CreateDefaultElementCommandMenu(
+
+   ContextMenuElementNode p_oCommandMenu,
+   TypeRepNode p_oTypeRepNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   if( p_oTypeRepNode.NodeElementType == Enum.NodeElementType_Generic() )
+   {
+      p_oCommandMenu.AddChild( CreateDeleteCommandItem() );
+   }
+   else
+   if(   p_oTypeRepNode.NodeElementType == Enum.NodeElementType_Face()   ||
+         p_oTypeRepNode.NodeElementType == Enum.NodeElementType_Edge()   ||
+         p_oTypeRepNode.NodeElementType == Enum.NodeElementType_Vertex() )
+   {
+      p_oCommandMenu.AddChild( CreateSelectAllCommandItem() );
+      p_oCommandMenu.AddChild( CreateSeparatorCommandItem() );
+      p_oCommandMenu.AddChild( CreateTranslateCommandItem() );
+      p_oCommandMenu.AddChild( CreateScaleCommandItem() );
+      p_oCommandMenu.AddChild( CreateRotateCommandItem() );
+   }
+   else
+   if(   p_oTypeRepNode.NodeElementType == Enum.NodeElementType_Segment()   ||
+         p_oTypeRepNode.NodeElementType == Enum.NodeElementType_Point() )
+   {
+      p_oCommandMenu.AddChild( CreateTranslateCommandItem() );
+      p_oCommandMenu.AddChild( CreateScaleCommandItem() );
+      p_oCommandMenu.AddChild( CreateRotateCommandItem() );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function ContextMenuElementNode CreateNewCommandMenu( string p_sType )
+{
+   ContextMenuElementNode a_oContextMenu = new ContextMenuElementNode;
+   a_oContextMenu.TypeStatus = 2;
+   a_oContextMenu.Name = p_sType;
+   a_oContextMenu.MenuName = p_sType + " " + "Context Menu";
+   a_oContextMenu.ClassName = p_sType;
+   return a_oContextMenu;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void UpdateExistingCommandMenus(
+
+   InterfaceSectionNode p_oInterfaceSectionNode,
+   TypeConfigNode p_oTypeConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   auto List a_lTypeRepNodes;
+   Graph.GetChildNodes( p_oTypeConfigNode, a_lTypeRepNodes, TypeRepNode );
+   auto List a_lInterfaceElementNodes;
+   Graph.GetChildNodes( p_oInterfaceSectionNode, a_lInterfaceElementNodes, ContextMenuElementNode );
+
+   // Synchronize the InterfaceElementNode status with with the TypeRepNode status.
+   for( int element = 0; element < a_lInterfaceElementNodes.GetCount(); ++element )
+   {
+      bool a_bFoundType = false;
+      ContextMenuElementNode a_oContextMenuElementNode =
+         (ContextMenuElementNode)a_lInterfaceElementNodes.Get( element );
+      //Console.Out( element + "   " + a_oInterfaceElementNode.Name );
+      if( a_oContextMenuElementNode )
+      {
+         TypeRepNode a_oTypeRepNode = (TypeRepNode)p_oTypeConfigNode.FindChild(
+            a_oContextMenuElementNode.ClassName, TypeRepNode );
+
+         if( a_oTypeRepNode )
+         {
+            a_oContextMenuElementNode.TypeStatus = a_oTypeRepNode.TypeStatus;
+            a_bFoundType = true;
+         }
+      }
+
+      // Make sure we flag any contextmenu items without
+      // an equivalent TypeRepNode as 'deprecated'.
+      if( a_bFoundType == false )
+      {
+         a_oContextMenuElementNode.TypeStatus = 0;
+      }
+   }
+
+   // Now we're going to update the command menu
+   // container with types that do not have a command menu.
+   int a_iNewMenuCount = 0;
+
+   for( int types = 0; types < a_lTypeRepNodes.GetCount(); ++types )
+   {
+      TypeRepNode a_oTypeRepNode = (TypeRepNode)a_lTypeRepNodes.Get( types );
+      if( a_oTypeRepNode.TypeStatus != Enum.TypeStatusOption_Active() )
+      {
+         continue;
+      }
+
+      auto Type a_oType;
+      auto TypeInformation a_oTypeInfo = a_oType.GetType().FindClassType( a_oTypeRepNode.Type );
+      string a_sSuperClassType = a_oTypeRepNode.GetSuperClassTypeString();
+      auto TypeInformation a_oSuperClassInfo = a_oType.GetType().FindClassType( a_sSuperClassType );
+
+      if( p_oInterfaceSectionNode.ContextMenuCategory == Enum.ContextMenuCategory_Selection() )
+      {
+         // Only do tests for types that are 'Final'. Non-final
+         // types ( sandwich classes ) don't have context menus.
+         if( a_oTypeRepNode.IsFinalType == false )
+         {
+            continue;
+         }
+
+         // Determine type info based on Type or
+         // NodeElementType ( face, edge, vertex, etc. ).
+         string a_sType;
+         if( a_oTypeRepNode.Type != "" )
+         {
+            a_sType = a_oTypeRepNode.Type;
+         }
+         else
+         if( a_oTypeRepNode.NodeElementType != 0 )
+         {
+            a_sType = a_oTypeRepNode.GetNodeElementTypeString();
+         }
+
+         // Try to find an existing context menu.
+         ContextMenuElementNode a_oContextMenuElementNode =
+            (ContextMenuElementNode)p_oInterfaceSectionNode.FindChild(
+               a_sType,
+               ContextMenuElementNode );
+
+         // Continue if a context menu already exists.
+         if( a_oContextMenuElementNode )
+         {
+            continue;
+         }
+
+         // We didn't find a context menu. Check to see if the type is derived from Node.
+         if( a_oTypeRepNode.Type != "" && a_oSuperClassInfo && a_oSuperClassInfo.IsDerived( Node ) )
+         {
+            // Add a context menu.
+            ContextMenuElementNode a_oContextMenu = CreateNewCommandMenu( a_sType );
+            CreateDefaultNodeCommandMenu( a_oContextMenu, commandInfo );
+            Model.AddNode( a_oContextMenu, p_oInterfaceSectionNode, -1 );
+            ++a_iNewMenuCount;
+         }
+         else
+         if( a_oTypeRepNode.NodeElementType != 0 )
+         {
+            // Add a context menu.
+            ContextMenuElementNode a_oContextMenu = CreateNewCommandMenu( a_sType );
+            CreateDefaultElementCommandMenu( a_oContextMenu, a_oTypeRepNode, commandInfo );
+            Model.AddNode( a_oContextMenu, p_oInterfaceSectionNode, -1 );
+            ++a_iNewMenuCount;
+         }
+      }
+      else
+      {
+         if( a_oTypeRepNode.IsFinalType == false )
+         {
+            continue;
+         }
+
+         // Try to find an existing context menu.
+         InterfaceElementNode a_oInterfaceElementNode =
+            (InterfaceElementNode)p_oInterfaceSectionNode.FindChild(
+               a_oTypeRepNode.Type,
+               InterfaceElementNode );
+
+         // Continue if a context menu already exists.
+         if( a_oInterfaceElementNode )
+         {
+            continue;
+         }
+
+         // We didn't find a context menu. Check to see if the type is derived from Node.
+         if( a_oTypeRepNode.Type != "" && a_oSuperClassInfo && a_oSuperClassInfo.IsDerived( DrawMode ) )
+         {
+            // Add a context menu.
+            ContextMenuElementNode a_oCommandMenu = CreateNewCommandMenu( a_oTypeRepNode.Type );
+            CreateDefaultModeCommandMenu( a_oCommandMenu, commandInfo );
+            Model.AddNode( a_oCommandMenu, p_oInterfaceSectionNode, -1 );
+            ++a_iNewMenuCount;
+         }
+      }
+   }
+
+   commandInfo.Status.SetHint( "Added " + a_iNewMenuCount + " new command menus." );
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// function
+///////////////////////////////////////////////////////////////////////////////
+
+function DataMemberNode CreatePropertySheetEntry(
+
+   Node p_oPropertyContainer,
+   string p_sPropertyName,
+   string p_sPropertyType,
+   string p_sObjectType,
+   string p_sPropertyDocumentation
+
+   )
+{
+   // Accumulate the property item types into a StrList.
+   auto DataMemberNode a_oGetPropertyItemTypes;
+   auto StrList a_slPropertyItemTypes;
+   a_oGetPropertyItemTypes.GetPropertyItemTypes( a_slPropertyItemTypes );
+
+   // Allocate and configure a new DataMemberNode.
+   DataMemberNode a_oDataMemberNode = a_oDataMemberNode = new DataMemberNode;
+
+   for( int prop = 0; prop < a_slPropertyItemTypes.GetCount(); ++prop )
+   {
+      string a_sPropItemType = a_slPropertyItemTypes.Get( prop );
+      if( a_sPropItemType == p_sPropertyType )
+      {
+         a_oDataMemberNode.PropertyItemType = prop;
+         break;
+      }
+   }
+
+   a_oDataMemberNode.Documentation = p_sPropertyDocumentation;
+   a_oDataMemberNode.Name = p_sPropertyName;
+
+   Group a_oContainer = (Group)p_oPropertyContainer;
+   a_oContainer.AddChild( a_oDataMemberNode );
+   return a_oDataMemberNode;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// function
+///////////////////////////////////////////////////////////////////////////////
+
+function void ConfigureTypeDocumentation(
+
+   TypeRepNode p_oTypeRepNode,
+   string p_sType,
+   string p_sDocumentation,
+   string p_sModule,
+   string p_sImplementation,
+   string p_sDataInterfaceName
+
+   )
+{
+   p_oTypeRepNode.Type = p_sType;
+   p_oTypeRepNode.Documentation = p_sDocumentation;
+   p_oTypeRepNode.Module = p_sModule;
+   p_oTypeRepNode.Implementation = p_sImplementation;
+   p_oTypeRepNode.DataInterfaceName = p_sDataInterfaceName;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// function
+///////////////////////////////////////////////////////////////////////////////
+
+function void CreateEnumEntry(
+
+   DataMemberNode p_oAttribEnum,
+   StrList p_slAttribTypeEnum,
+   string p_sPropertyType
+
+   )
+{
+   for( int i = 0; i < p_slAttribTypeEnum.GetCount(); ++i )
+   {
+      if( i < p_slAttribTypeEnum.GetCount() - 1 )
+      {
+         CreatePropertySheetEntry(
+            p_oAttribEnum,
+            p_slAttribTypeEnum.Get( i ),
+            p_sPropertyType,
+            "",
+            p_slAttribTypeEnum.Get( i + 1 ) );
+         // Increment i because this list should be iterated: ( list count / 2 ).
+         ++i;
+      }
+   }
+}

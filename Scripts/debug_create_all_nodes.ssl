@@ -1,0 +1,133 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             DEBUG_CREATE_ALL_NODES.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script file contains a script that creates a node of every type and adds it to the graph.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "message_util.ssl";
+import library "module_util.ssl";
+import library "node_documentation_util.ssl";
+import library "str_list_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function int GenerateNodeDocumentationUtilityLibrary( string p_sNodeDocumentationUtilityLibraryFilePath, StrList p_slNodeNames )
+{
+   string a_sCreateNodeAndAddToModelCode;
+
+   for( int nodeNames = 0; nodeNames < p_slNodeNames.GetCount(); ++nodeNames )
+   {
+      string a_sNodeName = p_slNodeNames.Get( nodeNames );
+
+      // Generate the SSL for the function body here. Just in time...
+      a_sCreateNodeAndAddToModelCode += "   if( p_sNodeName == " + "\"" + a_sNodeName + "\"" + " )\n";
+      a_sCreateNodeAndAddToModelCode += "   {\n";
+      a_sCreateNodeAndAddToModelCode += "      " + a_sNodeName + " a_o" + a_sNodeName + " = new " + a_sNodeName + ";\n";
+      a_sCreateNodeAndAddToModelCode += "      a_o" + a_sNodeName + ".Name = " + "\"" + a_sNodeName + "\"" + ";\n";
+      a_sCreateNodeAndAddToModelCode += "      Model.AddNode( " + "a_o" + a_sNodeName + ", p_oContainer, -1" + " );\n";
+      a_sCreateNodeAndAddToModelCode += "   }\n";
+
+      if( nodeNames < p_slNodeNames.GetCount() - 1 )
+      {
+         a_sCreateNodeAndAddToModelCode += "   else\n";
+      }
+   }
+
+   // Create the text file for the SSL utility library.
+   TextFile n_oNodeDocumentationUtilityLibrary = new TextFile;
+   string a_sNodeDocumentationLibrary;
+   int a_iGeneratedLibrary;
+
+   // Create the appropriate utility library header, declarations, and function body.
+   if( n_oNodeDocumentationUtilityLibrary.Open( p_sNodeDocumentationUtilityLibraryFilePath, 0 ) )
+   {
+      a_sNodeDocumentationLibrary += "////////////////////////////////////////////////////////////////////////////////\n";
+      a_sNodeDocumentationLibrary += "// $file             NODE_DOCUMENTATION_UTIL.SSL\n";
+      a_sNodeDocumentationLibrary += "// $author           Scenomics LLC\n";
+      a_sNodeDocumentationLibrary += "// $privacy          PUBLIC\n";
+      a_sNodeDocumentationLibrary += "// $description      This script implements node documentation utilities.\n";
+      a_sNodeDocumentationLibrary += "// $legal            Reserved * r_rLegal\n";
+      a_sNodeDocumentationLibrary += "//\n";
+      a_sNodeDocumentationLibrary += "// Copyright 2004-2013 Scenomics LLC. All Rights Reserved.\n";
+      a_sNodeDocumentationLibrary += "////////////////////////////////////////////////////////////////////////////////\n";
+      a_sNodeDocumentationLibrary += "\n";
+      a_sNodeDocumentationLibrary += "// This script library is generated code. Do not make changes to this file.\n";
+      a_sNodeDocumentationLibrary += "library SpaNodeDocumentationUtil;\n\n";
+
+      a_sNodeDocumentationLibrary += "function void GenerateNodeForDocumentation( Group p_oContainer, string p_sNodeName )\n";
+      a_sNodeDocumentationLibrary += "{\n";
+      a_sNodeDocumentationLibrary += a_sCreateNodeAndAddToModelCode;
+      a_sNodeDocumentationLibrary += "}\n";
+
+      n_oNodeDocumentationUtilityLibrary.Write( a_sNodeDocumentationLibrary );
+      n_oNodeDocumentationUtilityLibrary.Close();
+      a_iGeneratedLibrary = 1;
+   }
+   else
+   {
+      string a_sMessage = "Unable to write a text file at the following location: " + p_sNodeDocumentationUtilityLibraryFilePath;
+      Console.GenerateOutputMessage( a_sMessage, "ERROR" );
+   }
+
+   delete n_oNodeDocumentationUtilityLibrary;
+   return a_iGeneratedLibrary;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void DebugCreateAllNodes_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Creates a single instance of every node type in the ScenomePlatform API." );
+}
+
+macro DebugCreateAllNodes()
+[Category="Debug Commands", Guid="{75C8A7AE-91C1-4036-BE58-5B2830C8DD44}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Group a_oContainer;
+   if( Model.GetSelectCount() )
+   {
+      Node a_oNode = (Node)Model.GetSelectedNode(0).GetNode();
+      if( a_oNode && a_oNode.IsDerived( Group ) )
+      {
+         a_oContainer = (Group)a_oNode;
+         a_oContainer.Visible = false;
+      }
+   }
+   else
+   {
+      string a_sMessage = "Please select a group node before invoking this command.";
+      Console.GenerateOutputMessage( a_sMessage, "ERROR" );
+   }
+
+   // This macro is literally going to write itself.
+   // Generate the script utility file containing the 
+   // function GenerateNodeForDocumentation() and then
+   // call the function to generate nodes!
+
+   auto StrList a_slNodeNames;
+   SpaModuleUtil.GetNodeNames( a_slNodeNames );
+   string a_sCreateNodeAndAddToModelCode;
+   //SpaStrListUtil.Out( a_slNodeNames );
+
+   string a_sNodeDocumentationUtilityLibraryFilePath = Application.GetApplicationDataPath() + "Scripts\\node_documentation_util.ssl";
+
+   if( GenerateNodeDocumentationUtilityLibrary( a_sNodeDocumentationUtilityLibraryFilePath, a_slNodeNames ) )
+   {
+      Application.ExecuteCommand( "Desktop Scripts", "DesktopRefreshScripts" );
+
+      // Now, generate the nodes by calling a function inside the script utility library we just saved to disk.
+      for( int nodeNames = 0; nodeNames < a_slNodeNames.GetCount(); ++nodeNames )
+      {
+         string a_sNodeName = a_slNodeNames.Get( nodeNames );
+         SpaNodeDocumentationUtil.GenerateNodeForDocumentation( a_oContainer, a_sNodeName );
+      }
+   }
+}

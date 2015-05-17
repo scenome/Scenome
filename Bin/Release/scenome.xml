@@ -1,0 +1,42 @@
+<interface version="Scenome 1.0">
+   <menu name="Menu Bar">
+      <popup name="&amp;File" text="true" image="false">
+         <item name="&amp;New Blank File" guid="{1F91F850-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="&amp;Open..." guid="{1F91F851-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="&amp;Save" guid="{1F91F853-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+         <item name="Save &amp;As..." guid="{1F91F854-F612-46D4-A453-4B81096121A9}" text="true" image="false"/>
+         <separator/>
+         <item name="Enumerate Application &amp;Data Directories" guid="{10BC23FC-B996-42DF-914B-E8F2945E33C5}" text="true" image="true"/>
+         <item name="Open Pro&amp;ject Folder for File" guid="{3343D36F-F825-42AC-AD36-F7EDA39179CD}" text="true" image="true"/>
+         <item name="Open Executab&amp;les Folder..." guid="{2197366A-CD61-473D-9033-09997BEBF9EA}" text="true" image="true"/>
+         <item name="Open Application Documents &amp;Folder..." guid="{F4F34BC0-614B-4B9D-8F07-B1E239AE0EDA}" text="true" image="true"/>
+         <item name="Open Application Data Folde&amp;r..." guid="{B9D9320F-8F15-44F4-9B3C-627DB5ED0C97}" text="true" image="true"/>
+         <item name="&amp;Current Preferences..." guid="{4D88176F-C6C6-4100-B2F3-76A5D3818C14}" text="true" image="true"/>
+         <item name="Your S&amp;ystem Capabilities" guid="{C5E1F0C8-B343-4E17-A845-D782B6BE2875}" text="true" image="true"/>
+         <separator/>
+         <item name="Recent File" guid="{1F91F882-F612-46D4-A453-4B81096121A9}" text="true" image="false"/>
+         <separator/>
+         <item name="E&amp;xit" guid="{1F91F855-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      </popup>
+   </menu>
+   <dockbar name="Output Panel" guid="{A8186B09-1E58-40A7-977B-083D1C43009F}" dockposition="bottom">
+      <dockedview name="Output" guid="{1F922109-F612-46D4-A453-4B81096121A9}"/>
+      <activeview guid="{1F922109-F612-46D4-A453-4B81096121A9}"/>
+   </dockbar>
+   <dockbar name="Primary Panel" guid="{7006A3CE-43AC-48E7-A84C-75C79414E0CE}" dockposition="left,top">
+      <dockedview name="Graph" guid="{1F91F9F6-F612-46D4-A453-4B81096121A9}"/>
+      <activeview guid="{1F91F9F6-F612-46D4-A453-4B81096121A9}"/>
+   </dockbar>
+   <dockbar name="Secondary Panel" guid="{E077D400-4E7E-45B6-A583-59439E78675E}" dockposition="right,top">
+      <dockedview name="Properties" guid="{1F91F9F5-F612-46D4-A453-4B81096121A9}"/>
+      <activeview guid="{1F91F9F5-F612-46D4-A453-4B81096121A9}"/>
+   </dockbar>
+   <contextmenu name="Generic" class="Generic" text="false" image="false">
+      <item name="&amp;Delete" guid="{1F91F9D2-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+      <separator/>
+      <item name="&amp;Properties..." guid="{1F91F85C-F612-46D4-A453-4B81096121A9}" text="true" image="true"/>
+   </contextmenu>
+   <keyboard>
+      <accelerator keys="0x00460001" guid="{1F91F9B9-F612-46D4-A453-4B81096121A9}"/>
+   </keyboard>
+</interface>

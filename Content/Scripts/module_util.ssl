@@ -1,0 +1,241 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             MODULE_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements module related functions.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+library SpaModuleUtil;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetModuleNames( StrList p_slModuleNames )
+{
+   ModuleRegistry reg = ModuleRegistry.GetGlobalModules();
+   int count = reg.GetCount();
+   
+   for( int sort = 0; sort < count; ++sort )
+   {
+      ExternalModule mod = (ExternalModule)reg.Get( sort );
+      if( mod )
+      {
+         p_slModuleNames.Add( mod.Name );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetNodeNames( StrList p_slNodeNames )
+{
+   ModuleRegistry a_oModuleRegistry = ModuleRegistry.GetGlobalModules();
+   int a_iCount = a_oModuleRegistry.GetCount();
+
+   for( int a_iModuleIndex = 0; a_iModuleIndex < a_iCount; ++a_iModuleIndex )
+   {
+      ExternalModule a_oMod = (ExternalModule)a_oModuleRegistry.Get( a_iModuleIndex );
+
+      /*
+      if( !a_oMod.IsDerived( EditNodeModule ) )
+      {
+         continue;
+      }
+
+      EditNodeModule a_oENM = (EditNodeModule)a_oMod;
+      TypeInformation a_oType = a_oENM.GetClassType();
+      if( a_oType.IsDerived( Node ) )
+      {
+         p_slNodeNames.Add( a_oType.GetTypeName() );
+      }
+      */
+
+      auto Str a_oModuleName;
+      a_oModuleName.Value = a_oMod.Name;
+      // DEBUG
+      //Console.Out( a_oModuleName.Value );
+
+      if( a_oModuleName.Left( 15 ) == "EditNodeModule_" && a_oModuleName.Right( a_oModuleName.Length() - 6 ) != "Select" )
+      {
+         string a_sNodeName = a_oModuleName.Replace( "EditNodeModule_", "" );
+         p_slNodeNames.Add( a_sNodeName );
+         // DEBUG
+         //Console.Out( a_sNodeName );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetDrawModeNames( StrList p_slDrawModeNames )
+{
+   ModuleRegistry a_oModuleRegistry = ModuleRegistry.GetGlobalModules();
+   int a_iCount = a_oModuleRegistry.GetCount();
+
+   for( int a_iModuleIndex = 0; a_iModuleIndex < a_iCount; ++a_iModuleIndex )
+   {
+      ExternalModule a_oMod = (ExternalModule)a_oModuleRegistry.Get( a_iModuleIndex );
+
+      if( !a_oMod.IsDerived( DrawMode ) )
+      {
+         continue;
+      }
+      else
+      {
+         p_slDrawModeNames.Add( a_oMod.Name );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetDrawModeTypeNames( StrList p_slDrawModeNames )
+{
+   ModuleRegistry a_oModuleRegistry = ModuleRegistry.GetGlobalModules();
+   int a_iCount = a_oModuleRegistry.GetCount();
+
+   for( int a_iModuleIndex = 0; a_iModuleIndex < a_iCount; ++a_iModuleIndex )
+   {
+      ExternalModule a_oMod = (ExternalModule)a_oModuleRegistry.Get( a_iModuleIndex );
+
+      if( !a_oMod.IsDerived( DrawMode ) )
+      {
+         continue;
+      }
+      else
+      {
+         p_slDrawModeNames.Add( a_oMod.GetType().GetTypeName() );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetCommandMenuTypes( StrList p_slCommandMenuTypes )
+{
+   ModuleRegistry a_oModuleRegistry = ModuleRegistry.GetGlobalModules();
+   int a_iCount = a_oModuleRegistry.GetCount();
+
+   for( int a_iModuleIndex = 0; a_iModuleIndex < a_iCount; ++a_iModuleIndex )
+   {
+      ExternalModule a_oMod = (ExternalModule)a_oModuleRegistry.Get( a_iModuleIndex );
+
+      auto Str a_oModuleName;
+      a_oModuleName.Value = a_oMod.Name;
+
+      if(   a_oModuleName.Left( 15 ) == "EditNodeModule_" &&
+            a_oModuleName.Right( a_oModuleName.Length() - 6 ) != "Select" )
+      {
+         string a_sNodeName = a_oModuleName.Replace( "EditNodeModule_", "" );
+         // Don't add Model3D because only EditModel3D has a command menu.
+         if( a_sNodeName == "Model3D" )
+         {
+            continue;
+         }
+         else
+         {
+            p_slCommandMenuTypes.Add( a_sNodeName );
+         }
+      }
+      else
+      if( a_oMod.IsDerived( DrawMode ) )
+      {
+         p_slCommandMenuTypes.Add( a_oMod.GetType().GetTypeName() );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetCommandNames( StrList p_slModuleNames )
+{
+   ModuleRegistry reg = ModuleRegistry.GetGlobalModules();
+   int count = reg.GetCount();
+   
+   for( int sort = 0; sort < count; ++sort )
+   {
+      ExternalModule mod = (ExternalModule)reg.Get( sort );
+
+      if( mod.IsDerived( CommandExecutionModule ) )
+      {
+         p_slModuleNames.Add( mod.Name );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetDockBarGuids( StrList p_slDockbarNames, StrList p_slDockBarGuids )
+{
+   ModuleRegistry reg = ModuleRegistry.GetGlobalModules();
+   int count = reg.GetCount();
+   
+   for( int sort = 0; sort < count; ++sort )
+   {
+      ExternalModule mod = (ExternalModule)reg.Get( sort );
+      if( mod && mod.GetType().GetTypeName() == "ScenomeDockBarProxy" )
+      {
+         p_slDockbarNames.Add( mod.Name );
+         p_slDockBarGuids.Add( mod.Guid );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetEditorGuids( StrList p_slEditorNames, StrList p_slEditorGuids )
+{
+   ModuleRegistry reg = ModuleRegistry.GetGlobalModules();
+   int count = reg.GetCount();
+   
+   for( int sort = 0; sort < count; ++sort )
+   {
+      ExternalModule mod = (ExternalModule)reg.Get( sort );
+      if( mod && mod.GetType().IsDerived( EditorUIModule ) )
+      {
+         p_slEditorNames.Add( mod.Name );
+         p_slEditorGuids.Add( mod.Guid );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetCommandInfo( StrList p_slCommandNames, StrList p_slCommandGuids,
+   StrList p_slCommandCategories )
+{
+   ModuleRegistry reg = ModuleRegistry.GetGlobalModules();
+   int count = reg.GetCount();
+
+   for( int sort = 0; sort < count; ++sort )
+   {
+      ExternalModule mod = (ExternalModule)reg.Get( sort );
+
+      if( mod.IsDerived( CommandExecutionModule ) )
+      {
+         p_slCommandNames.Add( mod.Name );
+         p_slCommandGuids.Add( mod.Guid );
+         p_slCommandCategories.Add( mod.Category );
+      }
+   }
+}

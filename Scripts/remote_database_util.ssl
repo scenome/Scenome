@@ -1,0 +1,42 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             REMOTE_DATABASE_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements functions for that open, traverse, and modify remote databases.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "file_util.ssl";
+import library "message_util.ssl";
+library SpaRemoteDatabaseUtil;
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function Model3D GetRemoteDatabase( string p_sAbsolutePathToFile )
+{
+   Model3D remoteDatabase;
+   if( SpaFileUtil.ValidateCurrentFileState( p_sAbsolutePathToFile ) )
+   {
+      string a_sAppDocsPath = Application.GetApplicationDocumentsPath();
+      string a_sAbsolutePath = Application.ResolveRelativePath( p_sAbsolutePathToFile, a_sAppDocsPath );
+
+      if( Application.FileExists( a_sAbsolutePath ) )
+      {
+         remoteDatabase = new Model3D;
+         remoteDatabase.OpenFile( a_sAbsolutePath );
+         return remoteDatabase;
+      }
+      else
+      {
+         string a_sMessage = "Could not find the requested database. Please check that the following file exists: " +
+            p_sAbsolutePathToFile + ".";
+         Console.Error( a_sMessage );
+         return null;
+      }
+   }
+   return null;
+}

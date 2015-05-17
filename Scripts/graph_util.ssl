@@ -1,0 +1,5336 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             GRAPH_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements basic graph utility functions.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "application_util.ssl";
+import library "dependency_util.ssl";
+import library "file_util.ssl";
+import library "int_array_util.ssl";
+import library "list_util.ssl";
+import library "main_util.ssl";
+import library "math_util.ssl";
+import library "message_util.ssl";
+import library "node_util.ssl";
+import library "performance_util.ssl";
+import library "remote_database_util.ssl";
+import library "template_util.ssl";
+import library "texture_util.ssl";
+import library "type_util.ssl";
+
+library Graph;
+
+////////////////////////////////////////////////////////////////////////////////
+// Global Variables
+////////////////////////////////////////////////////////////////////////////////
+
+// Statistics
+bool debugLog = false;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void RenameVariable( VariableNode p_oVariableNode )
+{
+   string a_sVariableName = p_oVariableNode.NamePrefix + p_oVariableNode.Variable + p_oVariableNode.NameSuffix;
+   auto Str a_oNewVariableName = new Str( a_sVariableName );
+   auto EnterTextDialog a_oDialog;
+   if( a_oDialog.Show( "Enter new variable name", "Type new variable name here:", true, a_oNewVariableName ) )
+   {
+      p_oVariableNode.Variable = a_oNewVariableName.Value;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ChangeComment( ShaderCommentNode p_oShaderCommentNode )
+{
+   auto Str a_oNewComment = new Str( "" );
+   auto EnterTextDialog a_oDialog;
+   if( a_oDialog.Show( "Enter new comment", "Type new comment here:", true, a_oNewComment ) )
+   {
+      p_oShaderCommentNode.Comment = a_oNewComment.Value;
+      p_oShaderCommentNode.Name = a_oNewComment.Left( 28 ) + "...";
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateExpression( VariableExpressionNode p_oVariableExpressionNode )
+{
+   auto TypeInfoArray a_oVariableExpressionNodeTypes;
+   SpaTypeUtil.GetVariableExpressionNodeTypes( a_oVariableExpressionNodeTypes );
+
+   auto TypeInfoArray a_oVariableExpressionGeneratorTypes;
+   SpaTypeUtil.GetVariableExpressionNodeGeneratorTypes( a_oVariableExpressionGeneratorTypes );
+
+   if( a_oVariableExpressionNodeTypes.Count != a_oVariableExpressionGeneratorTypes.Count )
+   {
+      string a_sMessage = "a_oVariableExpressionNodeTypes.Count != a_oVariableExpressionGeneratorTypes.Count in EXPRESSION_SCRIPTS::FindVariable()";
+      Console.Assert( a_sMessage );
+   }
+   
+   TypeInformation a_oGeneratorType;
+   for( int i = 0; i < a_oVariableExpressionNodeTypes.Count; ++i )
+   {
+      TypeInformation a_oTypeInfo = (TypeInformation)a_oVariableExpressionNodeTypes.Objects[ i ];
+      if( p_oVariableExpressionNode.IsDerived( a_oTypeInfo ) )
+      {
+         a_oGeneratorType = a_oVariableExpressionGeneratorTypes.Objects[ i ];
+         p_oVariableExpressionNode.GenerateExpression( a_oGeneratorType );
+         break;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetCodeGeneratorRoot( Group p_oParent, ref Node p_oNode )
+{
+   Group a_oParent = (Group)p_oParent.Parent();
+
+   if( a_oParent && a_oParent.IsDerived( ShaderSourceNode ) )
+   {
+      p_oNode = (Node)a_oParent;
+   }
+   else
+   {
+      GetCodeGeneratorRoot( a_oParent, p_oNode );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetProjectRoot( Node p_oSelNode, ref Node p_oProjectRoot )
+{
+   if(   p_oSelNode && p_oSelNode.IsDerived( LibraryConfigNode )     ||
+         p_oSelNode && p_oSelNode.IsDerived( ApplicationConfigNode ) ||
+         p_oSelNode && p_oSelNode.IsDerived( HelpConfigNode )        ||
+         p_oSelNode && p_oSelNode.IsDerived( InstallerConfigNode ) )
+   {
+      p_oProjectRoot = (Node)p_oSelNode;
+   }
+   else
+   if( p_oSelNode )
+   {
+      GetProjectRoot( p_oSelNode.Parent(), p_oProjectRoot );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetNodeParentsToRoot( Node p_oNode, List p_lNodes )
+{
+   Node a_oNodeParent = (Node)p_oNode.Parent();
+
+   if( a_oNodeParent )
+   {
+      p_lNodes.AddRef( a_oNodeParent );
+      GetNodeParentsToRoot( a_oNodeParent, p_lNodes );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void DeleteAllChildren( Group p_oGroup )
+{
+   for( int i = 0; i < p_oGroup.ChildCount; ++i )
+   {
+      Node a_oNode = (Node)p_oGroup.Children[ i ];
+      Model.DeleteNode( a_oNode );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int DeleteListMembers( List a_lNodesToDelete )
+{
+   int a_iDelNodeCount;
+   Console.Out( "\n<Deleting Related Nodes>" );
+   for( int del = 0; del < a_lNodesToDelete.GetCount(); ++del )
+   {
+      Node a_oDelete = (Node)a_lNodesToDelete.Get( del );
+      if( a_oDelete )
+      {
+         Console.Out( "Deleted: " + a_oDelete.GetPathToNode() );
+         Model.DeleteNode( a_oDelete );
+         ++a_iDelNodeCount;
+      }
+   }
+
+   return a_iDelNodeCount;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool ClearExpressionT( VariableExpressionNode p_oVariableExpressionNode )
+{
+   p_oVariableExpressionNode.Clear();
+
+   if( p_oVariableExpressionNode.IsDerived( BooleanExpressionNode ) )
+   {
+      BooleanExpressionNode a_oBooleanExpressionNode =
+         (BooleanExpressionNode)p_oVariableExpressionNode;
+      a_oBooleanExpressionNode.Clear();
+      return true;
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( IntegerExpressionNode ) )
+   {
+      IntegerExpressionNode a_oIntegerExpressionNode =
+         (IntegerExpressionNode)p_oVariableExpressionNode;
+      a_oIntegerExpressionNode.Clear();
+      return true;
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( FloatExpressionNode ) )
+   {
+      FloatExpressionNode a_oFloatExpressionNode =
+         (FloatExpressionNode)p_oVariableExpressionNode;
+      a_oFloatExpressionNode.Clear();
+      return true;
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( FloatArrayExpressionNode ) )
+   {
+      FloatArrayExpressionNode a_oFloatArrayExpressionNode =
+         (FloatArrayExpressionNode)p_oVariableExpressionNode;
+      int a_nCount = a_oFloatArrayExpressionNode.Count;
+      a_oFloatArrayExpressionNode.Clear();
+      a_oFloatArrayExpressionNode.Count = a_nCount;
+      return true;
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( VectorExpressionNode ) )
+   {
+      VectorExpressionNode a_oVectorExpressionNode =
+         (VectorExpressionNode)p_oVariableExpressionNode;
+      int a_nDimension = a_oVectorExpressionNode.Dimension;
+      a_oVectorExpressionNode.Clear();
+      a_oVectorExpressionNode.Dimension = a_nDimension;
+      return true;
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( MatrixExpressionNode ) )
+   {
+      MatrixExpressionNode a_oMatrixExpressionNode =
+         (MatrixExpressionNode)p_oVariableExpressionNode;
+      int a_nCols = a_oMatrixExpressionNode.Cols;
+      int a_nRows = a_oMatrixExpressionNode.Rows;
+      a_oMatrixExpressionNode.Clear();
+      a_oMatrixExpressionNode.Cols = a_nCols;
+      a_oMatrixExpressionNode.Rows = a_nRows;
+      return true;
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( SamplerExpressionNode ) )
+   {
+      SamplerExpressionNode a_oSamplerExpressionNode =
+         (SamplerExpressionNode)p_oVariableExpressionNode;
+      a_oSamplerExpressionNode.Clear();
+      return true;
+   }
+   else
+   if( p_oVariableExpressionNode.IsDerived( StructExpressionNode ) )
+   {
+      StructExpressionNode a_oStructExpressionNode =
+         (StructExpressionNode)p_oVariableExpressionNode;
+      a_oStructExpressionNode.Clear();
+      return true;
+   }
+   
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int HandleTypeRepNodeDelete( TypeRepNode p_oTypeRepNode )
+{
+   string a_sDeleteWarning = "You are deleting a <TypeRepNode>. " +
+      "Would you like to delete all related interface components?";
+   if( Application.MessageBox( 1, a_sDeleteWarning, "WARNING" ) == false )
+   {
+      return 0;
+   }
+
+   // Get all the InterfaceElementNodes from the database.
+   auto List a_lContextMenus;
+   Graph.GetNodesFromDatabase( p_oTypeRepNode.GetModel(), a_lContextMenus,
+      InterfaceElementNode );
+   if( a_lContextMenus.GetCount() == 0 )
+   {
+      return 0;
+   }
+
+   // Sort the list into InterfaceElementNodes of element type <contextmenu>.
+   auto List a_lFlaggedForDelete;
+   for( int menu = 0; menu < a_lContextMenus.GetCount(); ++menu )
+   {
+      InterfaceElementNode a_oInterfaceElementNode =
+         (InterfaceElementNode)a_lContextMenus.Get( menu );
+      if( a_oInterfaceElementNode.Element == Enum.InterfaceElements_ContextMenu() )
+      {
+         if( a_oInterfaceElementNode.ClassString == p_oTypeRepNode.Type )
+         {
+            a_lFlaggedForDelete.AddRef( a_oInterfaceElementNode );
+         }
+      }
+   }
+
+   // Inform the user if there are no related nodes to delete.
+   if( a_lFlaggedForDelete.GetCount() == 0 )
+   {
+      Console.Info( "No related nodes to delete because this TypeRepNode was not referenced by any application." );
+      return 0;
+   }
+
+   // Delete any related nodes.
+   return DeleteListMembers( a_lFlaggedForDelete );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int HandleCommandRepNodeDelete( CommandRepNode p_oCommandRepNode )
+{
+   string a_sDeleteWarning = "You are deleting a <CommandRepNode>. " +
+      "Would you like to delete all related interface components?";
+   if( Application.MessageBox( 1, a_sDeleteWarning, "WARNING" ) == false )
+   {
+      return 0;
+   }
+
+   // Get all the InterfaceElementNodes from the database.
+   auto List a_lCommandItems;
+   Graph.GetNodesFromDatabase( p_oCommandRepNode.GetModel(), a_lCommandItems,
+      InterfaceElementNode );
+   if( a_lCommandItems.GetCount() == 0 )
+   {
+      return 0;
+   }
+
+   // Sort the list into InterfaceElementNodes of element type <item>.
+   auto List a_lFlaggedForDelete;
+   for( int menu = 0; menu < a_lCommandItems.GetCount(); ++menu )
+   {
+      InterfaceElementNode a_oInterfaceElementNode =
+         (InterfaceElementNode)a_lCommandItems.Get( menu );
+      if( a_oInterfaceElementNode.Element == Enum.InterfaceElements_Item() )
+      {
+         if( a_oInterfaceElementNode.CommandNameString == p_oCommandRepNode.CommandName )
+         {
+            a_lFlaggedForDelete.AddRef( a_oInterfaceElementNode );
+         }
+      }
+   }
+
+   // Inform the user if there are no related nodes to delete.
+   if( a_lFlaggedForDelete.GetCount() == 0 )
+   {
+      Console.Info( "No related nodes to delete because this CommandRepNode was not referenced by any application." );
+      return 0;
+   }
+
+   // Delete any related nodes.
+   return DeleteListMembers( a_lFlaggedForDelete );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ResetVariableExpressionNode( VariableExpressionNode p_oVariableExpressionNode )
+{
+   p_oVariableExpressionNode.NodeSelector.Clear();
+   auto List a_lChildNodes;
+   Graph.GetNodesFromDatabase( p_oVariableExpressionNode, a_lChildNodes, Node );
+
+   if( p_oVariableExpressionNode.MustBeWriteable() )
+   {
+      p_oVariableExpressionNode.DataSource = null;
+      return;
+   }
+
+   if( p_oVariableExpressionNode.IsFunctionParameter() )
+   {
+      VariableExpressionNode a_oTempExpression =
+         (VariableExpressionNode)Model.EditNode( p_oVariableExpressionNode );
+      a_oTempExpression.Clear();
+      a_oTempExpression.MakeFunctionParameter();
+   }
+   else
+   if( p_oVariableExpressionNode.IsExpression() )
+   {
+      VariableExpressionNode a_oTempExpression =
+         (VariableExpressionNode)Model.EditNode( p_oVariableExpressionNode );
+      a_oTempExpression.Clear();
+      a_oTempExpression.MakeExpression();
+   }
+   else
+   if( p_oVariableExpressionNode.IsConstructor() )
+   {
+      if(   p_oVariableExpressionNode.Parent() &&
+            p_oVariableExpressionNode.Parent().IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oExpressionParent =
+            (VariableExpressionNode)p_oVariableExpressionNode.Parent();
+
+         if( a_oExpressionParent.IsFunction() )
+         {
+            p_oVariableExpressionNode.MakeFunctionParameter();
+            p_oVariableExpressionNode.Clear();
+         }
+         else
+         if( a_oExpressionParent.IsConstructor() )
+         {
+            p_oVariableExpressionNode.MakeConstructor();
+            p_oVariableExpressionNode.Clear();
+         }
+      }
+      else
+      {
+         VariableExpressionNode a_oTempExpression =
+            (VariableExpressionNode)Model.EditNode( p_oVariableExpressionNode );
+         a_oTempExpression.Clear();
+         a_oTempExpression.MakeExpression();
+
+         // Check if the previous node in the child list
+         // is a BinaryOperatorNode. If so, restore it.
+         Group a_oParent = (Group)p_oVariableExpressionNode.Parent();
+         int a_nChildIndex = p_oVariableExpressionNode.ChildIndex();
+         if( a_nChildIndex > 0 )
+         {
+            Node a_oIsBinaryOperator = (Node)a_oParent.Children[ a_nChildIndex - 1 ];
+            if( a_oIsBinaryOperator && a_oIsBinaryOperator.IsDerived( BinaryOperatorNode ) )
+            {
+               a_oTempExpression.OperatorDataSource = a_oIsBinaryOperator;
+               a_oTempExpression.MakeRightExpression();
+            }
+         }
+      }
+   }
+   else
+   if( p_oVariableExpressionNode.IsFunction() )
+   {
+      VariableExpressionNode a_oTempExpression =
+         (VariableExpressionNode)Model.EditNode( p_oVariableExpressionNode );
+      a_oTempExpression.Clear();
+
+      if( p_oVariableExpressionNode.OperatorDataSource )
+      {
+         a_oTempExpression.MakeExpression();
+         a_oTempExpression.Name = p_oVariableExpressionNode.GetDefaultNameString();
+         a_oTempExpression.MakeRightExpression();
+      }
+   }
+
+   if( a_lChildNodes.GetCount() )
+   {
+      // Both these loops are initialized to 1 because the selected node
+      // is item 0 in the a_lChildNodes, and we don't want to delete it.
+
+      // Clear all dependencies for any child nodes.
+      for( int a_nClear = 1; a_nClear < a_lChildNodes.GetCount(); ++a_nClear )
+      {
+         Node a_oChild = (Node)a_lChildNodes.Get( a_nClear );
+         a_oChild.ClearDependencies();
+         if( a_oChild.IsDerived( VariableExpressionNode ) )
+         {
+            VariableExpressionNode a_oChildExpression =
+               (VariableExpressionNode)Model.EditNode( a_oChild );
+            a_oChildExpression.Clear();
+         }
+      }
+
+      // Delete all child nodes.
+      bool a_bDeleteChildNodes;
+      if( !( p_oVariableExpressionNode.IsFunction() ) )
+      {
+         a_bDeleteChildNodes = true;
+      }
+      else
+      if(   p_oVariableExpressionNode.IsFunction() &&
+            !( p_oVariableExpressionNode.Parent().IsDerived( VariableExpressionNode ) ) )
+      {
+         a_bDeleteChildNodes = true;
+      }
+
+      if( a_bDeleteChildNodes )
+      {
+         for( int a_nDelete = 1; a_nDelete < a_lChildNodes.GetCount(); ++a_nDelete )
+         {
+            Node a_oChild = (Node)a_lChildNodes.Get( a_nDelete );
+            Model.DeleteNode( (Node)a_lChildNodes.Get( a_nDelete ) );
+         }
+      }
+   }
+
+   VariableExpressionNode a_oTemp = (VariableExpressionNode)Model.EditNode( p_oVariableExpressionNode );
+
+   if( a_oTemp )
+   {
+      ClearExpressionT( a_oTemp );
+      Template.GenerateExpressionT( a_oTemp );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool HandleOnDelete( Node p_oNode )
+{
+   if( !p_oNode || !p_oNode.GetModel() )
+   {
+      return false;
+   }
+
+   if( p_oNode.IsDerived( UniformBufferNode ) )
+   {
+      UniformBufferNode a_oUniformBufferNode = (UniformBufferNode)p_oNode;
+      auto List a_lUniformBufferBindNodes;
+      Graph.GetNodesFromDatabase( Model, a_lUniformBufferBindNodes, UniformBufferBindNode );
+
+      for( int i = 0; i < a_lUniformBufferBindNodes.GetCount(); ++i )
+      {
+         UniformBufferBindNode a_oUniformBufferBindNode =
+            (UniformBufferBindNode)a_lUniformBufferBindNodes.Get( i );
+         Node a_oIsUniformBuffer = (Node)a_oUniformBufferBindNode.FindUniformBuffer();
+
+         if( a_oIsUniformBuffer && a_oIsUniformBuffer.IsDerived( UniformBufferNode ) )
+         {
+            UniformBufferNode a_oBoundBuffer = (UniformBufferNode)a_oIsUniformBuffer;
+            if( a_oUniformBufferNode == a_oBoundBuffer )
+            {
+               Model.DeleteNode( a_oUniformBufferBindNode );
+               return true;
+            }
+         }
+      }
+
+      return true;
+   }
+   else
+   if( p_oNode.IsDerived( DeclarationNode ) )
+   {
+      DeclarationNode a_oDeclaration = (DeclarationNode)p_oNode;
+      auto List a_lExpressionNodes;
+      Graph.GetNodesFromDatabase( a_oDeclaration, a_lExpressionNodes, BinaryOperatorNode );
+      for( int a_nBin = 0; a_nBin < a_lExpressionNodes.GetCount(); ++a_nBin )
+      {
+         BinaryOperatorNode a_oBinOp = (BinaryOperatorNode)a_lExpressionNodes.Get( a_nBin );
+         HandleOnDelete( a_oBinOp );
+      }
+   }
+   else
+   if( p_oNode.IsDerived( ExpressionNode ) )
+   {
+      ExpressionNode a_oExpressionNode = (ExpressionNode)p_oNode;
+
+      // Clear all child node dependencies.
+      auto List a_lChildNodes;
+      Graph.GetNodesFromDatabase( a_oExpressionNode, a_lChildNodes, Node );
+      for( int a_nClear = 1; a_nClear < a_lChildNodes.GetCount(); ++a_nClear )
+      {
+         Node a_oChild = (Node)a_lChildNodes.Get( a_nClear );
+         a_oChild.ClearDependencies();
+      }
+
+      return true;
+   }
+   else
+   if( p_oNode.IsDerived( TypeRepNode ) )
+   {
+      TypeRepNode a_oTypeRepNode = (TypeRepNode)p_oNode;
+      HandleTypeRepNodeDelete( a_oTypeRepNode );
+      return true;
+   }
+   else
+   if( p_oNode.IsDerived( CommandRepNode ) )
+   {
+      CommandRepNode a_oCommandRepNode = (CommandRepNode)p_oNode;
+      HandleCommandRepNodeDelete( a_oCommandRepNode );
+      return false;
+   }
+   else
+   if( p_oNode.IsDerived( BinaryOperatorNode ) )
+   {
+      // Complete unlink the expression and delete all its components.
+      Group a_oParent = (Group)p_oNode.Parent();
+      BinaryOperatorNode a_oOperatorTemp = (BinaryOperatorNode)p_oNode;
+      BinaryOperatorNode a_oBinaryOperatorNode = (BinaryOperatorNode)p_oNode;
+
+      Node a_oLeftOperand = a_oOperatorTemp.LeftDataSource;
+      Node a_oRightOperand = a_oOperatorTemp.RightDataSource;
+      a_oBinaryOperatorNode.LeftDataSource = null;
+      a_oBinaryOperatorNode.RightDataSource = null;
+
+      if( a_oLeftOperand && a_oLeftOperand.IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oOperand = (VariableExpressionNode)a_oLeftOperand;
+         a_oOperand.OperatorDataSource = null;
+         a_oOperand.DataSource = null;
+      }
+      else
+      {
+         if( a_oLeftOperand && a_oLeftOperand.IsDerived( DynamicBooleanNode ) )
+         {
+            DynamicBooleanNode a_oOperand = (DynamicBooleanNode)a_oLeftOperand;
+            a_oOperand.DataSource = null;
+         }
+         else
+         if( a_oLeftOperand && a_oLeftOperand.IsDerived( DynamicIntegerNode ) )
+         {
+            DynamicIntegerNode a_oOperand = (DynamicIntegerNode)a_oLeftOperand;
+            a_oOperand.DataSource = null;
+         }
+         else
+         if( a_oLeftOperand && a_oLeftOperand.IsDerived( DynamicFloatNode ) )
+         {
+            DynamicFloatNode a_oOperand = (DynamicFloatNode)a_oLeftOperand;
+            a_oOperand.DataSource = null;
+         }
+         else
+         if( a_oLeftOperand && a_oLeftOperand.IsDerived( DynamicVectorNode ) )
+         {
+            DynamicVectorNode a_oOperand = (DynamicVectorNode)a_oLeftOperand;
+            a_oOperand.DataSource = null;
+         }
+         else
+         if( a_oLeftOperand && a_oLeftOperand.IsDerived( DynamicColorNode ) )
+         {
+            DynamicColorNode a_oOperand = (DynamicColorNode)a_oLeftOperand;
+            a_oOperand.DataSource = null;
+         }
+         else
+         if( a_oLeftOperand && a_oLeftOperand.IsDerived( DynamicMatrixNode ) )
+         {
+            DynamicMatrixNode a_oOperand = (DynamicMatrixNode)a_oLeftOperand;
+            a_oOperand.DataSource = null;
+         }
+         else
+         if( a_oLeftOperand && a_oLeftOperand.IsDerived( DynamicSamplerNode ) )
+         {
+            DynamicSamplerNode a_oOperand = (DynamicSamplerNode)a_oLeftOperand;
+            a_oOperand.DataSource = null;
+         }
+      }
+      if( a_oRightOperand && a_oRightOperand.IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oOperand = (VariableExpressionNode)a_oRightOperand;
+         a_oOperand.OperatorDataSource = null;
+         a_oOperand.DataSource = null;
+      }
+
+      // Delete the expression operands.
+      Model.DeleteNode( a_oLeftOperand );
+      Model.DeleteNode( a_oRightOperand );
+
+      // Update parent expression item count and expression source code.
+      if( a_oParent && a_oParent.IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oVariableExpressionNode =
+            (VariableExpressionNode)Model.EditNode( a_oParent );
+         a_oVariableExpressionNode.MakeExpression();
+         GenerateExpression( a_oVariableExpressionNode );
+      }
+      else
+      if( a_oParent && a_oParent.IsDerived( ExpressionNode ) ||
+         a_oParent && a_oParent.IsDerived( DeclarationNode ) )
+      {
+         Model.DeleteNode( a_oParent );
+         return false;
+      }
+      return true;
+   }
+   else
+   if( p_oNode.IsDerived( VariableExpressionNode ) )
+   {
+      VariableExpressionNode a_oVariableExpressionNode = (VariableExpressionNode)p_oNode;
+      if( !a_oVariableExpressionNode )
+      {
+         return false;
+      }
+
+      if(   a_oVariableExpressionNode.IsConstructorParameter() ||
+            a_oVariableExpressionNode.IsFunctionParameter() )
+      {
+         if(   a_oVariableExpressionNode.Parent() &&
+               a_oVariableExpressionNode.Parent().IsDerived( VariableExpressionNode ) )
+         {
+            VariableExpressionNode a_oParent = (VariableExpressionNode)a_oVariableExpressionNode.Parent();
+            if( !( a_oParent.IsFunctionPrototype() ) )
+            {
+               string a_sMessage = "You cannot delete a parameter to a constructor or function.";
+               Console.Error( a_sMessage );
+               return false;
+            }
+            else
+            {
+               Model.DeleteNode( a_oVariableExpressionNode );
+               return false;
+            }
+         }
+      }
+
+      if( a_oVariableExpressionNode.ChildCount )
+      {
+         ResetVariableExpressionNode( a_oVariableExpressionNode );
+      }
+
+      if(   a_oVariableExpressionNode.Parent() &&
+            a_oVariableExpressionNode.Parent().IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oParent = (VariableExpressionNode)a_oVariableExpressionNode.Parent();
+         ResetVariableExpressionNode( a_oParent );
+      }
+      else
+      if(   a_oVariableExpressionNode.IsFunctionDeclaration() ||
+            a_oVariableExpressionNode.IsFunctionPrototype() )
+      {
+         Model.DeleteNode( a_oVariableExpressionNode );
+      }
+      else
+      {
+         if( a_oVariableExpressionNode.IsReturn() )
+         {
+            return true;
+         }
+         else
+         if(   a_oVariableExpressionNode.IsFunction() &&
+               !( a_oVariableExpressionNode.Parent().IsDerived( VariableExpressionNode ) ) )
+         {
+            return true;
+         }
+         else
+         {
+            //return true;
+            string a_sMessage = "You cannot delete a single expression. Delete the operator, delete " +
+               "the parent of the node you wish to delete, or apply the Reset command to the expression's parent.";
+            Console.Error( a_sMessage );
+         }
+      }
+      return false;
+   }
+   else
+   if( p_oNode.IsDerived( VariableNode ) )
+   {
+      // Handle delete carefully!
+      VariableNode a_oVariableNode = (VariableNode)p_oNode;
+      // DEBUG
+      //Console.Out( a_oVariableNode.Name );
+      auto StrList a_slExpressionAddresses;
+      auto List a_lReferences = a_oVariableNode.GetReferences( Node );
+      bool a_bFoundUnbreakableRef = false;
+      for( int a_nChild = 0; a_nChild < a_lReferences.GetCount(); ++a_nChild )
+      {
+         Node a_oRef = (Node)a_lReferences.Get( a_nChild );
+         if( a_oRef && a_oRef.IsDerived( VariableExpressionNode ) )
+         {
+            a_bFoundUnbreakableRef = true;
+            a_slExpressionAddresses.Add( a_oRef.GetPathToNode() );
+         }
+      }
+
+      if( a_bFoundUnbreakableRef )
+      {
+         return true;
+         string a_sMessage = "You cannot delete a variable that is used by an expression:\n\n";
+         for( int a_nAddress = 0; a_nAddress < a_slExpressionAddresses.GetCount(); ++a_nAddress )
+         {
+            a_sMessage += a_slExpressionAddresses.GetAt( a_nAddress ) + "\n";
+         }
+         Console.Error( a_sMessage );
+         return false;
+      }
+
+      return true;
+   }
+   else
+   if( p_oNode.IsDerived( StructNode ) )
+   {
+      // First, iterate the StructNode and see if its
+      // child variables are referenced anywhere.
+      StructNode a_oStructNode = (StructNode)p_oNode;
+      bool a_bFoundUnbreakableRef = false;
+      auto StrList a_slExpressionAddresses;
+      for( int a_nChild = 0; a_nChild < a_oStructNode.ChildCount; ++a_nChild )
+      {
+         Node a_oChild = (Node)a_oStructNode.Children[ a_nChild ];
+         if( a_oChild && a_oChild.IsDerived( VariableNode ) )
+         {
+            VariableNode a_oVariableNode = (VariableNode)a_oChild;
+            auto List a_lReferences = a_oVariableNode.GetReferences( Node );
+            for( int a_nRef = 0; a_nRef < a_lReferences.GetCount(); ++a_nRef )
+            {
+               Node a_oRef = (Node)a_lReferences.Get( a_nRef );
+               if( a_oRef && a_oRef.IsDerived( VariableExpressionNode ) )
+               {
+                  a_bFoundUnbreakableRef = true;
+                  a_slExpressionAddresses.Add( a_oRef.GetPathToNode() );
+               }
+            }
+         }
+      }
+
+      if( a_bFoundUnbreakableRef )
+      {
+         string a_sMessage = "You cannot delete this StructNode because one or more of variables are in use:\n\n";
+         for( int a_nAddress = 0; a_nAddress < a_slExpressionAddresses.GetCount(); ++a_nAddress )
+         {
+            a_sMessage += a_slExpressionAddresses.GetAt( a_nAddress ) + "\n";
+         }
+         Console.Error( a_sMessage );
+         return false;
+      }
+
+      // Now check to see if the StructNode is used as the declaration
+      // for a StructInstanceNode. In which, do not allow the user to delete it.
+      auto List a_lReferences = p_oNode.GetReferences( StructInstanceNode );
+      for( int a_nRef = 0; a_nRef < a_lReferences.GetCount(); ++a_nRef )
+      {
+         Node a_oRef = (Node)a_lReferences.Get( a_nRef );
+         if( a_oRef && a_oRef.IsDerived( StructInstanceNode ) )
+         {
+            a_bFoundUnbreakableRef = true;
+            a_slExpressionAddresses.Add( a_oRef.GetPathToNode() );
+         }
+      }
+
+      if( a_bFoundUnbreakableRef )
+      {
+         string a_sMessage = "You cannot delete this StructNode because it is the declaration for:\n\n";
+         for( int a_nAddress = 0; a_nAddress < a_slExpressionAddresses.GetCount(); ++a_nAddress )
+         {
+            a_sMessage += a_slExpressionAddresses.GetAt( a_nAddress ) + "\n";
+         }
+         Console.Error( a_sMessage );
+         return false;
+      }
+
+      // DEBUG
+      //SpaListUtil.Out( a_lReferences );
+
+      return true;
+   }
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddNodeTypeToCollection( CollectionNode p_oCollectionNode, TypeInformation typeInfo )
+{
+   List a_lCollectionItems = p_oCollectionNode.GetCollection();
+   a_lCollectionItems.Clear();
+
+   auto List a_lDatabaseNodes;
+   auto List a_lNodeSelects;
+   Graph.GetNodesFromDatabase( Model, a_lDatabaseNodes, typeInfo );
+
+   for( int i = 0; i < a_lDatabaseNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)a_lDatabaseNodes.Get(i);
+      NodeSelect select = new NodeSelect;
+      select.SetNode( a_oNode );
+      a_lNodeSelects.Add( select );
+   }
+
+   p_oCollectionNode.SetCollection( a_lNodeSelects );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void GetConnectedDatabaseFilenames( Node node, StrList p_slConnectedDatabases )
+{
+   if( node.IsDerived( NodeLink ) )
+   {
+      NodeLink a_oNodeLink = (NodeLink)node;
+      a_oNodeLink.Load( 1 );
+      if( a_oNodeLink.IsExternal() && a_oNodeLink.GetModel() )
+      {
+         auto FilePath a_oFilePath = new FilePath( a_oNodeLink.PathToFile );
+         a_oFilePath.ResolveToModel( node );
+         a_oFilePath.Canonicalize();
+         p_slConnectedDatabases.Add( a_oFilePath.GetPath() );
+         // DEBUG
+         //Console.Message( a_oFilePath.GetPath() );
+      }
+   }
+
+   if( node.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)node;
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         GetConnectedDatabaseFilenames( a_oGroup.Children[i], p_slConnectedDatabases );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void GetConnectedDatabases(
+
+   Node node,
+   ref List p_lModels,
+   string p_sLeader,
+   bool p_bSupressOutputText
+
+   )
+{
+   if( node.IsDerived( NodeLink ) )
+   {
+      NodeLink a_oNodeLink = (NodeLink)node;
+      a_oNodeLink.Load( 1 );
+      if( a_oNodeLink.IsExternal() && a_oNodeLink.GetModel() )
+      {
+         string a_sResolvePath = Application.ResolveRelativePath( a_oNodeLink.GetModel().Filename,
+            a_oNodeLink.PathToFile );
+         if( Application.FileExists( a_sResolvePath ) );
+         {
+            a_oNodeLink.Load( 1 );
+            p_sLeader += "  ";
+            Model3D a_oValidateRemoteDatabase = new Model3D;
+            a_oValidateRemoteDatabase.OpenFile( a_sResolvePath );
+
+            if( p_bSupressOutputText == false )
+            {
+               Console.Message( p_sLeader + a_oValidateRemoteDatabase.Filename );
+            }
+
+            p_lModels.AddRef( a_oValidateRemoteDatabase );
+            GetConnectedDatabases( a_oValidateRemoteDatabase, p_lModels, p_sLeader,
+               p_bSupressOutputText );
+         }
+      }
+   }
+
+   if( node.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)node;
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         GetConnectedDatabases( a_oGroup.Children[i], p_lModels, p_sLeader, p_bSupressOutputText );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetChildrenFromParentByType(
+
+   Group p_oGroup,
+   List p_lNodes,
+   TypeInformation type
+
+)
+{
+   if( p_oGroup && p_oGroup.IsDerived( Group ) )
+   {
+      for( int i = 0; i < p_oGroup.ChildCount; ++i )
+      {
+         Node a_oNode = (Node)p_oGroup.Children[i];
+
+         if( a_oNode && a_oNode.IsDerived( type ) )
+         {
+            if( p_lNodes.In( a_oNode ) == false )
+            {
+               p_lNodes.AddRef( a_oNode );
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function Node GetChildFromParentByType( Group p_oParent, TypeInformation type )
+{
+   Node a_oReturnChildOfType;
+
+   if( p_oParent && p_oParent.IsDerived( Group ) )
+   {
+      for( int i = 0; i < p_oParent.ChildCount; ++i )
+      {
+         Node a_oNode = (Node)p_oParent.Children[i];
+
+         if( a_oNode && a_oNode.IsDerived( type ) )
+         {
+            a_oReturnChildOfType = a_oNode;
+            break;
+         }
+      }
+   }
+
+   return a_oReturnChildOfType;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetVariableNodesFromDataSource(
+
+   Node node,
+   List p_lNodes,
+   StrList p_slVariableNames,
+   ref string p_sModifier,
+   ref bool p_bFoundVariable
+
+   )
+{
+   if( node.IsDerived( VariableNode ) && node.IsDerived( StructInstanceNode ) == false )
+   {
+      VariableNode a_oVariableNode = (VariableNode)node;
+      string a_sCompleteName;
+      string a_sVariableName = a_oVariableNode.NamePrefix +
+         a_oVariableNode.Variable + a_oVariableNode.NameSuffix;
+      if( p_sModifier != "" )
+      {
+         a_sCompleteName += p_sModifier + "." + a_sVariableName;
+      }
+      else
+      {
+         a_sCompleteName = a_sVariableName;
+      }
+
+      p_slVariableNames.Add( a_sCompleteName );
+      p_lNodes.AddRef( node );
+   }
+
+   if( node.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)node;
+
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         GetVariableNodesFromDataSource( a_oGroup.Children[i], p_lNodes,
+            p_slVariableNames, p_sModifier, p_bFoundVariable );
+      }
+   }
+
+   if( node.IsDerived( TypeAggregatorNode ) )
+   {
+      TypeAggregatorNode a_oTypeAggregatorNode = (TypeAggregatorNode)node;
+
+      string a_sModifier;
+      a_sModifier = p_sModifier;
+      string a_sDot;
+      if( p_sModifier != "" )
+      {
+         a_sDot = ".";
+      }
+      p_sModifier += a_sDot + a_oTypeAggregatorNode.Identifier;
+
+      if( a_oTypeAggregatorNode.Mode == 2 /* StructInstance */ )
+      {
+         Node a_oIsDeclaration =
+            (Node)a_oTypeAggregatorNode.DefinitionDataSource;
+         if( a_oIsDeclaration && a_oIsDeclaration.IsDerived( Group ) )
+         {
+            Group a_oDeclaration = (Group)a_oIsDeclaration;
+            for( int i = 0; i < a_oDeclaration.ChildCount; ++i )
+            {
+               GetVariableNodesFromDataSource( a_oDeclaration.Children[i],
+                  p_lNodes, p_slVariableNames, p_sModifier, p_bFoundVariable );
+            }
+         }
+
+      }
+   }
+
+   if( node.IsDerived( StructInstanceNode ) )
+   {
+      StructInstanceNode a_oStructInstanceNode = (StructInstanceNode)node;
+
+      string a_sModifier;
+      a_sModifier = p_sModifier;
+      string a_sDot;
+      if( p_sModifier != "" )
+      {
+         a_sDot = ".";
+      }
+      p_sModifier += a_sDot + a_oStructInstanceNode.Variable;
+      // Add array param support!
+
+      Node a_oIsDeclaration = (Node)a_oStructInstanceNode.FindStructDeclaration();
+      if( a_oIsDeclaration && a_oIsDeclaration.IsDerived( Group ) )
+      {
+         Group a_oDeclaration = (Group)a_oIsDeclaration;
+         for( int i = 0; i < a_oDeclaration.ChildCount; ++i )
+         {
+            GetVariableNodesFromDataSource( a_oDeclaration.Children[i],
+               p_lNodes, p_slVariableNames, p_sModifier, p_bFoundVariable );
+         }
+      }
+
+      p_sModifier = a_sModifier;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetInterfaceElementsByType(
+
+   Node p_oInterfaceElementNode,
+   List p_lNodes,
+   int p_iType
+
+   )
+{
+   if( p_oInterfaceElementNode.IsDerived( InterfaceElementNode ) )
+   {
+      InterfaceElementNode a_oInterfaceElementNode =
+         (InterfaceElementNode)p_oInterfaceElementNode;
+      if( a_oInterfaceElementNode.Element == p_iType )
+      {
+         p_lNodes.AddRef( a_oInterfaceElementNode );
+      }
+   }
+
+   if( p_oInterfaceElementNode.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)p_oInterfaceElementNode;
+
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         GetInterfaceElementsByType( a_oGroup.Children[i],
+            p_lNodes, p_iType );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetFoldersFromProject( Node node, List p_lNodes )
+{
+   if( node.IsDerived( FolderConfigNode ) )
+   {
+      FolderConfigNode a_oFolderConfigNode = (FolderConfigNode)node;
+      if( a_oFolderConfigNode.ExportDisabled == false &&
+         a_oFolderConfigNode.ChildCount && a_oFolderConfigNode.BasePath != "" )
+      {
+         p_lNodes.AddRef( node );
+      }
+   }
+
+   if( node.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)node;
+      if( a_oGroup.Visible && a_oGroup.ExportDisabled == false )
+      {
+         for( int i = 0; i < a_oGroup.ChildCount; ++i )
+         {
+            GetFoldersFromProject( a_oGroup.Children[i], p_lNodes );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetDocumentsFromSelection( List p_lFileConfigNodes )
+{
+   for( int a_nSelIndex = 0; a_nSelIndex < Model.GetSelectCount(); ++a_nSelIndex )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode( a_nSelIndex ).GetNode();
+      if( a_oSelNode && a_oSelNode.IsDerived( FolderConfigNode ) )
+      {
+         FolderConfigNode a_oFolderConfigNode = (FolderConfigNode)a_oSelNode;
+         Graph.GetNodesFromDatabase( a_oFolderConfigNode, p_lFileConfigNodes, FileConfigNode );
+      }
+      else
+      if( a_oSelNode && a_oSelNode.IsDerived( FileConfigNode ) )
+      {
+         p_lFileConfigNodes.AddRef( a_oSelNode );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetNodesFromDatabaseByClass( Node node, List p_lNodes, string p_sClass )
+{
+   if( node.Class == p_sClass )
+   {
+      p_lNodes.AddRef( node );
+   }
+
+   if( node.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)node;
+
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         GetNodesFromDatabaseByClass( a_oGroup.Children[i], p_lNodes, p_sClass );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetLocalVariables( Node node, List p_lNodes )
+{
+   if( node.IsDerived( VariableNode ) )
+   {
+      VariableNode variable = (VariableNode)node;
+      if( variable.IsLocal() )
+      {
+         p_lNodes.AddRef( node );
+      }
+   }
+
+   if( node.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)node;
+
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         GetLocalVariables( a_oGroup.Children[i], p_lNodes );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetChildNodes( Node node, List p_lNodes, TypeInformation type )
+{
+   if( node.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)node;
+
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         Node a_oNode = (Node)a_oGroup.Children[i];
+         if( a_oNode && a_oNode.IsDerived( type ) )
+         {
+            p_lNodes.AddRef( a_oNode );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetParentUntilTypeIs( Node node, List p_lNodes, TypeInformation type )
+{
+   p_lNodes.AddRef( node );
+
+   if( node.IsDerived( type ) == false )
+   {
+      GetParentUntilTypeIs( node.Parent(), p_lNodes, type );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetNodesFromDatabase( Node node, List p_lNodes, TypeInformation type )
+{
+   if( node.IsDerived( type ) )
+   {
+      p_lNodes.AddRef( node );
+   }
+
+   if( node.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)node;
+
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         GetNodesFromDatabase( a_oGroup.Children[i], p_lNodes, type );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetNodesFromListByType(
+
+   List p_lSourceNodes,
+   List p_lDestinationNodes,
+   TypeInformation type
+
+   )
+{
+   for( int nodes = 0; nodes < p_lSourceNodes.GetCount(); ++nodes )
+   {
+      Node a_oNode = (Node)p_lSourceNodes.Get( nodes );
+      GetNodesFromDatabase( a_oNode, p_lDestinationNodes, type );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetConfigNodePathsFromDatabase( Node node, StrList p_slConfigNodePaths )
+{
+   if( node.IsDerived( ConfigNode ) )
+   {
+      ConfigNode a_oConfigNode = (ConfigNode)node;
+      auto FilePath a_oCanonicalizePath =
+         new FilePath( a_oConfigNode.GetAbsolutePath() );
+      a_oCanonicalizePath.Canonicalize();
+      if( p_slConfigNodePaths.Find( a_oCanonicalizePath.GetPath() ) == -1 )
+      {
+         p_slConfigNodePaths.Add( a_oCanonicalizePath.GetPath() );
+         //Console.Out( a_oCanonicalizePath.GetPath() );
+      }
+   }
+
+   if( node.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)node;
+
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         GetConfigNodePathsFromDatabase( a_oGroup.Children[i], p_slConfigNodePaths );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetReferencingNodesFromDatabase( Node node, List p_lNodes )
+{
+   if( node.IsDerived( Texture ) )
+   {
+      p_lNodes.AddRef( node );
+   }
+   else
+   if( node.IsDerived( FileNode ) )
+   {
+      p_lNodes.AddRef( node );
+   }
+   else
+   if( node.IsDerived( Program ) )
+   {
+      p_lNodes.AddRef( node );
+   }
+   else
+   if( node.IsDerived( NodeLink ) )
+   {
+      p_lNodes.AddRef( node );
+   }
+   else
+   if( node.IsDerived( ScriptNode ) )
+   {
+      p_lNodes.AddRef( node );
+   }
+   else
+   if( node.IsDerived( ConfigNode ) )
+   {
+      p_lNodes.AddRef( node );
+   }
+   else
+   if( node.IsDerived( DisplaceModifier ) )
+   {
+      p_lNodes.AddRef( node );
+   }
+
+   if( node.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)node;
+
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         GetReferencingNodesFromDatabase( a_oGroup.Children[i], p_lNodes );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetVariablesByName(
+
+   Node node,
+   List p_lNodes,
+   TypeInformation type,
+   string p_sVariableName
+
+   )
+{
+   if( node.IsDerived( type ) )
+   {
+      VariableNode a_oVariableNode = (VariableNode)node;
+      if( a_oVariableNode.Variable == p_sVariableName )
+      {
+         p_lNodes.AddRef( node );
+      }
+   }
+
+   if( node.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)node;
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         GetVariablesByName(
+            a_oGroup.Children[i],
+            p_lNodes,
+            type,
+            p_sVariableName );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void PlanarProjectTextureModifierSetTiling(
+
+   string tilingMode,
+   int OriginX,
+   int OriginY,
+   int OriginZ,
+   int SAxisX,
+   int SAxisY,
+   int SAxisZ,
+   int TAxisX,
+   int TAxisY,
+   int TAxisZ,
+   PlanarProjectTextureModifier pptm
+
+   )
+{
+   if( tilingMode == "set" )
+   {
+      pptm.Origin[ 0 ] = OriginX;
+      pptm.Origin[ 1 ] = OriginY;
+      pptm.Origin[ 2 ] = OriginZ;
+      pptm.SAxis [ 0 ] = SAxisX;
+      pptm.SAxis [ 1 ] = SAxisY;
+      pptm.SAxis [ 2 ] = SAxisZ;
+      pptm.TAxis [ 0 ] = TAxisX;
+      pptm.TAxis [ 1 ] = TAxisY;
+      pptm.TAxis [ 2 ] = TAxisZ;
+   }
+   else
+   if( tilingMode == "double" )
+   {
+      pptm.Origin[ 0 ] /= 2;
+      pptm.Origin[ 1 ] /= 2;
+      pptm.Origin[ 2 ] /= 2;
+      pptm.SAxis [ 0 ] /= 2;
+      pptm.SAxis [ 1 ] /= 2;
+      pptm.SAxis [ 2 ] /= 2;
+      pptm.TAxis [ 0 ] /= 2;
+      pptm.TAxis [ 1 ] /= 2;
+      pptm.TAxis [ 2 ] /= 2;
+   }
+   else
+   if( tilingMode == "half" )
+   {
+      pptm.Origin[ 0 ] *= 2;
+      pptm.Origin[ 1 ] *= 2;
+      pptm.Origin[ 2 ] *= 2;
+      pptm.SAxis [ 0 ] *= 2;
+      pptm.SAxis [ 1 ] *= 2;
+      pptm.SAxis [ 2 ] *= 2;
+      pptm.TAxis [ 0 ] *= 2;
+      pptm.TAxis [ 1 ] *= 2;
+      pptm.TAxis [ 2 ] *= 2;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetProgramsFromMaterials( List p_lPrograms, Group a_oMeshPaletteGroup )
+{
+   for( int m = 0; m < a_oMeshPaletteGroup.ChildCount; ++m )
+   {
+      Node a_oIsNodeLink = (Node)a_oMeshPaletteGroup.Children[m];
+      if( a_oIsNodeLink && a_oIsNodeLink.IsDerived( NodeLink ) )
+      {
+         NodeLink a_oLink = (NodeLink)a_oIsNodeLink;
+
+         if( a_oLink && a_oLink.Node )
+         {
+            Node a_oLinkTarget = (Node)a_oLink.Node;
+
+            if( a_oLinkTarget && a_oLinkTarget.IsDerived( Material ) )
+            {
+               Material a_oMaterial = (Material)a_oLink.Node;
+               Node a_oIsProgram = (Node)a_oMaterial.Program;
+               if( a_oIsProgram && a_oIsProgram.IsDerived( Program ) )
+               {
+                  Program a_oProgram = (Program)a_oIsProgram;
+                  p_lPrograms.AddRef( a_oProgram );
+               }
+               else
+               if( a_oIsProgram && a_oIsProgram.IsDerived( NodeLink ) )
+               {
+                  Node a_oIsProgramLink = (Node)a_oIsProgram;
+                  if( a_oIsProgramLink && a_oIsProgramLink.IsDerived( Program ) )
+                  {
+                     Program a_oProgram = (Program)a_oMaterial.Program;
+                     p_lPrograms.AddRef( a_oProgram );
+                  }
+               }
+            }
+         }
+      }
+      if( a_oIsNodeLink.IsDerived( Material ) )
+      {
+         Material a_oMaterial = (Material)a_oIsNodeLink;
+         Node a_oIsProgram = (Node)a_oMaterial.Program;
+         if( a_oIsProgram && a_oIsProgram.IsDerived( Program ) )
+         {
+            Program a_oProgram = (Program)a_oMaterial.Program;
+            p_lPrograms.AddRef( a_oProgram );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetTexturesFromMaterials( List p_lTextureNodes, Group p_oMeshPaletteGroup )
+{
+   for( int m = 0; m < p_oMeshPaletteGroup.ChildCount; ++m )
+   {
+      Node a_oIsNodeLink = (Node)p_oMeshPaletteGroup.Children[m];
+      if( a_oIsNodeLink.IsDerived( NodeLink ) )
+      {
+         NodeLink a_oLink = (NodeLink)a_oIsNodeLink;
+         Material a_oMaterial = (Material)a_oLink.Node;
+         Group a_oGroup = (Group)a_oMaterial.TextureLink;
+         for( int i = 0; i < a_oGroup.ChildCount; ++i )
+         {
+            Node a_oIsTexture = (Node)a_oGroup.Children[i];
+            if( a_oIsTexture.IsDerived( Texture ) )
+            {
+               Texture a_oTextureNode = (Texture)a_oIsTexture;
+               p_lTextureNodes.AddRef( a_oTextureNode );
+            }
+            else
+            if( a_oIsTexture.IsDerived( NodeLink ) )
+            {
+               NodeLink a_oTextureLink = (NodeLink)a_oIsTexture;
+               if( a_oTextureLink && a_oTextureLink.GetLink() &&
+                  a_oTextureLink.Node.IsDerived( Texture ) )
+               {
+                  Texture a_oTextureNode = (Texture)a_oTextureLink.Node;
+                  p_lTextureNodes.AddRef( a_oTextureNode );
+               }
+            }
+         }
+      }
+      if( a_oIsNodeLink.IsDerived( Material ) )
+      {
+         Material a_oMaterial = (Material)a_oIsNodeLink;
+         Group a_oGroup = (Group)a_oMaterial.TextureLink;
+         for( int i = 0; i < a_oGroup.ChildCount; ++i )
+         {
+            Node a_oIsTexture = (Node)a_oGroup.Children[i];
+            if( a_oIsTexture.IsDerived( Texture ) )
+            {
+               Texture a_oTextureNode = (Texture)a_oIsTexture;
+               p_lTextureNodes.AddRef( a_oTextureNode );
+            }
+            else
+            if( a_oIsTexture.IsDerived( NodeLink ) )
+            {
+               NodeLink a_oTextureLink = (NodeLink)a_oIsTexture;
+               if( a_oTextureLink && a_oTextureLink.GetLink() &&
+                  a_oTextureLink.Node.IsDerived( Texture ) )
+               {
+                  Texture a_oTextureNode = (Texture)a_oTextureLink.Node;
+                  p_lTextureNodes.AddRef( a_oTextureNode );
+               }
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetTexturesFromMaterial( List p_lTextureNodes, Group p_oTexturePaletteGroup )
+{
+   for( int i = 0; i < p_oTexturePaletteGroup.ChildCount; ++i )
+   {
+      Node a_oIsTexture = (Node)p_oTexturePaletteGroup.Children[i];
+      if( a_oIsTexture.IsDerived( Texture ) )
+      {
+         Texture a_oTextureNode = (Texture)a_oIsTexture;
+         p_lTextureNodes.AddRef( a_oTextureNode );
+      }
+      else
+      if( a_oIsTexture.IsDerived( NodeLink ) )
+      {
+         NodeLink a_oTextureLink = (NodeLink)a_oIsTexture;
+         if( a_oTextureLink && a_oTextureLink.GetLink() &&
+            a_oTextureLink.Node.IsDerived( Texture ) )
+         {
+            Texture a_oTextureNode = (Texture)a_oTextureLink.Node;
+            p_lTextureNodes.AddRef( a_oTextureNode );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetMaterialsFromPaletteGroup( List p_lMaterials, Group p_oMeshPaletteGroup )
+{
+   for( int m = 0; m < p_oMeshPaletteGroup.ChildCount; ++m )
+   {
+      Node a_oIsNodeLink = (Node)p_oMeshPaletteGroup.Children[m];
+      if( a_oIsNodeLink.IsDerived( NodeLink ) )
+      {
+         NodeLink a_oLink = (NodeLink)a_oIsNodeLink;
+         if( a_oLink.IsExternal() )
+         {
+            a_oLink.Load( 1 );
+            string a_sFile = a_oLink.GetModel().Filename;
+            Material a_oMaterial = (Material)a_oLink.Node;
+
+            Program a_oProgram = (Program)a_oMaterial.Program;
+         
+            Group a_oGroup = (Group)a_oMaterial.TextureLink;
+            for( int i = 0; i < a_oGroup.ChildCount; ++i )
+            {
+               Node a_oIsTexture = (Node)a_oGroup.Children[i];
+               if( a_oIsTexture.IsDerived( Texture ) )
+               {
+                  Texture a_oTextureNode = (Texture)a_oIsTexture;
+               }
+            }
+            p_lMaterials.AddRef( a_oMaterial );
+         }
+         else
+         {
+            Material a_oMaterial = (Material)a_oLink.Node;
+            p_lMaterials.AddRef( a_oMaterial );
+         }
+      }
+      if( a_oIsNodeLink.IsDerived( Material ) )
+      {
+         Material a_oMaterial = (Material)a_oIsNodeLink;
+         Program a_oProgram = (Program)a_oMaterial.Program;
+         Group a_oGroup = (Group)a_oMaterial.TextureLink;
+         for( int i = 0; i < a_oGroup.ChildCount; ++i )
+         {
+            Node a_oIsTexture = (Node)a_oGroup.Children[i];
+            if( a_oIsTexture.IsDerived( Texture ) )
+            {
+               Texture a_oTextureNode = (Texture)a_oIsTexture;
+            }
+         }
+         p_lMaterials.AddRef( a_oMaterial );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool CalculateDistance( LOD p_oLOD )
+{
+   // Get the active view.
+   ModelView a_oView = Model.ActiveView;
+   bool a_bInRange = true;
+
+   // Compute distances from current view position to LOD center.
+   double a_dLengthX = a_oView.Position.X - p_oLOD.Center[0];
+   double a_dLengthY = a_oView.Position.Y - p_oLOD.Center[1];
+   double a_dLengthZ = a_oView.Position.Z - p_oLOD.Center[2];
+
+   // Compute the distance.
+   double a_dDistance = Math.Sqrt(  a_dLengthX * a_dLengthX + 
+                                    a_dLengthY * a_dLengthY + 
+                                    a_dLengthZ * a_dLengthZ );
+
+   // Test if the LOD is within range.
+   if( a_dDistance > p_oLOD.SwitchIn && a_dDistance < p_oLOD.SwitchOut )
+   {
+      a_bInRange = true;
+   }
+   else
+   {
+      a_bInRange = false;
+   }
+
+   return a_bInRange;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateRenderTargetTexture(
+
+   int p_iTextureType,
+   int p_iPixelFormat,
+   int p_iImageWidth,
+   int p_iImageHeight,
+   string p_sTextureName
+
+   )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = (Node)Model.GetSelectedNode( i ).GetNode();
+      if( a_oNode.IsDerived( FrameBuffer ) )
+      {
+         FrameBuffer a_oFrameBuffer = (FrameBuffer)a_oNode;
+
+         Texture a_oTexture = new Texture;
+         a_oTexture.Name = p_sTextureName;
+         a_oTexture.TextureType = p_iTextureType;
+         a_oTexture.RenderWidth = p_iImageWidth;
+         a_oTexture.RenderHeight = p_iImageHeight;
+         a_oTexture.RenderFormat = p_iPixelFormat;
+
+         Model.AddNode( a_oTexture, a_oFrameBuffer, -1 );
+         Model.Select( a_oTexture );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function Material GetMaterialReferencedByNode( Node a_oNode )
+{
+   bool a_bNodeIsReferencedByMaterial = false;
+   auto List n_lNodeReferences = a_oNode.GetReferences( Material );
+   Material resultMaterial;
+   if( n_lNodeReferences.GetCount() > 0 )
+   {
+      for( int r = 0; r < n_lNodeReferences.GetCount(); ++r )
+      {
+         Node nodeReference = (Node)n_lNodeReferences.Get( r );
+         if( nodeReference.IsDerived ( Material ) )   
+         {
+            resultMaterial = (Material)nodeReference;
+            break;
+         }
+      }
+   }
+
+   if( !resultMaterial )
+   {
+      string a_sMessage = "The <Node> is not referenced by a <MaterialNode>. Command cannot complete.\n";
+      Console.Error( a_sMessage );
+   }
+   return resultMaterial;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetLinkNodesFromDatabase( Node node, List p_lNodes, TypeInformation type )
+{
+   if( node && node.IsDerived( NodeLink ) )
+   {
+      NodeLink a_oNodeLink = (NodeLink)node;
+      a_oNodeLink.Load( 1 );
+      Node a_oLink = (Node)a_oNodeLink.Node;
+      if( a_oLink )
+      {
+         if( a_oLink.IsDerived( type ) )
+         {
+            p_lNodes.AddRef( node );
+         }
+      }
+      else
+      {
+         string a_sMessage = "Found a NULL <NodeLink> ( a <NodeLink> that does not point at any node, or a <NodeLink> that is broken ).\n";
+         a_sMessage += "Disk Address: " + node.GetModel().Filename + "\n";
+         a_sMessage += "Graph Address: " + node.GetPathToNode();
+         Console.Error( a_sMessage );
+      }
+   }
+
+   if( node && node.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)node;
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         GetLinkNodesFromDatabase( a_oGroup.Children[i], p_lNodes, type );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void UpdateSelectionSets( FileOpenedEvent event )
+{
+   Model3D model = event.Model;
+   Node a_oIsNodeSetsContainer =
+      (Node)model.GetTypedNodeByPath( "\\Dependencies\\Sets", Node );
+
+   if( a_oIsNodeSetsContainer && a_oIsNodeSetsContainer.IsDerived( Group ) )
+   {
+      Group a_oNodeSetsContainer = (Group)a_oIsNodeSetsContainer;
+
+      for( int i = 0; i < a_oNodeSetsContainer.ChildCount; ++i )
+      {
+         Node a_oIsCollectionNode = (Node)a_oNodeSetsContainer.Children[i];
+
+         if( a_oIsCollectionNode && a_oIsCollectionNode.IsDerived( CollectionNode ) )
+         {
+            // Instantiate the CollectionNode, but DO NOT use EditNode because
+            // we do not want the changes to go into the document history.
+            CollectionNode a_oNodeCollection = (CollectionNode)a_oIsCollectionNode;
+            auto Type a_oType;
+            auto TypeInformation typeInfo =
+               a_oType.GetType().FindClassType( a_oNodeCollection.ID );
+            
+            if( typeInfo )
+            {
+               AddNodeTypeToCollection( a_oNodeCollection, typeInfo );
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  function
+////////////////////////////////////////////////////////////////////////////////
+
+function void RestoreViewFromCamera( Node node )
+{
+   Camera camera = (Camera)node;
+
+   Matrix cameraTransform = camera.GetTransform();
+
+   ModelView a_oView = Model.ActiveView;
+         
+   int projection = camera.GetProjection();
+   if( projection == 0 )
+   {
+      a_oView.SetPerspective();
+      
+   }
+   else
+   {
+      // View type 1 is "general isometric".
+      // Not used in this iteration of Scenome.
+      // So we continue at 2.
+
+      if( projection == 2 )
+      {
+         a_oView.SetTop();
+      }
+      else
+      if( projection == 3 )
+      {
+         a_oView.SetFront();
+      }
+      else
+      if( projection == 4 )
+      {
+         a_oView.SetSide();
+      }
+   }
+
+   a_oView.Position.X = cameraTransform.Position[0];
+   a_oView.Position.Y = cameraTransform.Position[1];
+   a_oView.Position.Z = cameraTransform.Position[2];
+   a_oView.Orientation.X = cameraTransform.Orientation[0];
+   a_oView.Orientation.Y = cameraTransform.Orientation[1];
+   a_oView.Orientation.Z = cameraTransform.Orientation[2];
+   a_oView.Zoom = camera.Zoom;
+   a_oView.NearClip = camera.NearClip;
+   a_oView.FarClip = camera.FarClip;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//  function
+////////////////////////////////////////////////////////////////////////////////
+
+// This function gets the view from the worksheet and stores it in the camera node.
+
+function void StoreActiveViewInCamera( Node node )
+{
+   Camera editCamera = (Camera)Model.EditNode( node );
+
+   ModelView a_oView = Model.ActiveView;
+   Matrix editCameraPosition = new Matrix;
+   editCameraPosition.Position[0] = a_oView.Position.X;
+   editCameraPosition.Position[1] = a_oView.Position.Y;
+   editCameraPosition.Position[2] = a_oView.Position.Z;
+   editCameraPosition.Orientation[0] = a_oView.Orientation.X;
+   editCameraPosition.Orientation[1] = a_oView.Orientation.Y;
+   editCameraPosition.Orientation[2] = a_oView.Orientation.Z;
+   editCamera.SetTransform ( editCameraPosition );
+
+   if( a_oView.GetProjection() == 0 )
+   {
+      editCamera.SetPerspective();
+      editCamera.Name = "Camera.Perspective";
+   }
+
+   // View type 1 is "general isometric". Not used in this iteration of Scenome.
+
+   if( a_oView.GetProjection() == 2 )
+   {
+      editCamera.SetTop();
+      editCamera.Name = "Camera.Top";
+   }
+
+   if( a_oView.GetProjection() == 3 )
+   {
+      editCamera.SetFront();
+      editCamera.Name = "Camera.Front";
+   }
+
+   if( a_oView.GetProjection() == 4 )
+   {
+      editCamera.SetSide(); 
+      editCamera.Name = "Camera.Side";
+   }
+
+   editCamera.NearClip = a_oView.NearClip;
+   editCamera.FarClip = a_oView.FarClip;
+   editCamera.Zoom = a_oView.Zoom;
+
+   delete editCameraPosition;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void RestoreSelectionFromCollection()
+{
+   int selectedCount = Model.GetSelectCount();
+   for( int node = 0; node < selectedCount; ++node )
+   {
+      Node selNode = Model.GetSelectedNode( node ).GetNode();
+      if( selNode.IsDerived( CollectionNode ) )
+      {
+         CollectionNode collNode = (CollectionNode)selNode;
+
+         List selectBuffer = collNode.GetCollection();
+         int count = selectBuffer.GetCount();
+         for( int i = 0; i < count; ++i )
+         {
+            NodeSelect select = (NodeSelect)selectBuffer.Get( i );
+            Model.SelectNS( (NodeSelect)select.Clone() );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetCollectionVisibility( CollectionNode node, bool bVisible )
+{
+   List selectBuffer = node.GetCollection();
+   for( int i = 0; i < selectBuffer.GetCount(); ++i )
+   {
+      NodeSelect select = (NodeSelect)selectBuffer.Get( i );
+      Node turnOn = select.GetNode();
+      if( turnOn.IsDerived( Group ) )
+      {
+         Group turnOnGroup = (Group)Model.EditNode( turnOn );
+         turnOnGroup.Visible = bVisible;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void MergePalette( List mergedPalettes, Node destNode, Node sourceNode )
+{
+   if( sourceNode.IsDerived( Mesh ) )
+   {
+      // Merge the palette of the scissor mesh.
+      if( !mergedPalettes.In( ((Mesh)sourceNode).PaletteGroup ) )
+      {
+         mergedPalettes.AddRef( ((Mesh)sourceNode).PaletteGroup );
+         if( destNode.IsDerived( Mesh ) )
+         {
+            ((Mesh)destNode).MergePalette( Model, sourceNode );
+         }
+         else
+         if( destNode.IsDerived( Path ) )
+         {
+            ((Path)destNode).MergePalette( Model, sourceNode );
+         }
+      }
+   }
+   else
+   if( sourceNode.IsDerived( Path ) )
+   {
+      // Merge the palette of the scissor path.
+      if( !mergedPalettes.In( ((Path)sourceNode).PaletteGroup ) )
+      {
+         mergedPalettes.AddRef( ((Path)sourceNode).PaletteGroup );
+         if( destNode.IsDerived( Mesh ) )
+         {
+            ((Mesh)destNode).MergePalette( Model, sourceNode );
+         }
+         else
+         if( destNode.IsDerived( Path ) )
+         {
+            ((Path)destNode).MergePalette( Model, sourceNode );
+         }
+      }
+   }
+   else
+   if( sourceNode.IsDerived( NodeLink ) )
+   {
+      NodeLink link = (NodeLink)sourceNode;
+      if( link.Load( true ) )
+      {
+         Node linkedNode = link.Node;
+
+         if( linkedNode )
+         {
+            MergePalette( mergedPalettes, destNode, linkedNode );
+         }
+      }
+   }
+   else
+   if( sourceNode.IsDerived( Group ) )
+   {
+      // Merge the palettes of nodes under the source group.
+      Group sourceGroup = (Group)sourceNode;
+      for( int i = 0; i < sourceGroup.ChildCount; ++i )
+      {
+         Node child = sourceGroup.Children[i];
+         MergePalette( mergedPalettes, destNode, child );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void MergePalettes( Node destNode, Node sourceNode )
+{
+   List mergedPalettes = new List;
+   MergePalette( mergedPalettes, destNode, sourceNode );
+   delete mergedPalettes;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function Node FindMeshMaterial( ParametricMesh mesh )
+{
+   Group a_oPaletteGroup = mesh.PaletteGroup;
+   Material a_oMaterial;
+   if( a_oPaletteGroup )
+   {
+      // Validate the contents of the palette.
+      Node a_oCheckNodeType = (Node)((Group)a_oPaletteGroup).Children[ 0 ];
+      if( a_oCheckNodeType.IsDerived( Material ) )
+      {
+         a_oMaterial = (Material)a_oPaletteGroup.GetChildByType( Material );
+         return a_oMaterial;
+      }
+      if( a_oCheckNodeType.IsDerived( NodeLink ) )
+      {
+         Node a_oMaterialLink = (Node)((Group)a_oPaletteGroup).Children[ 0 ];
+         return a_oMaterialLink;
+      }
+      else
+      {
+         string a_sMessage = "The <ParametricMesh> is not linked to a palette group, or its palette group is empty.";
+         Console.Error( a_sMessage );
+      }
+   }
+   return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function Node FindFirstChildByType( Group parent, TypeInformation type )
+{
+   Node child;
+   int children = parent.ChildCount;
+   for( int c = 0; c < children; ++c )
+   {
+      Node testChild = parent.Children[c];
+      if( testChild.IsDerived( type ) )
+      {
+         child = testChild;
+         break;
+      }
+   }
+   return child;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddChannelModifierSetDimensions( int p_iDimensions )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( AddChannelModifier ) )
+      {
+         AddChannelModifier modifier = (AddChannelModifier)Model.EditNode( node );
+         modifier.Dimension = p_iDimensions;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ProjectionModifierSetActiveChannel( int p_iActiveChannel )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( PlanarProjectTextureModifier ) )
+      {
+         PlanarProjectTextureModifier modifier = (PlanarProjectTextureModifier)Model.EditNode( node );
+         modifier.TextureCoordinatesSet = p_iActiveChannel;
+      }
+      if( node.IsDerived( GeographicTextureModifier ) )
+      {
+         GeographicTextureModifier modifier = (GeographicTextureModifier)Model.EditNode( node );
+         modifier.TextureCoordinatesSet = p_iActiveChannel;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void NodeCloneSelection()
+{
+   int selectCount = Model.GetSelectCount();
+
+   if( selectCount > 0 )
+   {
+      Node node = Model.GetFirstSelectedNode().GetNode();
+      Node a_oTemp = (Node)Model.EditNode( node );
+      Group parent = node.Parent();
+
+      if( parent )
+      {
+         Node newNode = node.Clone();
+         int newIndex = parent.GetChildIndex( node ) + 1;
+
+         // Prompt the user to set the variable name.
+         if( newNode && newNode.IsDerived( VariableNode ) )
+         {
+            VariableNode variableNode = (VariableNode)newNode;
+            string a_sVariableName = variableNode.NamePrefix +
+               variableNode.Variable + variableNode.NameSuffix;
+            RenameVariable( variableNode );
+            string a_sNewVariableName = variableNode.NamePrefix +
+               variableNode.Variable + variableNode.NameSuffix;
+            variableNode.Name = variableNode.UpdateName();
+            if( a_sVariableName == a_sNewVariableName )
+            {
+               delete newNode;
+               return;
+            }
+         }
+         else
+         if( newNode && newNode.IsDerived( ShaderCommentNode ) )
+         {
+            ShaderCommentNode shaderCommentNode =
+               (ShaderCommentNode)newNode;
+            ChangeComment( shaderCommentNode );
+         }
+
+         Model.AddNode( newNode, parent, newIndex );
+         Model.Select( newNode );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetShaderSource(
+
+   List p_lShaderStageIdentifiers,
+   Program p_oProgram,
+   string p_sShaderStage,
+   Str p_sShaderSource
+
+   )
+{
+   for( int s = 0; s < p_lShaderStageIdentifiers.GetCount(); ++ s )
+   {
+      Str a_oStrippedFile =
+         new Str( Application.GetStrippedFileName( p_sShaderSource.Value ) );
+      Str a_oFileExtension =
+         new Str( Application.GetFileExtension( p_sShaderSource.Value ) );
+      auto FilePath a_oShaderSource = new FilePath( p_sShaderSource.Value );
+
+      if( a_oStrippedFile.Find( p_lShaderStageIdentifiers.Get(s), 0 ) !=-1 ||
+         a_oFileExtension.Find( p_lShaderStageIdentifiers.Get(s), 0 ) !=-1 )
+      {
+         if( p_sShaderStage == "vertex" )
+         {
+            p_oProgram.SetVertexFile( Application.MakeRelativePath(
+               a_oShaderSource.GetPath(), Model.Filename ) );
+         }
+         else
+         if( p_sShaderStage == "geometry" )
+         {
+            p_oProgram.SetGeometryFile( Application.MakeRelativePath(
+               a_oShaderSource.GetPath(), Model.Filename ) );
+         }
+         else
+         if( p_sShaderStage == "control" )
+         {
+            p_oProgram.SetControlFile( Application.MakeRelativePath(
+               a_oShaderSource.GetPath(), Model.Filename ) );
+         }
+         else
+         if( p_sShaderStage == "evaluation" )
+         {
+            p_oProgram.SetEvaluationFile( Application.MakeRelativePath(
+               a_oShaderSource.GetPath(), Model.Filename ) );
+         }
+         else
+         if( p_sShaderStage == "fragment" )
+         {
+            p_oProgram.SetFragmentFile( Application.MakeRelativePath(
+               a_oShaderSource.GetPath(), Model.Filename ) );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ConfigureShaderProgramSourceFiles(
+
+   string p_sShaderStage,
+   Str p_sShaderSource,
+   Program p_oProgram
+
+   )
+{
+   auto StrList a_lShaderStageIdentifiers;
+
+   if( p_sShaderStage == "vertex" )
+   {
+      a_lShaderStageIdentifiers.Add( "vs" );
+      a_lShaderStageIdentifiers.Add( "vp" );
+      a_lShaderStageIdentifiers.Add( "vert" );
+      a_lShaderStageIdentifiers.Add( "vertex" );
+   }
+   else
+   if( p_sShaderStage == "geometry" )
+   {
+      a_lShaderStageIdentifiers.Add( "gs" );
+      a_lShaderStageIdentifiers.Add( "gp" );
+      a_lShaderStageIdentifiers.Add( "geom" );
+      a_lShaderStageIdentifiers.Add( "geometry" );
+   }
+   else
+   if( p_sShaderStage == "control" )
+   {
+      a_lShaderStageIdentifiers.Add( "cs" );
+      a_lShaderStageIdentifiers.Add( "cp" );
+      a_lShaderStageIdentifiers.Add( "cont" );
+      a_lShaderStageIdentifiers.Add( "control" );
+   }
+   else
+   if( p_sShaderStage == "evaluation" )
+   {
+      a_lShaderStageIdentifiers.Add( "es" );
+      a_lShaderStageIdentifiers.Add( "ep" );
+      a_lShaderStageIdentifiers.Add( "eval" );
+      a_lShaderStageIdentifiers.Add( "evaluation" );
+   }
+   else
+   if( p_sShaderStage == "fragment" )
+   {
+      a_lShaderStageIdentifiers.Add( "fs" );
+      a_lShaderStageIdentifiers.Add( "fp" );
+      a_lShaderStageIdentifiers.Add( "frag" );
+      a_lShaderStageIdentifiers.Add( "fragment" );
+   }
+
+   if( a_lShaderStageIdentifiers.GetCount() > 0 )
+   {
+      SetShaderSource( a_lShaderStageIdentifiers, p_oProgram,
+         p_sShaderStage, p_sShaderSource );
+   }
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void HandleShaderCreateAndSwap(
+
+   Node p_oSelectedNode,
+   string p_sInitialDirectory,
+   string p_sTitle,
+   bool bSwap,
+   bool bCreate
+
+   )
+{
+   StrList files = new StrList;
+   string a_sFilter = "All Imagery Files (*.glsl;)|*.glsl|All Files (*.*)|*.*||";
+   string a_sTitle = p_sTitle;
+
+   if( Application.BrowseFileOpen( 3, 1, a_sFilter,
+      p_sInitialDirectory, a_sTitle, files ) == "" )
+   {
+      // User cancelled.
+      delete files;
+      return;
+   }
+
+   if( bSwap == false && bCreate == true )
+   {
+      Program a_oProgram = new Program;
+      a_oProgram.Name = "Program";
+
+      for( int f = 0; f < files.GetCount(); ++f )
+      {
+         Str n_sShaderSource = new Str( files.Get(f) );
+         // DEBUG
+         //Console.Message( n_sShaderSource.Value );
+         ConfigureShaderProgramSourceFiles( "vertex", n_sShaderSource, a_oProgram );
+         ConfigureShaderProgramSourceFiles( "geometry", n_sShaderSource, a_oProgram );
+         ConfigureShaderProgramSourceFiles( "control", n_sShaderSource, a_oProgram );
+         ConfigureShaderProgramSourceFiles( "evaluation", n_sShaderSource, a_oProgram );
+         ConfigureShaderProgramSourceFiles( "fragment", n_sShaderSource, a_oProgram );
+         delete n_sShaderSource;
+      }
+      Model.AddNode( a_oProgram, (Group)Model.GetSelectedNode(0).GetNode(), 0 );
+   }
+   else
+   if( bSwap == true && bCreate == false )
+   {
+      Program a_oProgram = (Program)p_oSelectedNode;
+      for( int f = 0; f < files.GetCount(); ++f )
+      {
+         Str n_sShaderSource = new Str( files.Get(f) );
+         // DEBUG
+         //Console.Message( n_sShaderSource.Value );
+         ConfigureShaderProgramSourceFiles( "vertex", n_sShaderSource, a_oProgram );
+         ConfigureShaderProgramSourceFiles( "geometry", n_sShaderSource, a_oProgram );
+         ConfigureShaderProgramSourceFiles( "control", n_sShaderSource, a_oProgram );
+         ConfigureShaderProgramSourceFiles( "evaluation", n_sShaderSource, a_oProgram );
+         ConfigureShaderProgramSourceFiles( "fragment", n_sShaderSource, a_oProgram );
+         delete n_sShaderSource;
+      }
+   }
+
+   Model.Deselect(  Model.GetSelectedNode(0).GetNode() );
+
+   delete files;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void HandleAppCreate(
+
+   ApplicationConfigNode p_oApplicationConfigNode,
+   string p_sInitialDirectory,
+   string p_sTitle
+
+   )
+{
+   StrList files = new StrList;
+   string a_sFilter = "All Imagery Files (*.scenomeapp;)|*.scenomeapp|All Files (*.*)|*.*||";
+   string a_sTitle = p_sTitle;
+
+   if( Application.BrowseFileOpen( 3, 1, a_sFilter,
+      p_sInitialDirectory, a_sTitle, files ) == "" )
+   {
+      // User cancelled.
+      delete files;
+      return;
+   }
+
+   // Create a new FolderConfigNode and AppScaffoldNode
+   FolderConfigNode a_oAppProjectGroup = new FolderConfigNode;
+   AppScaffoldNode a_oAppScaffoldNode = new AppScaffoldNode;
+   a_oAppProjectGroup.AddChild( a_oAppScaffoldNode );
+
+   for( int f = 0; f < files.GetCount(); ++f )
+   {
+      string a_sNewFile = files.Get( f );
+      auto FilePath a_oAppResourceFilePath = new FilePath( a_sNewFile );
+      a_oAppResourceFilePath.Canonicalize();
+      a_oAppResourceFilePath.MakeRelativeToModel( Model );
+      if( Application.GetFileExtension( a_oAppResourceFilePath.GetPath() ) == "scenomeapp" )
+      {
+         a_oAppScaffoldNode.AppFilePath = a_oAppResourceFilePath.GetPath();
+         string a_sName = Application.GetStrippedFileName( a_sNewFile );
+         a_oAppProjectGroup.Name = a_sName;
+         a_oAppScaffoldNode.Name = a_sName;
+      }
+      else
+      if( Application.GetFileExtension( a_oAppResourceFilePath.GetPath() ) == "xml" )
+      {
+         a_oAppScaffoldNode.AppXMLPath = a_oAppResourceFilePath.GetPath();
+      }
+      else
+      if( Application.GetFileExtension( a_oAppResourceFilePath.GetPath() ) == "ico" )
+      {
+         a_oAppScaffoldNode.AppIconPath = a_oAppResourceFilePath.GetPath();
+      }
+      else
+      if( Application.GetFileExtension( a_oAppResourceFilePath.GetPath() ) == "bmp" )
+      {
+         a_oAppScaffoldNode.AppSplashPath = a_oAppResourceFilePath.GetPath();
+      }
+      else
+      if( Application.GetFileExtension( a_oAppResourceFilePath.GetPath() ) == "box" )
+      {
+         a_oAppScaffoldNode.AppDatabasePath = a_oAppResourceFilePath.GetPath();
+      }
+   }
+
+   Model.AddNode( a_oAppProjectGroup, p_oApplicationConfigNode, -1 );
+   Model.Deselect(  Model.GetSelectedNode(0).GetNode() );
+   delete files;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SwapDatabase( Node node )
+{
+   OutputViewEditor outputWindow =
+      (OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" );
+
+   // Traverse the model, listing nodes that have path properties, and their paths.
+   StrList files = new StrList;
+   string a_sFilter = "All SceneDesigner Files (*.box; )|*.box|All Files (*.*)|*.*||";
+   string a_sTitle = "Choose .BOX file:";
+
+   if( Application.BrowseFileOpen( 3, 1, a_sFilter, "", a_sTitle, files ) == "" )
+   {
+      // User cancelled.
+      delete files;
+      return;
+   }
+
+   string a_sFile       = files.Get( 0 );
+   string a_sNodeName   = Application.GetStrippedFileName( a_sFile );
+
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      NodeLink a_oLink = (NodeLink)Model.EditNode( node );
+      string a_sFileToOpen = Application.ResolveModelRelativePath( a_sFile );
+      a_oLink.Name = a_sNodeName;
+      a_oLink.PathToFile = Application.MakeRelativePath( a_sFile, Model.Filename );
+      a_oLink.Flush();
+   }
+
+   delete files;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SwapDisplace( Node node )
+{
+   string a_sFilter = "All Imagery Files (*.bmp; *.png; *.tga)|*.bmp;*.png;*.tga|All Files (*.*)|*.*||";
+   string a_sTitle = "Select an imagery file";
+   StrList files = new StrList;
+   if( Application.BrowseFileOpen( 3, 1, a_sFilter, "", a_sTitle, files ) == "" )
+   {
+      // User cancelled.
+      delete files;
+      return;
+   }
+
+   for( int file = 0; file < files.GetCount(); ++file )
+   {
+      string a_sFile       = files.Get( file );
+      string a_sNodeName   = Application.GetStrippedFileName( a_sFile );
+
+      DisplaceModifier a_oDisplaceModifier = (DisplaceModifier)Model.EditNode( node );
+      a_oDisplaceModifier.MapFile = Application.MakeRelativePath( a_sFile, Model.Filename );
+      
+      // Configure the range from the file's size parameters.
+      Image image = new Image;
+      string a_sFileToOpen = Application.ResolveModelRelativePath( a_sFile );
+      image.OpenFileHeader( a_sFileToOpen );
+      a_oDisplaceModifier.CornerX = 0;
+      a_oDisplaceModifier.CornerY = 0;
+      a_oDisplaceModifier.Length = image.Height;
+      a_oDisplaceModifier.Width = image.Width;
+      
+      // Configure a 'useful default' for
+      // the displacement by using the RectangleGeometryModifier.
+      Group a_oGroup = (Group)node.Parent();
+
+      // Find the RectangleGeometryModifier
+      RectangleGeometryModifier sourceRectangle =
+         (RectangleGeometryModifier)a_oGroup.GetChildByType( RectangleGeometryModifier );
+
+      // Create a useful default value - nothing fancy here,
+      // because there isn't really a 'correct value' by default.
+      double a_dRectangleWidth = sourceRectangle.XMax - sourceRectangle.XMin;
+      double a_dRectangleHeight = sourceRectangle.YMax - sourceRectangle.YMin;
+      double a_dTranslate = ( a_dRectangleWidth + a_dRectangleHeight ) / 8;
+      a_oDisplaceModifier.Translation = a_dTranslate;
+               
+      // Clean up
+      delete image;
+   }
+   // Clean up
+   delete files;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SwapScriptCode( Node node )
+{
+   Node selNode = Model.GetSelectedNode( 0 ).GetNode();
+   StrList files = new StrList;
+   string a_sFilter = "All Script Files (*.ssl )|*.ssl|All Files (*.*)|*.*||";
+   string a_sTitle = "Choose script files:";
+
+   if( Application.BrowseFileOpen( 3, 1, a_sFilter, "", a_sTitle, files ) == "" )
+   {
+      // User cancelled.
+      delete files;
+      return;
+   }
+
+   for( int file = 0; file < files.GetCount(); ++file )
+   {
+      string a_sFile       = files.Get( file );
+      string a_sNodeName   = Application.GetStrippedFileName( a_sFile );
+
+      ScriptNode a_oScriptNode = (ScriptNode)Model.EditNode( node );
+      a_oScriptNode.ScriptFile = Application.MakeRelativePath( a_sFile, Model.Filename );
+   }
+   delete files;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SwapFile( Node node )
+{
+   Node selNode = Model.GetSelectedNode( 0 ).GetNode();
+   StrList files = new StrList;
+   string a_sFilter = "All Files (*.* )|*.*|All Files (*.*)|*.*||";
+   string a_sTitle = "Choose files:";
+
+   if( Application.BrowseFileOpen( 3, 1, a_sFilter, "", a_sTitle, files ) == "" )
+   {
+      // User cancelled.
+      delete files;
+      return;
+   }
+
+   for( int file = 0; file < files.GetCount(); ++file )
+   {
+      string a_sFile       = files.Get( file );
+      string a_sNodeName   = Application.GetStrippedFileName( a_sFile );
+      string a_sExtension  = Application.GetFileExtension( a_sFile );
+
+      FileNode a_oFileNode = (FileNode)Model.EditNode( node );
+      a_oFileNode.Name = a_sNodeName + "." + a_sExtension;
+      a_oFileNode.FilePath = Application.MakeRelativePath( a_sFile, Model.Filename );
+   }
+   delete files;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool CopyTextFile( string srcPath, string dstPath )
+{
+   bool result = false;
+   TextFile src = new TextFile;
+   TextFile dst = new TextFile;
+
+   if( srcPath != dstPath && srcPath != "" && dstPath != "" )
+   {
+      if( src.Open( srcPath, true ) )
+      {
+         if( dst.Open(dstPath, false ) )
+         {
+            result = true;
+            while( !src.IsEndOfFile() )
+            {
+               if( !dst.Write(src.ReadLine() + "\n") )
+               {
+                  result = false;
+                  break;
+               }
+            }
+            dst.Close();
+         }
+         src.Close();
+      }
+   }
+
+   delete src;
+   delete dst;
+
+   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void HandleTextureCreateAndSwap(
+
+   Node p_oSelNode,
+   string p_sTextureType,
+   bool p_bReplace
+
+   )
+{
+   StrList files = new StrList;
+   string a_sFilter = "All Imagery Files (*.bmp; *.png; *.tga)|*.bmp;*.png;*.tga|All Files (*.*)|*.*||";
+   string a_sTitle = "Choose texture image files:";
+   string a_sTextureFolder;
+   Texture a_oTexture;
+
+   if( p_oSelNode.IsDerived( Texture ) )
+   {
+      a_oTexture = (Texture)p_oSelNode;
+      a_sTextureFolder =
+         Application.GetFilePath( Application.ResolveModelRelativePath(
+            a_oTexture.PathToFile ) );
+   }
+   else
+   if( p_oSelNode.IsDerived( Group ) )
+   {
+      a_sTextureFolder =
+         Application.GetApplicationDocumentsPath() + "Samples\\Textures";
+   }
+
+   if( Application.BrowseFileOpen( 3, 1, a_sFilter,
+      a_sTextureFolder, a_sTitle, files ) == "" )
+   {
+      // User cancelled.
+      delete files;
+      return;
+   }
+
+   if( p_bReplace && p_oSelNode.IsDerived( Group ) )
+   {
+      // We are doing a texture replace, so
+      // remove existing textures from the group.
+      Group a_oGroup = (Group)p_oSelNode;
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         Node child = a_oGroup.Children[ i ];
+         if( child.IsDerived( Texture ) )
+         {
+            Model.DeleteNode( child );
+         }
+      }
+   }
+   
+   if( p_oSelNode.IsDerived( Texture ) )
+   {
+      a_oTexture = (Texture)Model.EditNode( p_oSelNode );
+      string a_sFile = files.Get(0);
+      string a_sFileToOpen = Application.ResolveModelRelativePath( a_sFile );
+      a_oTexture.PathToFile = Application.MakeRelativePath( a_sFile, Model.Filename );
+      SpaTextureUtil.SetTextureParametersFromImage( a_sFileToOpen, a_oTexture );
+   }
+   else
+   if( p_oSelNode.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)p_oSelNode;
+      
+      for( int file = 0; file < files.GetCount(); ++file )
+      {
+         string a_sFile       = files.Get( file );
+         string a_sPath       = Application.GetFilePath( a_sFile );
+         string a_sName       = Application.GetFileName( a_sFile );
+         string a_sNodeName   = Application.GetStrippedFileName( a_sFile );
+         string a_sExtension  = Application.GetFileExtension( a_sFile );
+
+         a_oTexture = new Texture;
+         a_oTexture.Name = a_sNodeName;
+         a_oTexture.TextureType = SpaTextureUtil.SetTextureType( p_sTextureType );
+         a_oTexture.External = true;
+         a_oTexture.PathToFile = Application.MakeRelativePath( a_sFile, Model.Filename );
+         if( p_sTextureType == "3D" || p_sTextureType == "Array" )
+         {
+            SpaTextureUtil.SetArraySizeFromImage( a_sFile, a_oTexture, p_sTextureType );
+         }
+         SpaTextureUtil.SetTextureParametersFromImage( a_sFile, a_oTexture );
+         SpaNodeUtil.AddNode( a_oTexture, a_oGroup );
+      }
+   }
+
+   delete files;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function 
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateGeneratedShaderStage(
+
+   ScriptNode p_oParent,
+   int p_iShaderStageFlag,
+   string p_sNodeName
+
+   )
+{
+   StrList a_slFiles = new StrList;
+   string a_sFilter = "All Shader Files (*.glsl )|*.glsl|All Files (*.*)|*.*||";
+   string a_sTitle = "Choose existing file or type new file name:";
+   string a_sInitialPath = Application.GetFilePath( Model.Filename );
+
+   if( Application.BrowseFileOpen( 3, 0, a_sFilter, a_sInitialPath, a_sTitle, a_slFiles ) == "" )
+   {
+      // User cancelled.
+      delete a_slFiles;
+      return;
+   }
+
+   int a_nFirstFileIndex = 0;
+   string a_sFile = a_slFiles.Get( a_nFirstFileIndex );
+   auto FilePath a_oExists = new FilePath( a_sFile );
+   if( a_oExists.FileExists() )
+   {
+      string a_sOverwriteWarning = "The file you have selected already exists and may contain data. Do you wish to overwrite the data?";
+      if( Application.MessageBox( 1, a_sOverwriteWarning, "WARNING" ) == false )
+      {
+         return;
+      }
+   }
+
+   string a_sNodeName   = Application.GetStrippedFileName( a_sFile );
+
+   ShaderSourceNode a_oShaderSourceNode;
+   Group a_oGroup;
+
+   if( p_iShaderStageFlag == Enum.CodeGenerationScope_Vertex() )
+   {
+      VertexSourceNode a_oVertexSourceNode = new VertexSourceNode;
+      a_oShaderSourceNode = (ShaderSourceNode)a_oVertexSourceNode;
+   }
+   else
+   if( p_iShaderStageFlag == Enum.CodeGenerationScope_Control() )
+   {
+      ControlSourceNode a_oControlSourceNode = new ControlSourceNode;
+      a_oShaderSourceNode = (ShaderSourceNode)a_oControlSourceNode;
+   }
+   else
+   if( p_iShaderStageFlag == Enum.CodeGenerationScope_Evaluation() )
+   {
+      EvaluationSourceNode a_oEvaluationSourceNode = new EvaluationSourceNode;
+      a_oShaderSourceNode = (ShaderSourceNode)a_oEvaluationSourceNode;
+   }
+   else
+   if( p_iShaderStageFlag == Enum.CodeGenerationScope_Geometry() )
+   {
+      GeometrySourceNode a_oGeometrySourceNode = new GeometrySourceNode;
+      a_oShaderSourceNode = (ShaderSourceNode)a_oGeometrySourceNode;
+   }
+   else
+   if( p_iShaderStageFlag == Enum.CodeGenerationScope_Fragment() )
+   {
+      FragmentSourceNode a_oFragmentSourceNode = new FragmentSourceNode;
+      a_oShaderSourceNode = (ShaderSourceNode)a_oFragmentSourceNode;
+   }
+   else
+   {
+      IncludeSourceNode a_oIncludeSourceNode = new IncludeSourceNode;
+      a_oShaderSourceNode = (ShaderSourceNode)a_oIncludeSourceNode;
+   }
+
+   // Create a file path from the input filename.
+   string a_sFilePath = Application.MakeRelativePath( a_sFile, p_oParent.GetModel().Filename );
+
+   // If p_sNodeName is blank, set the node's name to the filename.
+   if( p_sNodeName == "" )
+   {
+      a_oShaderSourceNode.Name = Application.GetFileName( a_sFilePath );
+   }
+   else
+   {
+      a_oShaderSourceNode.Name = p_sNodeName;
+   }
+
+   // Set the shader stage and file path.
+   a_oShaderSourceNode.CodeGenerationScope = p_iShaderStageFlag;
+   a_oShaderSourceNode.FilePath = a_sFilePath;
+
+   // If p_iShaderStageFlag is not a generated shader, try and find a Program node.
+   if( p_iShaderStageFlag != Enum.CodeGenerationScope_Global() )
+   {
+      auto List a_lProgramNodes;
+      GetNodesFromDatabase( p_oParent.GetModel(), a_lProgramNodes, Program );
+
+      // Warn the user if we found multiple program nodes.
+      if( a_lProgramNodes.GetCount() > 1 )
+      {
+         string a_sMessage = "Found multiple programs. The ShaderSourceNode will be connected to the first program.";
+         Console.Info( a_sMessage );
+      }
+
+      // Multiple programs are unlikely, but in any case, just use the first program.
+      for( int i = 0; i < 1; ++i )
+      {
+         Program a_oProgram = (Program)a_lProgramNodes.Get( i );
+         a_oShaderSourceNode.Program = a_oProgram;
+      }
+
+      // Create the appropriate declaration group and MainFunctionNode
+      ShaderDeclarationNode a_oShaderDeclarationNode;
+
+      if( p_iShaderStageFlag == Enum.CodeGenerationScope_Vertex() )
+      {
+         VertexDeclarationNode a_oDeclarationGroup = new VertexDeclarationNode;
+         a_oDeclarationGroup.Name = "Declarations";
+         a_oShaderDeclarationNode = (ShaderDeclarationNode)a_oDeclarationGroup;
+      }
+      else
+      if( p_iShaderStageFlag == Enum.CodeGenerationScope_Control() )
+      {
+         ControlDeclarationNode a_oDeclarationGroup = new ControlDeclarationNode;
+         a_oDeclarationGroup.Name = "Declarations";
+         a_oShaderDeclarationNode = (ShaderDeclarationNode)a_oDeclarationGroup;
+      }
+      else
+      if( p_iShaderStageFlag == Enum.CodeGenerationScope_Evaluation() )
+      {
+         EvaluationDeclarationNode a_oDeclarationGroup = new EvaluationDeclarationNode;
+         a_oDeclarationGroup.Name = "Declarations";
+         a_oShaderDeclarationNode = (ShaderDeclarationNode)a_oDeclarationGroup;
+      }
+      else
+      if( p_iShaderStageFlag == Enum.CodeGenerationScope_Geometry() )
+      {
+         GeometryDeclarationNode a_oDeclarationGroup = new GeometryDeclarationNode;
+         a_oDeclarationGroup.Name = "Declarations";
+         a_oShaderDeclarationNode = (ShaderDeclarationNode)a_oDeclarationGroup;
+      }
+      else
+      if( p_iShaderStageFlag == Enum.CodeGenerationScope_Fragment() )
+      {
+         FragmentDeclarationNode a_oDeclarationGroup = new FragmentDeclarationNode;
+         a_oDeclarationGroup.Name = "Declarations";
+         a_oShaderDeclarationNode = (ShaderDeclarationNode)a_oDeclarationGroup;
+      }
+
+      MainFunctionNode a_oMainFunctionNode = new MainFunctionNode;
+      a_oMainFunctionNode.Declarations = a_oShaderDeclarationNode;
+      a_oMainFunctionNode.Name = "Main";
+
+      Model.AddNode( a_oShaderDeclarationNode, a_oShaderSourceNode, -1 );
+      Model.AddNode( a_oMainFunctionNode, a_oShaderSourceNode, -1 );
+
+   }
+
+   Model.AddNode( a_oShaderSourceNode, p_oParent, -1 );
+
+   delete a_slFiles;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function 
+////////////////////////////////////////////////////////////////////////////////
+
+function void LoadScriptFromDisk()
+{
+   Node selNode = Model.GetSelectedNode( 0 ).GetNode();
+   StrList files = new StrList;
+   string a_sFilter = "All Imagery Files (*.ssl )|*.ssl|All Files (*.*)|*.*||";
+   string a_sTitle = "Choose script files:";
+
+   if( Application.BrowseFileOpen( 3, 1, a_sFilter, "", a_sTitle, files ) == "" )
+   {
+      // User cancelled.
+      delete files;
+      return;
+   }
+
+   for( int file = 0; file < files.GetCount(); ++file )
+   {
+      string a_sFile       = files.Get( file );
+      string a_sPath       = Application.GetFilePath( a_sFile );
+      string a_sName       = Application.GetFileName( a_sFile );
+      string a_sNodeName   = Application.GetStrippedFileName( a_sFile );
+      string a_sExtension  = Application.GetFileExtension( a_sFile );
+
+      ScriptNode a_oScriptNode = new ScriptNode;
+      a_oScriptNode.ScriptFile = Application.MakeRelativePath( a_sFile, Model.Filename );
+      Model.AddNode( a_oScriptNode, (Group)selNode, 0 );
+      Model.Deselect( selNode );
+   }
+   delete files;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void LoadLinkFromDisk()
+{
+   Node selNode = Model.GetSelectedNode( 0 ).GetNode();
+   StrList files = new StrList;
+   string a_sFilter = "All .box Files (*.box )|*.box|All Files (*.*)|*.*||";
+   string a_sTitle = "Choose a .box file:";
+
+   if( Application.BrowseFileOpen( 3, 1, a_sFilter, "", a_sTitle, files ) == "" )
+   {
+      // User cancelled.
+      delete files;
+      return;
+   }
+
+   for( int file = 0; file < files.GetCount(); ++file )
+   {
+      string a_sFile       = files.Get( file );
+      string a_sPath       = Application.GetFilePath( a_sFile );
+      string a_sName       = Application.GetFileName( a_sFile );
+      string a_sNodeName   = Application.GetStrippedFileName( a_sFile );
+      string a_sExtension  = Application.GetFileExtension( a_sFile );
+
+      NodeLink a_oLinkNode = new NodeLink;
+      a_oLinkNode.Name = a_sNodeName + "." + a_sExtension;
+      a_oLinkNode.PathToFile = Application.MakeRelativePath( a_sFile, Model.Filename );
+      a_oLinkNode.PathToNode = "\\"; // Tricky bug! Needs the \\ or bad things happen!
+      SpaNodeUtil.AddNode( a_oLinkNode, (Group)selNode );
+      Model.Deselect( selNode );
+   }
+   delete files;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void LoadFileFromDisk( Node p_oSelectedNode, TypeInformation typeInfo )
+{
+   auto StrList a_slFiles;
+   string a_sFilter = "All a_slFiles (*.* )|*.*|All a_slFiles (*.*)|*.*||";
+   string a_sTitle = "Choose a file:";
+
+   string a_sInitialPath;
+   if( p_oSelectedNode && p_oSelectedNode.IsDerived( FolderConfigNode ) )
+   {
+      FolderConfigNode a_oFolderConfigNode = (FolderConfigNode)p_oSelectedNode;
+      a_sInitialPath = a_oFolderConfigNode.GetAbsolutePath();
+   }
+   else
+   {
+      a_sInitialPath = Application.GetFilePath( Model.Filename );
+   }
+
+   if( Application.BrowseFileOpen( 3, 1, a_sFilter, a_sInitialPath, a_sTitle, a_slFiles ) == "" )
+   {
+      // User cancelled.
+      return;
+   }
+
+   for( int file = 0; file < a_slFiles.GetCount(); ++file )
+   {
+      string a_sFile       = a_slFiles.Get( file );
+      string a_sPath       = Application.GetFilePath( a_sFile );
+      string a_sName       = Application.GetFileName( a_sFile );
+      string a_sNodeName   = Application.GetStrippedFileName( a_sFile );
+      string a_sExtension  = Application.GetFileExtension( a_sFile );
+
+      Node a_oNode;
+      if( typeInfo.IsDerived( FileNode ) )
+      {
+         FileNode a_oFileNode = new FileNode;
+         a_oFileNode.Name = a_sNodeName + "." + a_sExtension;
+         a_oFileNode.FilePath = Application.MakeRelativePath( a_sFile, Model.Filename );
+         a_oNode = a_oFileNode;
+      }
+      else
+      if( typeInfo.IsDerived( FileConfigNode ) )
+      {
+         if( p_oSelectedNode.IsDerived( FileConfigNode ) )
+         {
+            // If a FileConfigNode is selected, assume
+            // that we want to clone any InstallerFile
+            // values that may have been set.
+            FileConfigNode a_oFileConfigNode = (FileConfigNode)p_oSelectedNode;
+            FileConfigNode a_oNewFileConfigNode = (FileConfigNode)p_oSelectedNode.Clone();
+            a_oNewFileConfigNode.Name = a_sNodeName + "." + a_sExtension;
+            a_oNewFileConfigNode.BasePath = a_sNodeName + "." + a_sExtension;
+            p_oSelectedNode = (Group)p_oSelectedNode.Parent();
+            a_oNode = a_oNewFileConfigNode;
+         }
+         else
+         {
+            FileConfigNode a_oFileConfigNode = new FileConfigNode;
+            a_oFileConfigNode.Name = a_sNodeName + "." + a_sExtension;
+            a_oFileConfigNode.BasePath = a_sNodeName + "." + a_sExtension;
+            a_oNode = a_oFileConfigNode;
+         }
+      }
+      else
+      if( typeInfo.IsDerived( ShaderSourceNode ) )
+      {
+         ShaderSourceNode a_oShaderSourceNode = new ShaderSourceNode;
+         a_oShaderSourceNode.Name = Application.GetFileName( a_sFile );
+         a_oShaderSourceNode.FilePath = Application.MakeRelativePath( a_sFile, Model.Filename );
+         a_oNode = a_oShaderSourceNode;
+      }
+
+      SpaNodeUtil.AddNode( a_oNode, (Group)p_oSelectedNode );
+      Model.Deselect( p_oSelectedNode );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Expands all the tree items below the selected node.
+
+function void ExpandItems( Node node )
+{
+   DatabaseTreeViewEditor a_oEditor =
+      (DatabaseTreeViewEditor)Application.GetEditor(
+         "{1F91F9F6-F612-46D4-A453-4B81096121A9}" );
+   Group checkGroup = (Group)node;
+   a_oEditor.View.ExpandItem( checkGroup, true );
+   for( int c = 0; c < checkGroup.ChildCount; ++c )
+   {
+      Node child = checkGroup.Children[ c ];
+      a_oEditor.View.ExpandItem( child, true );
+      if( child.IsDerived ( Group ) )
+      {
+         ExpandItems( child );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ContractItems( Node node )
+{
+   DatabaseTreeViewEditor a_oEditor =
+      (DatabaseTreeViewEditor)Application.GetEditor(
+         "{1F91F9F6-F612-46D4-A453-4B81096121A9}" );
+   Group checkGroup = (Group)node;
+   a_oEditor.View.ExpandItem( checkGroup, false );
+   for( int c = 0; c < checkGroup.ChildCount; ++c )
+   {
+      Node child = checkGroup.Children[ c ];
+      a_oEditor.View.ExpandItem( child, false );
+      if( child.IsDerived ( Group ) )
+      {
+         ContractItems( child );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+ 
+function void ListNodePath( Node node, string path, OutputViewEditor outputWindow )
+{
+   string displayString = node.Name + " -> " + path;
+   outputWindow.LogString( displayString );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void DisplayAllPaths( Node node )
+{
+   string a_sTextures;
+   string a_sVertexShaders;
+   string a_sFragmentShaders;
+   string a_sGeometryShaders;
+   string a_sTessellationControlShaders;
+   string a_sTessellationEvaluationShaders;
+   string a_sNodeLinks;
+   string a_sDisplaceModifiers;
+   string a_sScriptNodes;
+   string a_sFileNodes;
+   string a_sShaderSourceNodes;
+
+   // Traverse the model, listing nodes that have path properties, and their paths.
+   if( node.IsDerived( Texture ) )
+   {
+      Texture texture = (Texture)node;
+      a_sTextures += texture.PathToFile;
+      Console.Message( a_sTextures );
+   }
+   else
+   if( node.IsDerived( Program ) )
+   {
+      Program program = (Program)node;
+      a_sVertexShaders += program.GetVertexFile();
+      a_sFragmentShaders += program.GetFragmentFile();
+      a_sGeometryShaders += program.GetGeometryFile();
+      a_sTessellationControlShaders += program.GetControlFile();
+      a_sTessellationEvaluationShaders += program.GetEvaluationFile();
+      Console.Message( a_sVertexShaders );
+      Console.Message( a_sGeometryShaders );
+      Console.Message( a_sTessellationControlShaders );
+      Console.Message( a_sTessellationEvaluationShaders );
+      Console.Message( a_sFragmentShaders );
+   }
+   else
+   if( node.IsDerived( NodeLink ) )
+   {
+      NodeLink link = (NodeLink)node;
+      a_sNodeLinks += link.PathToFile;
+      Console.Message( a_sNodeLinks );
+   }
+   else
+   if( node.IsDerived( DisplaceModifier ) )
+   {
+      DisplaceModifier displace = (DisplaceModifier)node;
+      a_sDisplaceModifiers += displace.MapFile;
+      Console.Message( a_sDisplaceModifiers );
+   }
+   else
+   if( node.IsDerived( ScriptNode ) )
+   {
+      ScriptNode scriptNode = (ScriptNode)node;
+      a_sScriptNodes += scriptNode.ScriptFile;
+      Console.Message( a_sScriptNodes );
+   }
+   else
+   if( node.IsDerived( FileNode ) )
+   {
+      FileNode fileNode = (FileNode)node;
+      a_sFileNodes += fileNode.FilePath;
+      Console.Message( a_sFileNodes );
+   }
+   else
+   if( node.IsDerived( ShaderSourceNode ) )
+   {
+      ShaderSourceNode shaderSourceNode = (ShaderSourceNode)node;
+      a_sShaderSourceNodes += shaderSourceNode.FilePath;
+      Console.Message( a_sShaderSourceNodes );
+   }
+
+   if( node.IsDerived( Group ) )
+   {
+      // Traverse children.
+      Group group = (Group)node;
+      for( int i = 0; i < group.ChildCount; ++i )
+      {
+         DisplayAllPaths( group.Children[i] );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function Group GetStandardAddGroup()
+{
+    Group newParent = Model.GetActiveParent();
+    if( Model.GetSelectCount () )
+    {
+        Node selNode = Model.GetSelectedNode( 0 ).GetNode();
+        if( selNode.IsDerived( Group ) )
+            newParent = (Group)selNode;
+    }
+    return newParent;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SelectNodesWithSameName( Node testNode, string name )
+{
+   if( testNode.Name == name )
+   {
+      Model.Select( testNode );
+   }
+  
+   if( testNode.IsDerived( Group ) )
+   {
+      Group testGroup = (Group)testNode;
+      for( int i = 0; i < testGroup.ChildCount; ++i )
+      {
+         SelectNodesWithSameName( testGroup.Children[ i ], name );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SelectAllTypeNodes( Group parent, TypeInformation type )
+{
+   if( parent.IsDerived( type ) )
+   {
+      Model.Select( parent );
+   }
+   
+   for( int i = 0; i < parent.ChildCount; ++i )
+   {
+      Node child = parent.Children[i];
+      if( child.IsDerived( type ) )
+      {
+         Model.Select( child );
+      }
+      
+      if( child.IsDerived( Group ) )
+      {
+         SelectAllTypeNodes( (Group)child, type );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetSelectPickMode( string mode )
+{
+   bool isSelectMode = Model.GetCurrentMode().IsDerived( SelectDrawMode );
+   if( isSelectMode )
+   {
+      Model.DeselectAll();
+   }
+   else
+   {
+      Application.ExecuteCommand( "Select Commands", "SetModeSelect" );
+   }
+   Application.ExecuteCommand( "Select Commands", mode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetPathTextureTiling( Path path, double tileDistance )
+{
+   double prevTextureEnd = 0.0;
+   for( int s = 0; s < path.SegmentCount; ++s )
+   {
+      double segmentLen = path.GetSegmentLength( s );
+      double textureEnd = segmentLen / tileDistance;
+      path.TextureCoordinate[s * 2] = prevTextureEnd;
+      path.TextureCoordinate[s * 2 + 1] = prevTextureEnd + textureEnd;
+      prevTextureEnd = prevTextureEnd + textureEnd;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ReverseCurve( Path path )
+{
+   Vec storeTemp = new Vec;
+   for( int p = 0; p < path.PointCount / 2; ++p )
+   {
+      Vec temp = path.GetPoint( p );
+      storeTemp.X = temp.X;
+      storeTemp.Y = temp.Y;
+      storeTemp.Z = temp.Z;
+      path.SetPoint( p, path.GetPoint( path.PointCount - p - 1 ) );
+      path.SetPoint( path.PointCount - p - 1, storeTemp );
+   }
+   delete storeTemp;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetPathBevelTangent(
+
+   Path path,
+   int tangentPoint,
+   double tangentLength,
+   Vec start,
+   Vec end
+
+   )
+{
+   // Set the tangent point along the ray defined by start -> end.
+   Vec tangent = new Vec;
+   tangent.X = end.X;
+   tangent.Y = end.Y;
+   tangent.Z = end.Z;
+   tangent.Subtract( start );
+   tangent.Normalize();
+   tangent.Scale( tangentLength );
+   tangent.Add( end );
+   path.SetPoint( tangentPoint, tangent );
+   delete tangent;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void TransformCurvePointAlongTangent(
+
+   Path path,
+   int movePoint,
+   int secondPoint,
+   double delta
+
+   )
+{
+   Vec srcV1 = path.GetPoint( movePoint );
+   Vec srcV2 = path.GetPoint( secondPoint );
+   Vec newV1 = new Vec;
+   newV1.Assign( srcV1 );
+ 
+   newV1.Subtract( srcV2 );
+   double length = newV1.Length;
+   newV1.Normalize();
+   newV1.Scale( length * delta );
+   newV1.Add( srcV2 );
+ 
+   path.SetPoint( movePoint, newV1 );
+
+   delete newV1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void TransformSelectedPathTangents(
+
+   PathSelect pathSel,
+   double delta,
+   bool moveOppositePoints
+
+   )
+{
+   if( pathSel.IsDerived( PathVertexSelect ) )
+   {
+      //Path path = (Path)pathSel.GetNode();
+      Path path = (Path)Model.EditNode( pathSel.GetNode() );
+      PathVertexSelect pathVertexSel = (PathVertexSelect)pathSel;
+      for( int vert = 0; vert < path.PointCount; ++vert )
+      {
+         if( pathVertexSel.IsVertexSelected( vert ) )
+         {
+            // Determine if the vertex is part of a tangent.
+            int segmentIndex = path.PointIndexToSegment( vert );
+            if( path.GetSegmentStyle( segmentIndex ) )
+            {
+               int segmentStartPoint =
+                  path.GetSegmentStartIndex( segmentIndex );
+               int localVertIndex = vert - segmentStartPoint;
+ 
+               int tangentStart = vert;
+               int tangentEnd = -1;
+               if( localVertIndex == 2 )
+               {
+                  tangentEnd = vert + 1;
+               }
+               else
+               if( localVertIndex == 1 )
+               {
+                  tangentEnd = vert - 1;
+               }
+
+               if( moveOppositePoints )
+               {
+                  // Swap the points
+                  int temp = tangentStart;
+                  tangentStart = tangentEnd;
+                  tangentEnd = temp;
+               }
+
+               if( tangentEnd != -1 && tangentStart != -1 )
+               {
+                  TransformCurvePointAlongTangent( path, tangentStart,
+                     tangentEnd, delta );
+               }
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetPathTessellationByItsLength( int depth )
+{
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNode = Model.GetSelectedNode( m ).GetNode();
+      
+      if( selNode.IsDerived( Path ) )
+      {
+         Path editPath = (Path)Model.EditNode( selNode );
+         for( int s = 0; s < editPath.SegmentCount; ++s )
+         {
+            int curveLen = editPath.GetSegmentLength( s );
+            editPath.TessellationDepth[s] = curveLen / depth;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CurveSetSelectionTessellation( int tess )
+{
+   for( int m = 0; m < Model.GetSelectCount(); ++m )
+   {
+      Node selNodeSelect = Model.GetSelectedNode( m );
+      if( selNodeSelect.IsDerived( PathSelect ) )
+      {
+         // Operate on selected segments or a whole selected path.
+         PathSegmentSelect pathSegmentSel;
+         if( selNodeSelect.IsDerived( PathSegmentSelect ) )
+         {
+            pathSegmentSel = (PathSegmentSelect)selNodeSelect;
+         }
+
+         Path editPath = (Path)Model.EditNode( selNodeSelect.GetNode() );
+
+         for( int seg = 0; seg < editPath.SegmentCount; ++seg )
+         {
+            if( !pathSegmentSel || pathSegmentSel.IsSegmentSelected( seg ) )
+            {
+               editPath.TessellationDepth[seg] = tess;
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void FitCurveTangentToCircle(
+
+   Path path,
+   int tangentA,
+   int tangentB,
+   int tangentC,
+   int tangentD
+
+   )
+{
+   // tangentA = start point of first tangent (non moving tangent)
+   // tangentB = end point of first tangent (non moving tangent)
+   // tangentC = start point of second tangent (moving tangent)
+   // tangentD = end point of second tangent (moving tangent)
+   // 
+   // Two linear segments with a bezier segment in between:
+   //   B  D
+   //  /____\
+   // /      \
+   // A      C
+   // |      |
+   // |      |
+   // ^      v
+
+   // First find out if the tangents intersect, in the direction
+   // of A -> B and C -> D.
+   Vec vTangentA = path.GetPoint( tangentA );
+   Vec vTangentB = path.GetPoint( tangentB );
+   Vec vTangentC = path.GetPoint( tangentC );
+   Vec vTangentD = path.GetPoint( tangentD );
+
+   Vec vIntersect = new Vec;
+   if( !SpaMathUtil.TestIntersection( vTangentA, vTangentB, vTangentC, vTangentD, vIntersect, true ) )
+   {
+      delete vIntersect;
+      if( debugLog )
+      {
+         ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( "TestRayIntersection fail" );
+      }
+      else
+      {
+         string a_sMessage = "The tangent handles of the selected path do not intersect.\n";
+         Console.Error( a_sMessage );
+      }
+      return;
+   }
+
+   // Move D along CD so it is equidistant with B
+   // from the intersection of AB and CD.
+   Vec vCD = new Vec;
+   vCD.Assign( vTangentD );
+   vCD.Subtract( vTangentC );
+   vCD.Normalize();
+   vCD.Scale( vIntersect.GetDistance( vTangentB ) );
+   vTangentD.Assign( vIntersect );
+   vTangentD.Subtract( vCD );
+
+   // Move C along CD so that CD becomes the same length as AB.
+   vCD.Assign( vTangentD );
+   vCD.Subtract( vTangentC );
+   vCD.Normalize();
+   vCD.Scale( vTangentC.GetDistance( vTangentD ) - vTangentA.GetDistance( vTangentB ) );
+   vTangentC.Add( vCD );
+
+   // Find the intersection of vectors perpendicular to AB and CD,
+   // this will be the center of the circle we will fit the path to.
+   Vec vAB = new Vec;
+   vAB.Assign( vTangentB );
+   vAB.Subtract( vTangentA );
+   Vec vPerpAB = new Vec( -vAB.Y, vAB.X, 0.0 );
+   vPerpAB.Normalize();
+   vPerpAB.Add( vTangentA );
+
+   vCD.Assign( vTangentD );
+   vCD.Subtract( vTangentC );
+   Vec vPerpCD = new Vec( vCD.Y, -vCD.X, 0.0 );
+   vPerpCD.Normalize();
+   vPerpCD.Add( vTangentC );
+
+   Vec vCenter = new Vec;
+   if( !SpaMathUtil.TestIntersection( vTangentA, vPerpAB,
+      vTangentC, vPerpCD, vCenter, false ) )
+   {
+      if( debugLog )
+      {
+         ((OutputViewEditor)Application.GetEditor(
+            "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( "No center" );
+      }
+   }
+
+   if( debugLog )
+   {
+      ((OutputViewEditor)Application.GetEditor(
+         "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString(
+            "Center: " + vCenter.X + " " + vCenter.Y + " " + vCenter.Z );
+      ((OutputViewEditor)Application.GetEditor(
+         "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString(
+            " Radius: " + vCenter.GetDistance( vTangentA ) );
+   }
+
+   // Find the bisector of AB and CD. Then use the tangent
+   // of the circle at this point to position the curve tangents.
+   Vec vBisect = new Vec;
+   vBisect.Assign( vAB );
+   vBisect.Add( vCD );
+   vBisect.Z = 0.0;
+   vBisect.Normalize();
+   Vec vBisectNormal = new Vec( vBisect.X, vBisect.Y, 0.0 );
+   vBisect.Scale( vCenter.GetDistanceXY( vTangentA ) );
+   vBisect.Add( vCenter );
+
+   if( debugLog )
+   {
+      ((OutputViewEditor)Application.GetEditor(
+         "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString(
+            "Bisect: " + vBisect.X + " " + vBisect.Y + " " + vBisect.Z );
+   }
+
+   Vec vBisectAB = new Vec( vBisectNormal.Y, -vBisectNormal.X, 0.0 );
+   vBisectAB.Normalize();
+   vBisectAB.Add( vBisect );
+   if( !SpaMathUtil.TestIntersection( vTangentA, vTangentB, vBisect,
+      vBisectAB, vIntersect, false ) )
+   {
+      if( debugLog )
+      {
+         ((OutputViewEditor)Application.GetEditor(
+            "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString(
+               "No bisect AB" );
+      }
+   }
+
+   double scale = 4.0 / 3.0;
+   double initialDistance = vTangentB.GetDistanceXY( vTangentA );
+   vTangentB.X = vIntersect.X;
+   vTangentB.Y = vIntersect.Y;
+   vTangentB.X -= vTangentA.X;
+   vTangentB.Y -= vTangentA.Y;
+   vTangentB.X *= scale;
+   vTangentB.Y *= scale;
+   // change Z to keep tangent on Z regardless of scaling on XY
+   vTangentB.Z = ( vTangentB.Z - vTangentA.Z ) *
+      vTangentB.LengthXY() / initialDistance;
+   vTangentB.Add( vTangentA );
+
+   Vec vBisectCD = new Vec( -vBisectNormal.Y, vBisectNormal.X, 0.0 );
+   vBisectCD.Normalize();
+   vBisectCD.Add( vBisect );
+   if( !SpaMathUtil.TestIntersection( vTangentC, vTangentD, vBisect,
+      vBisectCD, vIntersect, false ) )
+   {
+      if( debugLog )
+      {
+         ((OutputViewEditor)Application.GetEditor(
+            "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString(
+               "No bisect CD" );
+      }
+   }
+
+   initialDistance = vTangentD.GetDistanceXY( vTangentC );
+   vTangentD.X = vIntersect.X;
+   vTangentD.Y = vIntersect.Y;
+   vTangentD.X -= vTangentC.X;
+   vTangentD.Y -= vTangentC.Y;
+   vTangentD.X *= scale;
+   vTangentD.Y *= scale;
+   // change Z to keep tangent on Z regardless of scaling on XY
+   vTangentD.Z = ( vTangentD.Z - vTangentC.Z ) *
+      vTangentD.LengthXY() / initialDistance;
+   vTangentD.Add( vTangentC );
+
+   delete vAB;
+   delete vPerpAB;
+   delete vCD;
+   delete vPerpCD;
+   delete vCenter;
+   delete vIntersect;
+   delete vBisect;
+   delete vBisectNormal;
+   delete vBisectAB;
+   delete vBisectCD;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void FitSelectedCurveTangentsToCircle( PathSelect pathSel )
+{
+   if( pathSel.IsDerived( PathVertexSelect ) )
+   {
+      Path path = (Path)Model.EditNode( pathSel.GetNode() );
+      PathVertexSelect pathVertexSel = (PathVertexSelect)pathSel;
+      for( int vert = 0; vert < path.PointCount; ++vert )
+      {
+         if( pathVertexSel.IsVertexSelected( vert ) )
+         {
+            // Determine if the vertex is part of a tangent.
+            int segmentIndex = path.PointIndexToSegment( vert );
+            if( path.GetSegmentStyle( segmentIndex ) )
+            {
+               int segmentStartPoint = path.GetSegmentStartIndex( segmentIndex );
+               int localVertIndex = vert - segmentStartPoint;
+
+               // Determine which tangent we are going to fit, and which one we
+               // are going to leave alone.
+               int tangentA = -1;
+               int tangentB = -1;
+               int tangentC = -1;
+               int tangentD = -1;
+               if( localVertIndex == 1 )
+               {
+                  tangentA = vert - 1;
+                  tangentB = vert;
+                  tangentC = vert + 2;
+                  tangentD = vert + 1;
+               }
+               else
+               if( localVertIndex == 2 )
+               {
+                  tangentA = vert + 1;
+                  tangentB = vert;
+                  tangentC = vert - 2;
+                  tangentD = vert - 1;
+               }
+
+               if( tangentA != -1 && tangentB != -1 && tangentC != -1 && tangentD != -1 )
+               {
+                  FitCurveTangentToCircle( path, tangentA, tangentB, tangentC, tangentD );
+               }
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool InsertPathIntoSweepRail( List createdNodes, Path newPath )
+{
+   for( int c = 0; c < createdNodes.GetCount(); ++c )
+   {
+      Node templateNode = (Node)createdNodes.Get( c );
+      if( templateNode.IsDerived( Group ) )
+      {
+         Group templateGroup = (Group)templateNode;
+         SweepGeometryModifier sweep =
+            (SweepGeometryModifier)templateGroup.GetChildByType(
+               SweepGeometryModifier );
+         if( sweep )
+         {
+            Group railsGroup = sweep.Rails;
+            if( railsGroup )
+            {
+               // Attempt to find a palette.
+               Path crossSection = (Path)templateGroup.GetChildByType( Path );
+               if( crossSection )
+               {
+                  newPath.PaletteLink = crossSection.PaletteLink;
+               }
+
+               if( sweep.Parent().IsDerived( ParametricMesh ) )
+               {
+                  ((ParametricMesh)sweep.Parent()).InvalidateMesh();
+               }
+
+               railsGroup.AddChild( newPath );
+               return true;
+            }
+         }
+      }
+   }
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateCurveTemplateFromCurveSegments(
+
+   Path path,
+   int startSeg,
+   int endSeg,
+   string templateName,
+   List outputNodes
+
+   )
+{
+   // Create the specified template.
+   List createdNodes = new List;
+   ValidateNodeCreateContext.CreateNodesFromTemplateDisconnected( Model,
+      templateName, createdNodes );
+
+   OutputViewEditor outputView =
+      (OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" );
+
+   Path newPath = new Path;
+   for( int s = startSeg; s <= endSeg; ++s )
+   {
+      int segStartIndex = path.GetSegmentStartIndex( s );
+      int segEndIndex = path.GetSegmentEndIndex( s );
+      bool segIsBezier = path.GetSegmentStyle( s );
+
+      //outputView.LogString( "SegStart:  " + segStartIndex );
+      //outputView.LogString( "SegEnd:    " + segEndIndex );
+      //outputView.LogString( "SegBezier: " + segIsBezier );
+
+      // On the first segment add the start point.
+      if( s == startSeg )
+      {
+         newPath.AddPoint( path.GetPoint( segStartIndex ) );
+      }
+
+      // Add the end point for the segment; set tessellation depth
+      // and segment style.
+      newPath.AddPoint( path.GetPoint( segEndIndex ) );
+      newPath.SetSegmentStyle( newPath.SegmentCount - 1, segIsBezier );
+      newPath.TessellationDepth[ newPath.SegmentCount - 1 ] = path.TessellationDepth[ s ];
+
+      if( segIsBezier )
+      {
+         // Set first segment control point.
+         newPath.SetPoint( newPath.PointCount - 3, path.GetPoint( segStartIndex + 1 ) );
+         // Set second segment control point.
+         newPath.SetPoint( newPath.PointCount - 2, path.GetPoint( segStartIndex + 2 ) );
+      }
+   }
+
+   if( !InsertPathIntoSweepRail( createdNodes, newPath ) )
+   {
+      // Couldn't find a rail group to put the path in.
+      delete newPath;
+   }
+
+   // Add the template node(s) to the model.
+   for( int i = 0; i < createdNodes.GetCount(); ++i )
+   {
+      Model.AddNode( (Node)createdNodes.Get( i ), path.Parent(), -1 );
+
+      if( outputNodes )
+      {
+         outputNodes.AddRef( createdNodes.Get( i ) );
+      }
+   }
+
+   delete createdNodes;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateCurveTemplatesFromSelectedSegments(
+
+   PathSegmentSelect selPath,
+   string templateName,
+   List outputNodes
+
+   )
+{
+   Path path = (Path)selPath.GetNode();
+   int startSeg = -1;
+   int endSeg = -1;
+
+   // Create a new path for each set of continuous selected segments,
+   // cloning the selected segments into the new path.
+
+   for( int s = 0; s < path.SegmentCount; ++s )
+   {
+      if( selPath.IsSegmentSelected( s ) )
+      {
+         if( startSeg == -1 )
+         {
+            startSeg = s;
+         }
+         else
+         {
+            endSeg = s;
+         }
+      }
+      else
+      {
+         if( startSeg != -1 )
+         {
+            if( endSeg == -1 )
+            {
+               endSeg = startSeg;
+            }
+
+            CreateCurveTemplateFromCurveSegments( path, startSeg, endSeg, templateName, outputNodes );
+
+            startSeg = -1;
+            endSeg = -1;
+         }
+      }
+   }
+
+   if( startSeg != -1 )
+   {
+      if( endSeg == -1 )
+      {
+         endSeg = startSeg;
+      }
+
+      CreateCurveTemplateFromCurveSegments( path, startSeg, endSeg, templateName, outputNodes );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateCurveTemplatesFromSelection( string templateName )
+{
+   for( int c = 0; c < Model.GetSelectCount(); ++c )
+   {
+      NodeSelect nodeSel = Model.GetSelectedNode( c );
+      if( nodeSel.IsDerived( PathSegmentSelect ) )
+      {
+         CreateCurveTemplatesFromSelectedSegments( (PathSegmentSelect)nodeSel, templateName, null );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void TextureSetRenderingSize( int size )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Texture ) )
+      {
+         Texture texture = (Texture)Model.EditNode( node );
+         texture.RenderWidth = size;
+         texture.RenderHeight = size;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void TextureSetType( int p_iTextureType )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      
+      if( node.IsDerived( Texture ) )
+      {
+         Texture texture = (Texture)Model.EditNode( node );
+         texture.TextureType = p_iTextureType;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void TextureSetRenderDepth( int p_iRenderDepth )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      
+      if( node.IsDerived( Texture ) )
+      {
+         Texture texture = (Texture)Model.EditNode( node );
+         texture.RenderDepth = p_iRenderDepth;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void TextureSetExtension( string p_sFileExtension )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Texture ) )
+      {
+         Texture texture = (Texture)Model.EditNode( node );
+
+         string a_sCompositeFileName = texture.PathToFile;
+         string a_sFilePath = Application.GetFilePath( a_sCompositeFileName );
+         string a_sExtension = Application.GetFileExtension( a_sCompositeFileName );
+         string a_sFileName = Application.GetStrippedFileName( a_sCompositeFileName );
+         string a_sNewExtension = ".bmp";
+         string a_sNewCompositeFileName = a_sFilePath + a_sFileName + a_sNewExtension;
+         texture.PathToFile = a_sNewCompositeFileName;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeometryModifierSetTessellation( int tessellation )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( RectangleGeometryModifier ) )
+      {
+         RectangleGeometryModifier modifier = (RectangleGeometryModifier)Model.EditNode( node );
+
+         modifier.XSubdivision = tessellation;
+         modifier.YSubdivision = tessellation;
+      }
+      else
+      if( node.IsDerived( BoxGeometryModifier ) )
+      {
+         BoxGeometryModifier modifier = (BoxGeometryModifier)Model.EditNode( node );
+
+         modifier.Resolution[ 0 ] = tessellation;
+         modifier.Resolution[ 1 ] = tessellation;
+         modifier.Resolution[ 2 ] = tessellation;
+      }
+      else
+      if( node.IsDerived( CircleGeometryModifier ) )
+      {
+         CircleGeometryModifier modifier = (CircleGeometryModifier)Model.EditNode( node );
+
+         modifier.Resolution = tessellation;
+      }
+      else
+      if( node.IsDerived( CylinderGeometryModifier ) )
+      {
+         CylinderGeometryModifier modifier = (CylinderGeometryModifier)Model.EditNode( node );
+
+         modifier.Resolution[ 0 ] = tessellation;
+         modifier.Resolution[ 1 ] = tessellation;
+      }
+      else
+      if( node.IsDerived( SphereGeometryModifier ) )
+      {
+         SphereGeometryModifier modifier = (SphereGeometryModifier)Model.EditNode( node );
+
+         modifier.Resolution[ 0 ] = tessellation;
+         modifier.Resolution[ 1 ] = tessellation;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeometryModifierMultiplyTessellation( double multiplier )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( RectangleGeometryModifier ) )
+      {
+         RectangleGeometryModifier modifier = (RectangleGeometryModifier)Model.EditNode( node );
+
+         modifier.XSubdivision = modifier.XSubdivision * multiplier;
+         modifier.YSubdivision = modifier.YSubdivision * multiplier;
+      }
+      else
+      if( node.IsDerived( BoxGeometryModifier ) )
+      {
+         BoxGeometryModifier modifier = (BoxGeometryModifier)Model.EditNode( node );
+
+         modifier.Resolution[ 0 ] = modifier.Resolution[ 0 ] * multiplier;
+         modifier.Resolution[ 1 ] = modifier.Resolution[ 1 ] * multiplier;
+         modifier.Resolution[ 2 ] = modifier.Resolution[ 2 ] * multiplier;
+      }
+      else
+      if( node.IsDerived( CircleGeometryModifier ) )
+      {
+         CircleGeometryModifier modifier = (CircleGeometryModifier)Model.EditNode( node );
+
+         modifier.Resolution = modifier.Resolution * multiplier;
+      }
+      else
+      if( node.IsDerived( CylinderGeometryModifier ) )
+      {
+         CylinderGeometryModifier modifier = (CylinderGeometryModifier)Model.EditNode( node );
+
+         modifier.Resolution[ 0 ] = modifier.Resolution[ 0 ] * multiplier;
+         modifier.Resolution[ 1 ] = modifier.Resolution[ 1 ] * multiplier;
+      }
+      else
+      if( node.IsDerived( SphereGeometryModifier ) )
+      {
+         SphereGeometryModifier modifier = (SphereGeometryModifier)Model.EditNode( node );
+
+         modifier.Resolution[ 0 ] = modifier.Resolution[ 0 ] * multiplier;
+         modifier.Resolution[ 1 ] = modifier.Resolution[ 1 ] * multiplier;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeometryModifierSetSize( double size )
+{
+   double delta = size / 2.0;
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( RectangleGeometryModifier ) )
+      {
+         RectangleGeometryModifier modifier = (RectangleGeometryModifier)Model.EditNode( node );
+
+         modifier.XMin = -delta;
+         modifier.YMin = -delta;
+         modifier.XMax = delta;
+         modifier.YMax = delta;
+      }
+      else
+      if( node.IsDerived( BoxGeometryModifier ) )
+      {
+         BoxGeometryModifier modifier = (BoxGeometryModifier)Model.EditNode( node );
+
+         modifier.Min.X = -delta;
+         modifier.Min.Y = -delta;
+         modifier.Min.Z = -delta;
+         modifier.Max.X = delta;
+         modifier.Max.Y = delta;
+         modifier.Max.Z = delta;
+      }
+      else
+      if( node.IsDerived( CircleGeometryModifier ) )
+      {
+         CircleGeometryModifier modifier = (CircleGeometryModifier)Model.EditNode( node );
+
+         modifier.Radius = size;
+      }
+      else
+      if( node.IsDerived( CylinderGeometryModifier ) )
+      {
+         CylinderGeometryModifier modifier = (CylinderGeometryModifier)Model.EditNode( node );
+
+         modifier.Radius = size;
+      }
+      else
+      if( node.IsDerived( SphereGeometryModifier ) )
+      {
+         SphereGeometryModifier modifier = (SphereGeometryModifier)Model.EditNode( node );
+
+         modifier.Radius = size;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GeometryModifierMultiplySize( double multiplier )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( RectangleGeometryModifier ) )
+      {
+         RectangleGeometryModifier modifier =
+            (RectangleGeometryModifier)Model.EditNode( node );
+
+         modifier.XMin = modifier.XMin * multiplier;
+         modifier.YMin = modifier.YMin * multiplier;
+         modifier.XMax = modifier.XMax * multiplier;
+         modifier.YMax = modifier.YMax * multiplier;
+      }
+      else
+      if( node.IsDerived( BoxGeometryModifier ) )
+      {
+         BoxGeometryModifier modifier =
+            (BoxGeometryModifier)Model.EditNode( node );
+
+         modifier.Min.X = modifier.Min.X * multiplier;
+         modifier.Min.Y = modifier.Min.Y * multiplier;
+         modifier.Min.Z = modifier.Min.Z * multiplier;
+         modifier.Max.X = modifier.Max.X * multiplier;
+         modifier.Max.Y = modifier.Max.Y * multiplier;
+         modifier.Max.Z = modifier.Max.Z * multiplier;
+      }
+      else
+      if( node.IsDerived( CircleGeometryModifier ) )
+      {
+         CircleGeometryModifier modifier =
+            (CircleGeometryModifier)Model.EditNode( node );
+
+         modifier.Radius = modifier.Radius * multiplier;
+      }
+      else
+      if( node.IsDerived( CylinderGeometryModifier ) )
+      {
+         CylinderGeometryModifier modifier =
+            (CylinderGeometryModifier)Model.EditNode( node );
+
+         modifier.Radius = modifier.Radius * multiplier;
+      }
+      else
+      if( node.IsDerived( SphereGeometryModifier ) )
+      {
+         SphereGeometryModifier modifier =
+            (SphereGeometryModifier)Model.EditNode( node );
+
+         modifier.Radius = modifier.Radius * multiplier;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetModifierCount(
+
+   ParametricMesh a_oMesh,
+   TypeInformation type,
+   int a_iAttributeChannelType
+
+   )
+{
+   int a_iModifierCount;
+
+   for( int i = 0; i < a_oMesh.ChildCount; ++i )
+   {
+      Node a_oIsModifierType = (Node)a_oMesh.Children[i];
+
+      if( a_oIsModifierType.IsDerived( type ) &&
+         a_oIsModifierType.IsDerived( AddChannelModifier ) )
+      {
+         AddChannelModifier a_oAddChannels =
+            (AddChannelModifier)a_oIsModifierType;
+         if( a_oAddChannels.Attribute == a_iAttributeChannelType )
+         {
+            a_iModifierCount += 1;
+         }
+      }
+      else
+      if( a_oIsModifierType.IsDerived( type ) )
+      {
+            a_iModifierCount += 1;
+      }
+
+   }
+   return a_iModifierCount;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetLastModifierByType(
+
+   List p_lModifiers,
+   ParametricMesh a_oMesh,
+   TypeInformation type,
+   int a_iAttributeChannelType
+
+   )
+{
+   for( int i = 0; i < a_oMesh.ChildCount; ++i )
+   {
+      Node a_oIsModifierType = (Node)a_oMesh.Children[i];
+
+      if( a_oIsModifierType.IsDerived( type ) &&
+         a_oIsModifierType.IsDerived( AddChannelModifier ) )
+      {
+         AddChannelModifier a_oAddChannels = (AddChannelModifier)a_oIsModifierType;
+         if( a_oAddChannels.Attribute == a_iAttributeChannelType )
+         {
+            p_lModifiers.AddRef( a_oAddChannels );
+         }
+
+      }
+      else
+      if( a_oIsModifierType.IsDerived( type ) && a_iAttributeChannelType == 0 )
+      {
+         Modifier a_oModifier = (Modifier)a_oIsModifierType;
+         p_lModifiers.AddRef( a_oModifier );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateAddChannelModifier(
+
+   ParametricMesh p_oParametricMesh,
+   string p_sModifierName,
+   string p_sModifierClass,
+   string p_sModifierID,
+   int p_iAttribute,
+   int p_iDimension,
+   int p_iChildIndex
+
+   )
+{
+   AddChannelModifier a_oAddChannelModifier = new AddChannelModifier;
+   a_oAddChannelModifier.Name = p_sModifierName;
+   a_oAddChannelModifier.Class = p_sModifierClass;
+   a_oAddChannelModifier.ID = p_sModifierID;
+   a_oAddChannelModifier.Attribute = p_iAttribute;
+   a_oAddChannelModifier.Dimension = p_iDimension;
+   Model.AddNode( a_oAddChannelModifier, p_oParametricMesh, p_iChildIndex );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ConfigureMeshAttributesForTangentSpaceNormals( ParametricMesh p_oParametricMesh )
+{
+   auto List a_lTextureAttrModifiers, a_lNormalAttrModifiers, a_lCalculateNormalModifiers;
+   
+   int a_iTextureAttributeCount
+      = GetModifierCount( p_oParametricMesh, AddChannelModifier, 3 );
+   int a_iNormalAttributeCount
+      = GetModifierCount( p_oParametricMesh, AddChannelModifier, 1 );
+   int a_iCalculateNormalsModifierCount
+      = GetModifierCount( p_oParametricMesh, CalculateNormalsModifier, 0 );
+   int a_iInsertionIndex;
+   Node a_oFinalTextureAttrModifier;
+   Node a_oFinalNormalAttrModifier;
+   Node a_oFinalCalculateNormalsModifier;
+
+   // Handle texture attributes
+   if( a_iTextureAttributeCount == 0 )
+   {
+      CreateAddChannelModifier( p_oParametricMesh,
+         "TextureAttributesChannelModifier", "SPA_Texture", "texcoord", 3, 2, 0 );
+   }
+   else
+   if( a_iTextureAttributeCount > 0 )
+   {
+      GetLastModifierByType( a_lTextureAttrModifiers, p_oParametricMesh,
+         AddChannelModifier, 3 );
+      a_oFinalTextureAttrModifier =
+         (Node)a_lTextureAttrModifiers.Get( a_iTextureAttributeCount - 1 );
+      a_iInsertionIndex =
+         p_oParametricMesh.GetChildIndex( a_oFinalTextureAttrModifier );
+   }
+
+   // Handle normal attributes
+   if( a_iNormalAttributeCount == 0 )
+   {
+      GetLastModifierByType( a_lTextureAttrModifiers, p_oParametricMesh, AddChannelModifier, 1 );
+      CreateAddChannelModifier( p_oParametricMesh,
+         "NormalAttributesChannelModifier", "SPA_Normal0", "normal", 1, 3, a_iInsertionIndex + 1 );
+      CreateAddChannelModifier( p_oParametricMesh,
+         "NormalAttributesChannelModifier", "SPA_Normal1", "tangent", 1, 3, a_iInsertionIndex + 1 );
+      CreateAddChannelModifier( p_oParametricMesh,
+         "NormalAttributesChannelModifier", "SPA_Normal2", "binormal", 1, 3, a_iInsertionIndex + 1 );
+   }
+   else
+   if( a_iNormalAttributeCount > 0 )
+   {
+      GetLastModifierByType( a_lNormalAttrModifiers, p_oParametricMesh, AddChannelModifier, 1 );
+      a_oFinalNormalAttrModifier = (Node)a_lNormalAttrModifiers.Get( a_iNormalAttributeCount - 1 );
+      int a_iChildIndex = p_oParametricMesh.GetChildIndex( a_oFinalNormalAttrModifier ) + 1;
+
+      for( int clone = 0; clone < 3 - a_iNormalAttributeCount; ++clone )
+      {
+         AddChannelModifier a_oAddToMesh = (AddChannelModifier)a_oFinalNormalAttrModifier.Clone();
+         Model.AddNode( a_oAddToMesh, p_oParametricMesh, a_iChildIndex );
+         a_iChildIndex += 1;
+      }
+   }
+
+   // Handle CalculateNormalsModifier
+   if( a_iCalculateNormalsModifierCount == 0 )
+   {
+      CalculateNormalsModifier a_oCalcNormals = new CalculateNormalsModifier;
+      a_oCalcNormals.Name = "CalculateTangentSpaceNormalsModifier";
+      a_oCalcNormals.NormalMapTexCoords = 0;
+      a_oCalcNormals.NormalAttributes = 0;
+      a_oCalcNormals.TangentAttributes = 1;
+      a_oCalcNormals.BinormalAttributes = 2;
+      Model.AddNode( a_oCalcNormals, p_oParametricMesh, -1 );
+   }
+   else
+   if( a_iCalculateNormalsModifierCount > 0 )
+   {
+      GetLastModifierByType( a_lCalculateNormalModifiers, p_oParametricMesh, CalculateNormalsModifier, 0 );
+      a_oFinalCalculateNormalsModifier =
+         (Node)a_lCalculateNormalModifiers.Get( a_iCalculateNormalsModifierCount - 1 );
+      CalculateNormalsModifier a_oCalcNormals =
+         (CalculateNormalsModifier)Model.EditNode( a_oFinalCalculateNormalsModifier );
+      a_oCalcNormals.Name = "CalculateTangentSpaceNormalsModifier";
+      a_oCalcNormals.NormalMapTexCoords = 0;
+      a_oCalcNormals.NormalAttributes = 0;
+      a_oCalcNormals.TangentAttributes = 1;
+      a_oCalcNormals.BinormalAttributes = 2;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreatePositionedGroupDerivedNode( TypeInformation type, string p_sPosition )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++ i )
+   {
+      Node a_oNode = Model.GetSelectedNode( i ).GetNode();
+      Group a_oParent = (Group)a_oNode.Parent();
+      int childIndex = a_oParent.GetChildIndex( a_oNode );
+
+      if( type.IsDerived( Group ) && p_sPosition == "above" )
+      {
+         Group a_oNewGroup = new Group;
+         a_oNewGroup.Name = "NewGroupNode";
+         Model.AddNode( a_oNewGroup, a_oParent, childIndex );
+      }
+      else
+      if( type.IsDerived( Group ) && p_sPosition == "below" )
+      {
+         Group a_oNewGroup = new Group;
+         a_oNewGroup.Name = "NewGroupNode";
+         Model.AddNode( a_oNewGroup, a_oParent, childIndex + 1 );
+      }
+
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ConfigureTangentSpaceAttributes(
+
+   int p_iChannelTypeFilter,
+   string p_sCalculateNormalsModifierTargetParam
+
+   )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      string a_sTexAttribsError = "You must select a TextureAttributesChannelModifier in order to execute this command.\n";
+      string a_sNormalAttribsError = "You must select a NormalAttributesChannelModifier in order to execute this command.\n";
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( AddChannelModifier ) )
+      {
+         Node a_oParent = (Node)node.Parent();
+         AddChannelModifier a_oAddChannelModifier = (AddChannelModifier)node;
+
+         if( a_oAddChannelModifier.Attribute == p_iChannelTypeFilter )
+         {
+            if( a_oParent && a_oParent.IsDerived( ParametricMesh ) )
+            {
+               ParametricMesh a_oParametricMesh = (ParametricMesh)a_oParent;
+               int a_iSelectedModifierIndex = a_oAddChannelModifier.ChildIndex();
+               Node a_oIsCalculateNormalsModifier =
+                  GetChildFromParentByType( a_oParametricMesh, CalculateNormalsModifier );
+
+               if( a_oIsCalculateNormalsModifier )
+               {
+                  CalculateNormalsModifier modifier =
+                     (CalculateNormalsModifier)Model.EditNode( a_oIsCalculateNormalsModifier );
+
+                  if( p_sCalculateNormalsModifierTargetParam == "NormalMapTexCoords" )
+                  {
+                     modifier.NormalMapTexCoords = a_iSelectedModifierIndex;
+                  }
+                  else
+                  if( p_sCalculateNormalsModifierTargetParam == "NormalAttributes" )
+                  {
+                     modifier.NormalAttributes = a_iSelectedModifierIndex;
+                  }
+                  else
+                  if( p_sCalculateNormalsModifierTargetParam == "TangentAttributes" )
+                  {
+                     modifier.TangentAttributes = a_iSelectedModifierIndex;
+                  }
+                  else
+                  if( p_sCalculateNormalsModifierTargetParam == "BinormalAttributes" )
+                  {
+                     Console.Message( a_iSelectedModifierIndex );
+                     modifier.BinormalAttributes = a_iSelectedModifierIndex - 1;
+                  }
+               }
+            }
+         }
+         else
+         if( a_oAddChannelModifier.Attribute == 1 && p_iChannelTypeFilter == 3 )
+         {
+            Console.Error( a_sTexAttribsError );
+         }
+         else
+         if( a_oAddChannelModifier.Attribute == 2 && p_iChannelTypeFilter == 3 )
+         {
+            Console.Error( a_sTexAttribsError );
+         }
+         else
+         if( a_oAddChannelModifier.Attribute == 2 && p_iChannelTypeFilter == 1 )
+         {
+            Console.Error( a_sNormalAttribsError );
+         }
+         else
+         if( a_oAddChannelModifier.Attribute == 3 && p_iChannelTypeFilter == 1 )
+         {
+            Console.Error( a_sNormalAttribsError );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ConfigureScreenAlignedGeometryNode( int p_iParameter, int p_iValue )
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = Model.GetSelectedNode( i ).GetNode();
+      if( a_oNode.IsDerived( ScreenAlignedGeometryNode ) )
+      {
+         ScreenAlignedGeometryNode a_oScreenAlignedGeometry =
+            (ScreenAlignedGeometryNode)Model.EditNode( a_oNode );
+         if( p_iParameter == 0 )
+         {
+            a_oScreenAlignedGeometry.ScalingMode = p_iValue;
+         }
+         else
+         if( p_iParameter == 1 )
+         {
+            a_oScreenAlignedGeometry.VertAlign = p_iValue;
+         }
+         else
+         if( p_iParameter == 2 )
+         {
+            a_oScreenAlignedGeometry.HorzAlign = p_iValue;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string CreateTrackingDatabaseFilename( string p_sFilename, string p_sCompletePathAndFilename )
+{
+   // Use the filename to create a name for the the tracking database.
+   // Use the APPDATA folder and a sub-folder named 'LinkTracking'.
+   string a_sAppDataFolder = Application.GetApplicationDataPath() + "LinkTracking\\";
+   string a_sFileName = Application.GetStrippedFileName( p_sFilename ) + "_node_guid_map.box";
+   p_sCompletePathAndFilename = a_sAppDataFolder + a_sFileName;
+   return p_sCompletePathAndFilename;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void RestoreLinkNodes( bool p_bVerbose )
+{
+   // Get all the link nodes from the database.
+   auto List a_lFileNodeLinks;
+   string a_sTrackDatabasePath;
+   string a_sCompletePathAndFilename;
+   string a_sStatusMessage;
+   Graph.GetNodesFromDatabase( Model, a_lFileNodeLinks, NodeLink );
+
+   if( p_bVerbose )
+   {
+      Console.Message( "\n<Reading Link Node Identity Tree...>" );
+      Console.Message( Model.Filename );
+   }
+
+   // Iterate the link nodes, finding any that might be broken.
+   for( int link = 0; link < a_lFileNodeLinks.GetCount(); ++link )
+   {
+      NodeLink a_oNodeLink = (NodeLink)a_lFileNodeLinks.Get( link );
+
+      if( a_oNodeLink.IsExternal() )
+      {
+         a_oNodeLink.Load( 1 );
+
+         if( !a_oNodeLink.GetLink() )
+         {
+            // We found a broken link. Use the link node 'PathToFile' 
+            // parameter to construct the name of the link tracking file.
+            // Inform the user that we've learned the name of the link 
+            // identity tracking file.
+            
+            Console.Message( "Found a broken link node at: " + a_oNodeLink.GetPathToNode() );
+            a_sTrackDatabasePath = CreateTrackingDatabaseFilename( a_oNodeLink.PathToFile, a_sCompletePathAndFilename );
+
+            // If the file exists, load it. Otherwise, warn the user and complete.
+            if( Application.FileExists( a_sTrackDatabasePath ) )
+            {
+               Console.Message( "Determined link identity tracking file: " + a_sTrackDatabasePath );
+               // Load the link tracking database.
+               auto Model3D a_oRemoteDatabase;
+               a_oRemoteDatabase.OpenFile( a_sTrackDatabasePath );
+               // Find the string node with the GUID that corresponds to 
+               // the GUID stored by the broken link node.
+               StringNode a_oStringNode = (StringNode)a_oRemoteDatabase.GetTypedNodeByPath( a_oNodeLink.GetGuid().Value, StringNode );
+
+               // Is the GUID non-zero? 
+               // If so, apply changes and fix the link node.
+               if( a_oStringNode && a_oNodeLink.GetGuid().Value != "{00000000-0000-0000-0000-000000000000}" )
+               {
+                  a_oNodeLink.PathToNode = a_oStringNode.Value;
+                  Console.Message( "Found and fixed: " + a_oStringNode.Value );
+               }
+               else
+               if( a_oNodeLink.GetGuid().Value == "{00000000-0000-0000-0000-000000000000}" )
+               {
+                  // Warn the user if the GUID has zero value. This means 
+                  // the link node is no longer tracking the remote node.
+                  // We can't fix the link node in this case.
+                  string a_sMessage = "A null tracking GUID was found at the following address in the file you just loaded: " +
+                     a_oNodeLink.GetModel().Filename + ".\nYou will have to fix this link manually.\n";
+                  a_sMessage += "Graph Address: " + a_oNodeLink.PathToNode;
+                  Console.Error( a_sMessage );
+               }
+            }
+            else
+            {
+               Console.Message( "Unable to find a link tracking file at: " + a_sTrackDatabasePath );
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SaveNodeGuidMap( List p_lFileSaveNodeGuidMap, string p_sTrackingFileName, bool p_bVerbose )
+{
+   // Use the file name to create a tracking database filename.
+   // For example: 'my_file.box' becomes 'my_file_node_guid_map.box'.
+   string a_sCompletePathAndFilename;
+   string a_sTrackDatabasePath = Graph.CreateTrackingDatabaseFilename( Model.Filename, a_sCompletePathAndFilename );
+
+   // Create a new database and set the name of its root node to 'LinkTracking'.
+   auto Model3D a_oRemoteDatabase = new Model3D;
+   a_oRemoteDatabase.Name = "LinkTracking";
+
+   // Iterate the list of nodes.
+   for( int i = 0; i < p_lFileSaveNodeGuidMap.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lFileSaveNodeGuidMap.Get( i );
+
+      // Create a string node for each node in the database that is not
+      // a node of type Modifier. We don't worry about modifiers because
+      // we do not support link nodes in the construction history.
+      if( a_oNode && !a_oNode.IsDerived( Modifier ) )
+      {
+         // Create a new string node for each node in the database.
+         // Store the node's GUID in the string node 'name' parameter.
+         // Store the database path to the node in the string node 'value' parameter.
+         StringNode a_oPathToNode = new StringNode;
+         a_oPathToNode.Name = a_oNode.GetGuid().Value;
+         a_oPathToNode.Value = a_oNode.GetPathToNode();
+         a_oRemoteDatabase.AddChild( a_oPathToNode );
+
+         if( p_bVerbose == true )
+         {
+            // Optionally inform the user that records have been written.
+            Console.Message( "Writing record for: " + a_oNode.GetPathToNode() );
+         }
+      }
+   }
+   // Save the link tracking database in the APPDATA\LINKTRACKING folder.
+   a_oRemoteDatabase.SaveFile( a_sTrackDatabasePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SaveGuidMap()
+{
+   // Gather all the nodes from the database.
+   auto List a_lFileSaveNodeGuidMap;
+   Graph.GetNodesFromDatabase( Model, a_lFileSaveNodeGuidMap, Node );
+   if( debugLog )
+   {
+      Console.Message( "\n<Writing Link Node Identity Tree...>" );
+      Console.Message( Model.Filename );
+   }
+
+   // Iterate the nodes and save a node-GUID map file.
+   if( a_lFileSaveNodeGuidMap.GetCount() > 0 )
+   {
+      SaveNodeGuidMap( a_lFileSaveNodeGuidMap, "_node_guid_map.box", false );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string SetConfigNodeBasePath(
+
+   ConfigNode p_oConfigNode,
+   int p_iDefaultPath,
+   Model3D p_oModel3D,
+   StrList p_slAppendSubfolders
+
+   )
+{
+   string a_sBasePath;
+   if( p_iDefaultPath == 0 )
+   {
+      p_slAppendSubfolders.Add( "" );
+   }
+   else
+   if( p_iDefaultPath == 1 )
+   {
+      a_sBasePath = Application.GetApplicationPath();
+      p_slAppendSubfolders.Add( "" );
+   }
+   else
+   if( p_iDefaultPath == 2 )
+   {
+      a_sBasePath = Application.GetApplicationDataPath();
+      p_slAppendSubfolders.Add( "" );
+   }
+   else
+   if( p_iDefaultPath == 3 )
+   {
+      a_sBasePath = Application.GetApplicationDocumentsPath();
+      p_slAppendSubfolders.Add( "" );
+   }
+   else
+   if( p_iDefaultPath == 4 )
+   {
+      if( p_oConfigNode && p_oConfigNode.ParameterGroup )
+      {
+         Node a_oIsConfigNode = (Node)p_oConfigNode.ParameterGroup;
+         if( a_oIsConfigNode.IsDerived( ConfigNode ) )
+         {
+            ConfigNode a_oConfigNode = (ConfigNode)a_oIsConfigNode;
+            a_sBasePath = a_oConfigNode.GetAbsolutePath() + "\\help";
+            p_slAppendSubfolders.Add( "help" );
+         }
+      }
+      else
+      {
+         auto FilePath a_oCurrentFilePath = new FilePath( p_oConfigNode.GetAbsolutePath() );
+         a_oCurrentFilePath.Canonicalize();
+         auto Str a_oCurrentPath = new Str( a_oCurrentFilePath.GetPath() );
+
+         auto FilePath a_oModelName = new FilePath( Application.GetFilePath( p_oModel3D.Filename ) );
+         a_oModelName.Canonicalize();
+         auto Str a_oFilename = new Str( a_oModelName.GetPath() );
+
+         auto Str a_oSubFolder = new Str( a_oCurrentPath.Replace( a_oFilename.Value, "" ) );
+         p_slAppendSubfolders.Add( a_oSubFolder.Value );
+
+         a_sBasePath = Application.GetFilePath( p_oModel3D.Filename ) + "\\" + a_oSubFolder.Value;
+      }
+   }
+
+   auto FilePath a_oFilePath = new FilePath( a_sBasePath );
+   a_oFilePath.Canonicalize();
+   auto Str a_oPath = new Str( a_oFilePath.GetPath() );
+   if( a_oPath.Length() > 0 )
+   {
+      int a_iLastChar = a_oPath.Objects[ a_oPath.Length() - 1 ];
+      if( a_iLastChar == 92 ) // \
+      {
+         a_oFilePath.SetPath( a_oPath.Left( a_oPath.Length() - 1 ) );
+      }
+   }
+   return a_oFilePath.GetPath();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool AddInterfaceTemplate( EditModel3D p_oModel, AppScaffoldNode p_oAppScaffoldNode )
+{
+   // Create the path to the template database we're going to use.
+   auto FilePath a_oTemplatePath = new FilePath( Application.GetApplicationDocumentsPath() );
+   a_oTemplatePath.AppendPath( "Templates" );
+   a_oTemplatePath.AppendPath( "Types" );
+   a_oTemplatePath.AppendPath( "Interface" );
+   a_oTemplatePath.AppendPath( "Interface" );
+   a_oTemplatePath.Canonicalize();
+   bool a_bAddNodesToDatabase = false;
+
+   // Create the template nodes from the template
+   // and store them in a List.
+   List a_lTemplateNodes = new List;
+   ValidateNodeCreateContext.CreateNodesFromTemplate( p_oModel, a_oTemplatePath.GetPath(),
+      a_lTemplateNodes, a_bAddNodesToDatabase );
+
+   // Add the nodes to the scene. Do this by-hand since
+   // we want to add them to AppConfigNode instead of the Model root.
+   for( int node = 0; node < a_lTemplateNodes.GetCount(); ++node )
+   {
+      Node a_oNode = (Node)a_lTemplateNodes.Get( node );
+      if( a_oNode && a_oNode.IsDerived( InterfaceElementNode ) )
+      {
+         p_oModel.AddNode( a_oNode, p_oAppScaffoldNode, -1 );
+         // DEBUG
+         //Console.Out( a_oNode.Name );
+      }
+   }
+
+   delete a_lTemplateNodes;
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetGeneratorPath( ShaderSourceNode p_oShaderSourceNode )
+{
+   auto FilePath a_oGenFilePath = new FilePath( p_oShaderSourceNode.FilePath );
+   a_oGenFilePath.ResolveToModel( p_oShaderSourceNode );
+   a_oGenFilePath.Canonicalize();
+   return a_oGenFilePath.GetPath();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool SetIncludeFile( NodeLink p_oShaderIncludeNode )
+{
+   // Prompt the user to chose a file from the hard disk.
+   StrList a_slFiles = new StrList;
+   string a_sFilter = "All Shader Files (*.glsl )|*.glsl|All Files (*.*)|*.*||";
+   string a_sTitle = "Choose existing file:";
+   string a_sInitialPath = Application.GetFilePath( Model.Filename );
+
+   // Instantiate a File Open dialog that allows the user to choose one file at a time.
+   if( Application.BrowseFileOpen( 3, 0, a_sFilter, a_sInitialPath, a_sTitle, a_slFiles ) == "" )
+   {
+      // User cancelled.
+      delete a_slFiles;
+      return false;
+   }
+
+   // Get the first and only filename from our StrList.
+   int a_nFirstFileIndex = 0;
+   auto FilePath a_oIncludeFile = new FilePath( a_slFiles.Get( a_nFirstFileIndex ) );
+   string a_sShaderFile = a_oIncludeFile.GetPath();
+
+   // Warn the user if the GLSL file exists and contains data.
+   // We don't want to presumptively overwrite their shader file.
+   bool a_bShaderFileContainsData;
+   if( a_oIncludeFile.FileExists() )
+   {
+      auto TextFile a_oShaderFile;
+      // Fail if we can't open the file
+      // because we need to determine 
+      // if the file contains any code.
+      if( !( a_oShaderFile.Open( a_oIncludeFile.GetPath(), true ) ) )
+      {
+         return false;
+      }
+
+      // Read the shader into a string.
+      string a_sShaderFileContents;
+      while( !a_oShaderFile.IsEndOfFile() )
+      {
+         a_sShaderFileContents += a_oShaderFile.ReadLine();
+      }
+
+      // If there are any characters in the file
+      // then we'll say the file exists. This will
+      // allow us to warn the user that they may be
+      // overwriting data that already exists.
+      if( a_sShaderFileContents != "" )
+      {
+         a_bShaderFileContainsData = true;
+      }
+   }
+
+   // Since we're doing #include, we've allowed the user to choose a .GLSL
+   // file because that makes sense. However, we can't include a .GLSL file
+   // in a .BOX file via a NodeLink ( NodeLink can only refer to .BOX files ).
+   // Convert the .GLSL file to its .BOX equivalent.
+   a_oIncludeFile.RemoveFileExtension();
+   string a_sTempFile = a_oIncludeFile.GetPath();
+   a_sTempFile += ".box";
+   a_oIncludeFile.SetPath( a_sTempFile );
+
+   // Check if the file exists. If it doesn't exist, we're going to create
+   // the GLSL file and an appropriate .BOX file that will generate the code
+   // for us. Since we're doing an include file, we'll only create a generated
+   // include file, which means the user can't use this to create a shader
+   // stage ( such as a vertex shader or fragment shader ). This include file
+   // has no void main() and exists at global scope for the particular shader
+   // stage into which the user is inserting the include.
+
+   if( !( a_oIncludeFile.FileExists() ) && a_bShaderFileContainsData )
+   {
+      string a_sMessage = "The file <" + a_sShaderFile + "> already contains ";
+      a_sMessage += "shader code, but no corresponding .BOX file exists. ";
+      a_sMessage += "Since no .BOX file code generator exists, it is very ";
+      a_sMessage += "likely the original shader code was implemented by-hand ";
+      a_sMessage += "and should be backed up before being converted into a generated shader. ";
+      a_sMessage += "Backup the shader source file you are trying to overwrite ";
+      a_sMessage += "and run this command again after deleting all shader code from the original file.";
+      auto Str a_oMessage;
+      a_oMessage.Value = a_oMessage.FormatParagraph( a_sMessage, 80 );
+      //Application.MessageBox(
+      Console.Info( a_oMessage.Value );
+      return false;
+   }
+
+   if( !( a_oIncludeFile.FileExists() ) && !a_bShaderFileContainsData )
+   {
+      auto TextFile a_oNewShaderFile;
+      a_oNewShaderFile.Open( a_sShaderFile, false );
+      a_oNewShaderFile.Close();
+
+      auto Model3D a_oNewIncludeDocument;
+      a_oNewIncludeDocument.Name = "Include";
+      a_oNewIncludeDocument.Class = "Include";
+
+      Group a_oDependencies = new Group;
+      a_oDependencies.Name = "Dependencies";
+
+      ViewStateNode a_oSettings = new ViewStateNode;
+      a_oSettings.Name = "Settings";
+      a_oDependencies.AddChild( a_oSettings );
+
+      a_oNewIncludeDocument.AddChild( a_oDependencies );
+
+      Group a_oGraph = new Group;
+      a_oGraph.Name = "Graph";
+
+      IncludePaletteNode a_oInclude = new IncludePaletteNode;
+      a_oInclude.Name = "Includes";
+      a_oGraph.AddChild( a_oInclude );
+
+      ScriptNode a_oCode = new ScriptNode;
+      a_oCode.Name = "Code";
+
+      auto FilePath a_oIncludeName = new FilePath( a_sShaderFile );
+      auto FilePath a_oGeneratedFile = new FilePath( a_sShaderFile );
+      auto FilePath a_oGeneratedFilePath = new FilePath( a_sShaderFile );
+
+      // Generate the path to the GLSL generator script.
+      auto FilePath a_oGeneratorPath = new FilePath( Main.GetGlslGeneratorScript() );
+      a_oGeneratorPath.MakeRelativeToPath( a_oGeneratedFilePath.GetPath() );
+      a_oCode.ScriptFile = a_oGeneratorPath.GetPath();
+      a_oCode.ScriptFunction = Main.GetGlslGeneratorFunction();
+
+      a_oGraph.AddChild( a_oCode );
+
+      IncludeSourceNode a_oIncludeGenerator = new IncludeSourceNode;
+      a_oGeneratedFilePath.RemoveFileName();
+      a_oGeneratedFile.MakeRelativeToPath( a_oGeneratedFilePath.GetPath() );
+      a_oIncludeName.RemoveFilePath();
+
+      a_oIncludeGenerator.Name = a_oIncludeName.GetPath();
+      a_oIncludeGenerator.FilePath = a_oGeneratedFile.GetPath();
+      a_oCode.AddChild( a_oIncludeGenerator );
+
+      a_oNewIncludeDocument.AddChild( a_oGraph );
+      a_oNewIncludeDocument.SaveFile( a_oIncludeFile.GetPath() );
+   }
+
+   string a_sFilename = Application.GetFileName( a_oIncludeFile.GetPath() );
+   string a_sCompleteIncludeFilePath = a_oIncludeFile.GetPath();
+   a_oIncludeFile.Canonicalize();
+
+   // Get the first ShaderSourceNode in the document.
+   // There may be multiple nodes, but we do not have a way to select
+   // them at present. The user can change this after creating the node.
+   auto Model3D a_oIncludeDocument;
+   if( !( a_oIncludeDocument.OpenFile( a_sCompleteIncludeFilePath ) ) )
+   {
+      string a_sMessage = "Unable to open the following file: " + a_sCompleteIncludeFilePath;
+      Console.Assert( a_sMessage );
+      return false;
+   }
+   auto List a_lShaderSourceNodes;
+   GetNodesFromDatabase( a_oIncludeDocument, a_lShaderSourceNodes, ShaderSourceNode );
+   if( !( a_lShaderSourceNodes.GetCount() ) )
+   {
+      string a_sMessage = "Unable to find any nodes of type <ShaderSourceNode>.";
+      Console.Assert( a_sMessage );
+      return false;
+   }
+
+   // Get the first shader source node from the list.
+   // Get the path to the node in the document.
+   Node a_oIsShaderSourceNode = (Node)a_lShaderSourceNodes.Get( 0 );
+   string a_sPathToNode = a_oIsShaderSourceNode.GetPathToNode();
+
+   // Create a FilePath object representing the application's includes folder.
+   // Content included from this folder uses angle bracket include directives.
+   auto FilePath a_oAppIncludeFolder =
+      new FilePath( Main.GetShaderIncludePath() );
+   a_oAppIncludeFolder.Canonicalize();
+
+   // Create two Str objects to do the comparison.
+   auto Str a_oAppIncludePath = new Str( a_oAppIncludeFolder.GetPath() );
+   auto Str a_oIncludePath = new Str( a_oIncludeFile.GetPath() );
+
+   // DEBUG
+   //Console.Out( a_oIncludePath.Value );
+   //Console.Out( a_oAppIncludePath.Value );
+
+   // There are three cases to handle.
+   // 1. The file to be included is inside the application's include folder.
+   //    This means we should use angle brackets in the include.
+   //    #include <myFile.glsl> or #include <SomeFolder\myFile.glsl>
+   // 2. The file to be included is inside the same folder as the current document.
+   //    This means we should use quotes, but can omit any file path information.
+   //    #include "myFile.glsl" or #include "anotherFile.glsl"
+   // 2. The file to be included is NOT inside the same folder as the current document.
+   //    This means we should use quotes and must include path information.
+   //    #include "..\folder\myFile.glsl" or #include "..\..\anotherFile.glsl"
+
+   if( a_oIncludePath.Left( a_oAppIncludePath.Length() ) == a_oAppIncludePath.Value )
+   {
+      // Trim the path because it's in a sub-directory of the include folder.
+      // Example: the absolute path is C:\ScenomeInstall\Includes\myFile.glsl
+      // We want: <myFile.glsl>
+      // Example: the absolute path is C:\ScenomeInstall\Includes\Vertex\myFile.glsl
+      // We want: <Vertex\myFile.glsl>
+      auto Str a_oFinalPath = new Str( a_sCompleteIncludeFilePath );
+      auto FilePath a_oTemp = new FilePath( a_oFinalPath.Value );
+
+      if( a_oTemp.RemoveFileName() )
+      {
+         a_oFinalPath.Value = a_oTemp.GetPath() + a_sFilename;
+      }
+      else
+      {
+         a_oFinalPath.Value = a_sFilename;
+      }
+
+      auto FilePath a_oPath = new FilePath( a_oFinalPath.Value );
+      a_oPath.MakeRelativeToModel( Model );
+      p_oShaderIncludeNode.PathToFile = a_oPath.GetPath();
+      p_oShaderIncludeNode.PathToNode = a_sPathToNode;
+
+      auto FilePath a_oFileName = new FilePath( a_oFinalPath.Right( a_oAppIncludePath.Length() ) );
+      a_oFileName.RemoveFileExtension();
+      string a_sTempFinal = a_oFileName.GetPath();
+      a_sTempFinal += ".glsl";
+
+      p_oShaderIncludeNode.Name = "#include <" + a_sTempFinal + ">";
+   }
+   else
+   {
+      // Check to see if the generated file is in the same directory as the current document.
+      auto Str a_oFinalPath;
+      auto FilePath a_oCurrentDirectory = new FilePath( Model.Filename );
+      a_oCurrentDirectory.Canonicalize();
+      a_oCurrentDirectory.RemoveFileName();
+
+      // Do the comparison.
+      if( a_oCurrentDirectory.GetPath() == a_oIncludeFile.GetPath() )
+      {
+         // The generated file is in the same directory.
+         a_oFinalPath.Value =
+            Application.GetFileName( a_sCompleteIncludeFilePath );
+      }
+      else
+      {
+         // The generated file is not in the same directory.
+         auto FilePath a_oRelativePath = new FilePath( a_sCompleteIncludeFilePath );
+         auto FilePath a_oNodeName = new FilePath( a_sCompleteIncludeFilePath );
+         a_oNodeName.RemoveFilePath();
+         a_oNodeName.RemoveFileExtension();
+         string a_sTempFinal = a_oNodeName.GetPath();
+         a_sTempFinal += ".glsl";
+
+         a_oRelativePath.MakeRelativeToModel( Model );
+         a_oFinalPath.Value = a_oRelativePath.GetPath();
+
+         p_oShaderIncludeNode.PathToFile = a_oRelativePath.GetPath();
+         p_oShaderIncludeNode.PathToNode = a_sPathToNode;
+         
+         auto FilePath a_oDocumentPath = new FilePath( Model.Filename );
+         a_oDocumentPath.RemoveFileName();
+         a_oDocumentPath.Canonicalize();
+         auto FilePath a_oIncludeFolder = new FilePath( a_sCompleteIncludeFilePath );
+         a_oIncludeFolder.RemoveFileName();
+         a_oIncludeFolder.Canonicalize();
+         if( a_oDocumentPath.GetPath() == a_oIncludeFolder.GetPath() )
+         {
+            a_oRelativePath.RemoveFilePath();
+         }
+
+         // DEBUG
+         //Console.Out( a_oDocumentPath.GetPath() );
+         //Console.Out( a_oIncludeFolder.GetPath() );
+
+         p_oShaderIncludeNode.Name = "#include \"" + a_sTempFinal + "\"";
+      }
+   }
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void InsertString( StringArrayNode p_oStringArrayNode, int p_nIndex )
+{
+   auto Str a_oNewArrayMember = new Str( "new array member" );
+   auto EnterTextDialog a_oStringMemberDialog;
+
+   if( a_oStringMemberDialog.Show( "New String Member", "Enter text:", true, a_oNewArrayMember ) )
+   {
+      p_oStringArrayNode.Objects.Insert( a_oNewArrayMember.Value, p_nIndex );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// class
+////////////////////////////////////////////////////////////////////////////////
+
+function TypeAggregatorNode GetClassObject( string p_sObject )
+{
+   TypeAggregatorNode a_oClassObject;
+
+   auto FilePath a_oClassUtilPath = new FilePath( Application.GetApplicationDataPath() );
+   a_oClassUtilPath.AppendPath( "scripts" );
+   a_oClassUtilPath.AppendPath( "classes" );
+   a_oClassUtilPath.AppendPath( "compiled_classes.box" );
+   a_oClassUtilPath.Canonicalize();
+
+   if( !( a_oClassUtilPath.FileExists() ) )
+   {
+      string a_sMessage = "The following file does not exist: " + a_oClassUtilPath.GetPath();
+      Console.Assert( a_sMessage );
+      return a_oClassObject;
+   }
+
+   auto Model3D a_oCompiledClasses;
+   if( !( a_oCompiledClasses.OpenFile( a_oClassUtilPath.GetPath() ) ) )
+   {
+      string a_sMessage = "Unable to open the following file: " + a_oClassUtilPath.GetPath();
+      Console.Assert( a_sMessage );
+      return a_oClassObject;
+   }
+
+   Node a_oNode = (Node)a_oCompiledClasses.GetTypedNodeByPath( p_sObject, Node );
+   if( a_oNode )
+   {
+      a_oClassObject = (TypeAggregatorNode)a_oNode.Clone();
+   }
+   else
+   {
+      string a_sMessage = "Opened '" + a_oClassUtilPath + "', but unable to find '" + p_sObject + "'.";
+      Console.Assert( a_sMessage );
+   }
+
+   return a_oClassObject;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateConstructorName( VariableExpressionNode p_oVariableExpressionNode )
+{
+   auto TypeInfoArray a_oExpressionTypes;
+   auto StrList a_slConstructorBases;
+   SpaTypeUtil.GetVariableExpressionNodeTypes( a_oExpressionTypes );
+   SpaTypeUtil.GetVariableExpressionNodeConstructorStrings( a_slConstructorBases );
+   auto ExpressionInfo a_oExpressionInfo;
+   p_oVariableExpressionNode.GetParams( a_oExpressionInfo );
+
+   string a_sBaseType;
+   for( int i = 0; i < a_oExpressionTypes.Count; ++i )
+   {
+      if( p_oVariableExpressionNode.IsDerived( a_oExpressionTypes.Objects[ i ] ) )
+      {
+         a_sBaseType = a_slConstructorBases.GetAt( i );
+         break;
+      }
+   }
+
+   if( p_oVariableExpressionNode.IsScalarArrayExpressionType() )
+   {
+      a_sBaseType += "[";
+      a_sBaseType += a_oExpressionInfo.ArrayCount;
+      a_sBaseType += "]";
+      return a_sBaseType;
+   }
+   else
+   if( p_oVariableExpressionNode.IsScalarExpressionType() )
+   {
+      return a_sBaseType;
+   }
+   else
+   if( p_oVariableExpressionNode.IsVectorArrayExpressionType() )
+   {
+      a_sBaseType += a_oExpressionInfo.Rows;
+      a_sBaseType += "[";
+      a_sBaseType += a_oExpressionInfo.ArrayCount;
+      a_sBaseType += "]";
+      return a_sBaseType;
+   }
+   else
+   if( p_oVariableExpressionNode.IsVectorExpressionType() )
+   {
+      a_sBaseType += a_oExpressionInfo.Rows;
+      return a_sBaseType;
+   }
+   else
+   if( p_oVariableExpressionNode.IsMatrixExpressionType() )
+   {
+      a_sBaseType += a_oExpressionInfo.Cols;
+      a_sBaseType += "x";
+      a_sBaseType += a_oExpressionInfo.Rows;
+      return a_sBaseType;
+   }
+   else
+   if( p_oVariableExpressionNode.IsStructExpressionType() )
+   {
+      a_sBaseType = a_oExpressionInfo.StructType;
+      return a_sBaseType;
+   }
+
+   return a_sBaseType;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateVariableName( VariableNode p_oVariableNode )
+{
+   auto TypeInfoArray a_oExpressionTypes;
+   auto StrList a_slConstructorBases;
+   SpaTypeUtil.GetVariableExpressionNodeVariableTypes( a_oExpressionTypes );
+   SpaTypeUtil.GetVariableExpressionNodeConstructorStrings( a_slConstructorBases );
+   auto ExpressionInfo a_oExpressionInfo;
+   p_oVariableNode.GetParams( a_oExpressionInfo );
+
+   string a_sBaseType;
+   for( int i = 0; i < a_oExpressionTypes.Count; ++i )
+   {
+      if( p_oVariableNode.IsDerived( a_oExpressionTypes.Objects[ i ] ) )
+      {
+         a_sBaseType = a_slConstructorBases.GetAt( i );
+         break;
+      }
+   }
+
+   if( p_oVariableNode.IsScalarType() && p_oVariableNode.IsArrayType() )
+   {
+      a_sBaseType += "[";
+      a_sBaseType += a_oExpressionInfo.ArrayCount;
+      a_sBaseType += "]";
+      return a_sBaseType;
+   }
+   else
+   if( p_oVariableNode.IsScalarType() )
+   {
+      return a_sBaseType;
+   }
+   else
+   if( p_oVariableNode.IsVectorType() && p_oVariableNode.IsArrayType() )
+   {
+      a_sBaseType += a_oExpressionInfo.Rows;
+      a_sBaseType += "[";
+      a_sBaseType += a_oExpressionInfo.ArrayCount;
+      a_sBaseType += "]";
+      return a_sBaseType;
+   }
+   else
+   if( p_oVariableNode.IsVectorType() )
+   {
+      a_sBaseType += a_oExpressionInfo.Rows;
+      return a_sBaseType;
+   }
+   else
+   if( p_oVariableNode.IsMatrixType() )
+   {
+      a_sBaseType += a_oExpressionInfo.Cols;
+      a_sBaseType += "x";
+      a_sBaseType += a_oExpressionInfo.Rows;
+      return a_sBaseType;
+   }
+   else
+   if( p_oVariableNode.IsStructType() )
+   {
+      a_sBaseType += a_oExpressionInfo.StructType;
+      return a_sBaseType;
+   }
+   else
+   if( p_oVariableNode.IsSamplerType() )
+   {
+      SamplerNode a_oSamplerNode =
+         (SamplerNode)p_oVariableNode;
+      a_sBaseType = a_oSamplerNode.GetSamplerTypeString(
+         a_oExpressionInfo.SamplerType );
+      return a_sBaseType;
+   }
+
+   return a_sBaseType;
+}

@@ -1,0 +1,1803 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file         :   BUILD_UTIL.SSL
+// $author       :   Scenomics
+// $privacy      :   PUBLIC
+// $description  :   This script implements functions for building Scenome apps.
+// $legal        :   Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////
+
+import library "expression_util.ssl";
+import library "graph_util.ssl";
+import library "html_util.ssl";
+import library "int_array_util.ssl";
+import library "interface_util.ssl";
+import library "main_util.ssl";
+import library "message_util.ssl";
+import library "module_util.ssl";
+import library "property_sheet_util.ssl";
+import library "str_list_util.ssl";
+
+library SpaBuildUtil;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void MaybeAddNewline( StrList p_slMessages )
+{
+   string a_sEditorGuid = "{1F922109-F612-46D4-A453-4B81096121A9}";
+   OutputViewEditor a_eOutputEditor =
+      (OutputViewEditor)Application.GetEditor( a_sEditorGuid );
+
+   if( !( a_eOutputEditor.IsClear() ) )
+   {
+      p_slMessages.Add( "" );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateProjectBuildHeader( string p_sName, StrList p_slMessages )
+{
+   //MaybeAddNewline( p_slMessages );
+   string a_sProjectBuildHeader = "\n--- <Building Project \'" + p_sName + "'> ---";
+   p_slMessages.Add( a_sProjectBuildHeader );
+   p_slMessages.Add( "" );
+   return a_sProjectBuildHeader;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateCommandHeader( string p_sName, StrList p_slMessages )
+{
+   MaybeAddNewline( p_slMessages );
+   string a_sCommandHeader = "--- <Executing Command \'" + p_sName + "'> ---";
+   p_slMessages.Add( a_sCommandHeader );
+   p_slMessages.Add( "" );
+   return a_sCommandHeader;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void Out( StrList p_slMessages )
+{
+   for( int i = 0; i < p_slMessages.GetCount(); ++i )
+   {
+      Console.Out( p_slMessages.GetAt( i ) );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void Error( StrList p_slMessages )
+{
+   if( p_slMessages.GetCount() )
+   {
+      string a_sMessage;
+
+      for( int i = 0; i < p_slMessages.GetCount(); ++i )
+      {
+         a_sMessage += p_slMessages.GetAt( i ) + "\n";
+      }
+
+      Console.Error( a_sMessage );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function string CreateAppBuildScript( AppScaffoldNode p_oAppScaffoldNode )
+{
+   string a_sAppPackager = Application.GetApplicationPath() +
+      Main.GetAppExecutable();
+
+   string a_sAppBuildScript;
+   string a_sAppFilePath = 
+      Application.ResolveModelRelativePath( p_oAppScaffoldNode.AppFilePath );
+   string a_sAppXMLPath =
+      Application.ResolveModelRelativePath( p_oAppScaffoldNode.AppXMLPath );
+   string a_sAppIconPath =
+      Application.ResolveModelRelativePath( p_oAppScaffoldNode.AppIconPath );
+   string a_sAppSplashPath =
+      Application.ResolveModelRelativePath( p_oAppScaffoldNode.AppSplashPath );
+   string a_sAppDatabasePath =
+      Application.ResolveModelRelativePath( p_oAppScaffoldNode.AppDatabasePath );
+
+   a_sAppBuildScript += "\"" + a_sAppPackager + "\"" + " ";
+   string a_sOutput = "-o \"" + a_sAppFilePath + "\"" + " ";
+   string a_sTitle = "-t \"" + p_oAppScaffoldNode.Name + "\"" + " ";
+   string a_sSplash = "-s \"" + a_sAppSplashPath + "\"" + " ";
+   string a_sInterface = "-in \"" + a_sAppXMLPath + "\"" + " ";
+   string a_sIcon = "-ic \"" + a_sAppIconPath + "\"" + " ";
+   string a_sDatabase = "-b \"" + a_sAppDatabasePath + "\"" + " ";
+   a_sAppBuildScript += a_sOutput;
+   a_sAppBuildScript += a_sTitle;
+   a_sAppBuildScript += a_sSplash;
+   a_sAppBuildScript += a_sInterface;
+   a_sAppBuildScript += a_sIcon;
+   a_sAppBuildScript += a_sDatabase;
+
+   return a_sAppBuildScript;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function void RefreshNodesDocumentation(
+
+   ConfigNode p_oConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   string a_sNodesDocumentationAddress = p_oConfigNode.GetAbsolutePath();
+
+   if( a_sNodesDocumentationAddress == "" )
+   {
+      string a_sMessage = "Unable to find the nodes documentation address.";
+      Console.Error( a_sMessage );
+      return;
+   }
+   a_sNodesDocumentationAddress += "\\";
+
+   string a_sCleanupFileAddress = p_oConfigNode.GetAbsolutePath();
+   if( a_sCleanupFileAddress == "" )
+   {
+      string a_sMessage = "Unable to find the documentation cleanup address.";
+      Console.Error( a_sMessage );
+      return;
+   }
+   a_sCleanupFileAddress += "\\";
+
+   Console.Message( "\nRefreshing Nodes Documentation..." );
+
+   // Delete existing child nodes.
+   for( int nodes = 0; nodes < p_oConfigNode.ChildCount; ++nodes )
+   {
+      Node a_oNode = (Node)p_oConfigNode.Children[nodes];
+      Model.DeleteNode( a_oNode );
+   }
+
+   // Prepare objects to store messages and message codes;
+   auto StrList a_slMessageText;
+   auto IntArray a_aiMessageCodes;
+   int a_iDocumentCount;
+
+   a_iDocumentCount = SpaHtmlUtil.GenerateNodesDocumentation( p_oConfigNode,
+      a_sNodesDocumentationAddress, a_sCleanupFileAddress,
+      a_slMessageText, a_aiMessageCodes, commandInfo );
+
+   // Send out messages.
+   int a_iErrors;
+   int a_iDeprecatedFileWarnings;
+   int a_iWarnings;
+   if( a_slMessageText.GetCount() )
+   {
+      for( int info = 0; info < a_slMessageText.GetCount(); ++info )
+      {
+         if( p_oConfigNode.ShowWarnings )
+         {
+            if( a_aiMessageCodes.Objects[ info ] == 1 )
+            {
+               Console.Message( "Deprecated file warning: " + a_slMessageText.Get( info ) );
+               ++a_iDeprecatedFileWarnings;
+               ++a_iWarnings;
+            }
+            else
+            if( a_aiMessageCodes.Objects[ info ] == 2 )
+            {
+               Console.Message( "Undocumented file warning: " + a_slMessageText.Get( info ) );
+               ++a_iWarnings;
+            }
+         }
+
+         if( a_aiMessageCodes.Objects[ info ] == 3 )
+         {
+            Console.Message( "Error: " + a_slMessageText.Get( info ) );
+            ++a_iErrors;
+         }
+      }
+
+      // Write a batch file to disk that can delete the
+      // extra files. For data security, the user must
+      // execute this batch file by-hand.
+      if( p_oConfigNode.ShowWarnings && a_iDeprecatedFileWarnings > 0 )
+      {
+         Console.Message( SpaHtmlUtil.WriteCleanUpFile( a_sCleanupFileAddress,
+            a_slMessageText, a_aiMessageCodes, "clean_nodes_help.bat" ) );
+      }
+   }
+
+   Console.Message( "Refreshed " + a_iDocumentCount +
+      " documentation files with (" + a_iWarnings + ") warnings and (" + a_iErrors + ") errors." );
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function string GetSpaces( int p_iSpaces )
+{
+   string a_sSpaces;
+   for( int spaces = 0; spaces < p_iSpaces; ++spaces )
+   {
+      a_sSpaces += " ";
+   }
+   return a_sSpaces;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function void RefreshCommandsDocumentation(
+
+   ConfigNode p_oConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   string a_sCommandsDocumentationAddress = p_oConfigNode.GetAbsolutePath();
+
+   if( a_sCommandsDocumentationAddress == "" )
+   {
+      string a_sMessage = "Unable to find the commands documentation address.";
+      Console.Error( a_sMessage );
+      return;
+   }
+   a_sCommandsDocumentationAddress += "\\";
+
+   string a_sCleanupFileAddress = p_oConfigNode.GetAbsolutePath();
+   if( a_sCleanupFileAddress == "" )
+   {
+      string a_sMessage = "Unable to find the documentation cleanup address.";
+      Console.Error( a_sMessage );
+      return;
+   }
+   a_sCleanupFileAddress += "\\";
+
+   Console.Message( "\nRefreshing Commands Documentation..." );
+
+   // Delete existing child nodes.
+   for( int nodes = 0; nodes < p_oConfigNode.ChildCount; ++nodes )
+   {
+      Node a_oNode = (Node)p_oConfigNode.Children[nodes];
+      Model.DeleteNode( a_oNode );
+   }
+
+   // Prepare objects to store messages and message codes;
+   auto StrList a_slMessageText;
+   auto IntArray a_aiMessageCodes;
+   int a_iCommandCount;
+
+   a_iCommandCount = SpaHtmlUtil.GenerateCommandDocuments(
+      p_oConfigNode,
+      a_slMessageText,
+      a_aiMessageCodes,
+      commandInfo );
+
+   // Send out messages.
+   int a_iErrors;
+   int a_iWarnings;
+   if( a_slMessageText.GetCount() )
+   {
+      for( int info = 0; info < a_slMessageText.GetCount(); ++info )
+      {
+         if( p_oConfigNode.ShowWarnings )
+         {
+            if( a_aiMessageCodes.Objects[ info ] == 1 )
+            {
+               Console.Message( "Deprecated file warning: " + a_slMessageText.Get( info ) );
+               ++a_iWarnings;
+            }
+            else
+            if( a_aiMessageCodes.Objects[ info ] == 2 )
+            {
+               Console.Message( "Undocumented file warning: " + a_slMessageText.Get( info ) );
+               ++a_iWarnings;
+            }
+         }
+
+         if( a_aiMessageCodes.Objects[ info ] == 3 )
+         {
+            Console.Message( "Error: " + a_slMessageText.Get( info ) );
+            ++a_iErrors;
+         }
+      }
+
+      // Write a batch file to disk that can delete the
+      // extra files. For data security, the user must
+      // execute this batch file by-hand.
+      if( p_oConfigNode.ShowWarnings )
+      {
+         Console.Message(
+            SpaHtmlUtil.WriteCleanUpFile(
+               a_sCleanupFileAddress,
+               a_slMessageText,
+               a_aiMessageCodes,
+               "clean_nodes_help.bat" ) );
+      }
+   }
+
+   Console.Message( "Refreshed " + a_iCommandCount +
+      " command documentation files with (" + a_iWarnings + ") warnings and (" + a_iErrors + ") errors." );
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function void GenerateInstallerParameter( Str p_oInstall, StrList p_slParameterItems )
+{
+   string a_sParameter;
+   for( int param = 0; param < p_slParameterItems.GetCount(); ++param )
+   {
+      if( param < p_slParameterItems.GetCount() - 1 )
+      {
+         string a_sParam = p_slParameterItems.Get( param );
+         string a_sParamVal = p_slParameterItems.Get( param + 1 );
+         a_sParameter += a_sParam + ": " + a_sParamVal + ";";
+         a_sParameter += " ";
+         ++param; // Increment again because the StrList stores key=value pairs.
+      }
+   }
+   p_oInstall.Append( a_sParameter + "\n" );
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int WriteInstaller(
+
+   ConfigNode p_oConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   ////////////////////////////////////////////////////////
+   // Closure
+   ////////////////////////////////////////////////////////
+   // Get all file paths from installer tree.
+   // Get all connected content for entire tree.
+
+   auto StrList a_slMessages;
+   GenerateProjectBuildHeader( p_oConfigNode.Name, a_slMessages );
+   SpaBuildUtil.Out( a_slMessages );
+
+   auto StrList a_slLocalFilenames;
+   auto StrList a_slAllFilenames;
+   auto StrList a_slBoxFiles;
+
+   SpaValidationUtil.GetAllReferencedFiles(
+      p_oConfigNode,
+      a_slLocalFilenames,
+      a_slBoxFiles,
+      true,
+      commandInfo );
+
+   SpaValidationUtil.GetAllReferencedFiles(
+      p_oConfigNode,
+      a_slAllFilenames,
+      a_slBoxFiles,
+      false,
+      commandInfo );
+   
+   // DEBUG
+   //SpaStrListUtil.Out( a_slAllFilenames );
+
+   // Validate graph structure.
+   /*
+   if( a_slBoxFiles.GetCount() )
+   {
+      if( SpaValidationUtil.ValidateModelList( a_slBoxFiles, commandInfo ) == false )
+      {
+         return 0;
+      }
+   }
+   */
+
+   // DEBUG
+   //SpaStrListUtil.Out( a_slAllFilenames );
+   //SpaStrListUtil.Out( a_slLocalFilenames );
+
+   // Validate Closure
+   if( SpaValidationUtil.ValidateClosure( a_slAllFilenames, a_slLocalFilenames,
+      commandInfo ) == false )
+   {
+      return 0;
+   }
+
+   ////////////////////////////////////////////////////////
+   // Write Installer
+   ////////////////////////////////////////////////////////
+
+   string a_sInstallerScript;
+   Str a_oInstall = new Str;
+
+   a_oInstall.Append( "; This installer script is dynamically generated.\n" );
+   InstallerConfigNode a_oInstallerConfigNode =
+      (InstallerConfigNode)p_oConfigNode;
+   a_oInstall.Append( "[Setup]\n" );
+   a_oInstall.Append( "SourceDir" +
+   "=" + a_oInstallerConfigNode.BasePath + "\n" );
+   a_oInstall.Append( "OutputDir" +
+   "=" + a_oInstallerConfigNode.BasePath + "\\Installer\n\n" );
+
+   auto FilePath a_oInstallerScriptPath =
+      new FilePath( a_oInstallerConfigNode.PathToFile );
+   a_oInstallerScriptPath.ResolveToModel( a_oInstallerConfigNode );
+   a_oInstallerScriptPath.Canonicalize();
+   TextFile a_oInstallerScript = new TextFile;
+
+   auto File a_oFile;
+   a_oFile.Filename = a_oInstallerScriptPath.GetPath();
+   if( a_oFile.FileExists( a_oInstallerScriptPath.GetPath() ) == false )
+   {
+      // Input / Output Mode
+      SpaFileUtil.CreateAsciiFile( a_oInstallerScriptPath.GetPath() );
+   }
+
+   if( a_oInstallerScriptPath.FileExists() )
+   {
+      SpaBuildUtil.BuildInstallScript( p_oConfigNode, a_oInstall, false, commandInfo );
+      a_oInstallerScript.Open( a_oInstallerScriptPath.GetPath(), false );
+      if( a_oInstall.Value != "" )
+      {
+         a_oInstallerScript.Write( a_oInstall.Value );
+         a_oInstallerScript.Close();
+         string a_sConfirmInstallerWrite = "Wrote an installer file to: " +
+               a_oInstallerScriptPath.GetPath();
+         Console.Message( a_sConfirmInstallerWrite );
+      }
+   }
+   a_oFile.ReleaseHandle();
+   delete a_oInstallerScript;
+   delete a_oInstall;
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function void BuildInstallScript(
+
+   Node p_oNode,
+   Str p_oInstall,
+   bool p_bInitialTraverse,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   if( p_oNode.IsDerived( SectionConfigNode ) )
+   {
+      p_bInitialTraverse = true;
+      SectionConfigNode a_oSectionConfigNode =
+         (SectionConfigNode)p_oNode;
+      p_oInstall.Append( a_oSectionConfigNode.GetCurrentSectionNameString() + "\n" );
+   }
+   else
+   if( p_oNode.IsDerived( InstallerDirectiveNode ) )
+   {
+      InstallerDirectiveNode a_oInstallerDirectiveNode =
+         (InstallerDirectiveNode)p_oNode;
+      commandInfo.Status.SetHint( "Building: " + a_oInstallerDirectiveNode.Name );
+
+      if( a_oInstallerDirectiveNode.GetSection() == 13 )
+      {
+         p_oInstall.Append( a_oInstallerDirectiveNode.Setup.Directive +
+            "=" + a_oInstallerDirectiveNode.Setup.DirectiveValue + "\n" );
+      }
+      else
+      if( a_oInstallerDirectiveNode.GetSection() == 5 )
+      {
+         auto StrList a_slIconItems;
+         a_oInstallerDirectiveNode.Icons.GetParameters( a_slIconItems );
+         GenerateInstallerParameter( p_oInstall, a_slIconItems );
+      }
+      else
+      if( a_oInstallerDirectiveNode.GetSection() == 7 )
+      {
+         auto StrList a_slInstallDeleteItems;
+         a_oInstallerDirectiveNode.Delete.GetParameters( a_slInstallDeleteItems );
+         GenerateInstallerParameter( p_oInstall, a_slInstallDeleteItems );
+      }
+      else
+      if( a_oInstallerDirectiveNode.GetSection() == 8 )
+      {
+         p_oInstall.Append( a_oInstallerDirectiveNode.LangOptions.Directive +
+            "=" + a_oInstallerDirectiveNode.LangOptions.DirectiveValue + "\n" );
+      }
+      else
+      if( a_oInstallerDirectiveNode.GetSection() == 9 )
+      {
+         auto StrList a_slLanguagesItems;
+         a_oInstallerDirectiveNode.Languages.GetParameters( a_slLanguagesItems );
+         GenerateInstallerParameter( p_oInstall, a_slLanguagesItems );
+      }
+      else
+      if( a_oInstallerDirectiveNode.GetSection() == 11 )
+      {
+         auto StrList a_slRegistryItems;
+         a_oInstallerDirectiveNode.Registry.GetParameters( a_slRegistryItems );
+         GenerateInstallerParameter( p_oInstall, a_slRegistryItems );
+      }
+      else
+      if( a_oInstallerDirectiveNode.GetSection() == 12 )
+      {
+         auto StrList a_slRunItems;
+         a_oInstallerDirectiveNode.Run.GetParameters( a_slRunItems );
+         GenerateInstallerParameter( p_oInstall, a_slRunItems );
+      }
+      else
+      if( a_oInstallerDirectiveNode.GetSection() == 16 )
+      {
+         auto StrList a_slUninstallDeleteItems;
+         a_oInstallerDirectiveNode.Delete.GetParameters( a_slUninstallDeleteItems );
+         GenerateInstallerParameter( p_oInstall, a_slUninstallDeleteItems );
+      }
+   }
+   else
+   if( p_oNode.IsDerived( FileConfigNode ) )
+   {
+      Console.Out( p_oNode.Name );
+      FileConfigNode a_oFileConfigNode = (FileConfigNode)p_oNode;
+      if( a_oFileConfigNode.ExportDisabled == false )
+      {
+         auto StrList a_slFilesItems;
+         // The file source is part of the FileConfigNode, not
+         // part of the InstallerFiles object. So, get it from
+         // the FileConfigNode before getting the rest of the
+         // parameters.
+         a_slFilesItems.Add( "Source" );
+         a_slFilesItems.Add( "\"" + a_oFileConfigNode.GetRelativePath() + "\"" );
+         //a_oFileConfigNode.GetParameters( a_slFilesItems );
+         a_oFileConfigNode.Files.GetParameters( a_slFilesItems );
+         GenerateInstallerParameter( p_oInstall, a_slFilesItems );
+      }
+   }
+
+   if( p_oNode.IsDerived( ConfigNode ) )
+   {
+      ConfigNode a_oConfigNode = (ConfigNode)p_oNode;
+      if( a_oConfigNode.ExportDisabled == false )
+      {
+         for( int children = 0; children < a_oConfigNode.ChildCount; ++children )
+         {
+            Node a_oChildNode = (Node)a_oConfigNode.Children[children];
+            BuildInstallScript( a_oChildNode, p_oInstall, p_bInitialTraverse, commandInfo );
+         }
+      }
+   }
+
+   if( p_oNode.IsDerived( SectionConfigNode ) && p_bInitialTraverse == true )
+   {
+      p_oInstall.Append( "\n" );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function void GetHelpRoot( Group p_oParent, ref Node p_oNode )
+{
+   Group a_oParent = (Group)p_oParent.Parent();
+
+   if( a_oParent && a_oParent.IsDerived( HelpConfigNode ) )
+   {
+      p_oNode = (Node)a_oParent;
+   }
+   else
+   {
+      GetHelpRoot( a_oParent, p_oNode );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function void GenerateDataInterfaceNodeHierarchy(
+
+   ConfigNode p_oConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   auto FilePath a_oPath;
+
+   // First clean out all children of the specified node, since we are going
+   // to generate a whole new list.
+   // We could optimize this to merge the list of desired nodes with the list
+   // of current nodes.
+   // Or, we could optimize the deletion by adding a DeleteAllChildren member
+   // to EditModel3D.  This would then perform the necessary editing actions.
+   int a_iChildCount = p_oConfigNode.ChildCount;
+   int a_iIndex;
+   for( a_iIndex = 0; a_iIndex < a_iChildCount; ++a_iIndex )
+   {
+      Model.DeleteNode( p_oConfigNode.Children[a_iIndex] );
+   }
+
+   ModuleRegistry a_oModReg = ModuleRegistry.GetGlobalModules();
+   int a_iModCount = a_oModReg.GetCount();
+   for( a_iIndex = 0; a_iIndex < a_iModCount; ++a_iIndex )
+   {
+      ExternalModule a_oMod = (ExternalModule)a_oModReg.Get( a_iIndex );
+      if( !a_oMod.IsDerived( DataInterfaceModule ) )
+      {
+         continue;
+      }
+
+      DataInterfaceModule a_oDataInterface = (DataInterfaceModule)a_oMod;
+      DataStructure a_oStructure = a_oDataInterface.Structure;
+      auto IntArray a_aiMemberTypes;
+      auto List a_lMembers;
+      a_oStructure.GetDataMembers( a_lMembers, a_aiMemberTypes );
+
+      NodeList a_oDataMembers = (NodeList)a_oStructure.GetChildList();
+
+      //continue;
+      if( !a_oStructure )
+      {
+         Console.Message( "Skipping data interface module \'" +
+            a_oMod.Name + "\'; no associated DataStructure" );
+         continue;
+      }
+
+      // Create a FileConfigNode to represent the documentation for
+      // the data interface.
+      
+      FolderConfigNode a_oDataInterfaceConfigNode = new FolderConfigNode;
+      a_oPath.SetPath( a_oStructure.Name );
+      a_oPath.AppendPath( a_oStructure.Name + ".stm" );
+      a_oPath.Canonicalize();
+      a_oDataInterfaceConfigNode.Name = a_oStructure.Name;
+      a_oDataInterfaceConfigNode.BasePath = a_oPath.GetPath();
+
+      auto FilePath a_oDirectoryPath = new FilePath( p_oConfigNode.GetAbsolutePath() );
+      a_oDirectoryPath.AppendPath( a_oPath.GetPath() );
+      a_oDirectoryPath.RemoveFileName();
+      a_oDirectoryPath.AppendPath( "members" );
+      a_oDirectoryPath.Canonicalize();
+      string a_sPath = a_oDirectoryPath.GetPath() + "\\";
+      a_oDirectoryPath.SetPath( a_sPath );
+
+      auto StrList a_slDirectoryContents;
+      a_oDirectoryPath.FindFiles(
+         a_slDirectoryContents,
+         "*.stm",
+         true,
+         false );
+
+      for( int i = 0; i < a_slDirectoryContents.GetCount(); ++i )
+      {
+         auto FilePath a_oMemberPath = new FilePath( a_slDirectoryContents.Get( i ) );
+         string a_sName;
+         FileConfigNode a_oDataMember = new FileConfigNode;
+
+         if( a_oDataMembers.GetCount() == a_slDirectoryContents.GetCount() )
+         {
+            Node a_oDataMemberObject = (Node)a_oDataMembers.Get( i );
+
+            if( a_oDataMemberObject )
+            {
+               a_sName = a_oDataMemberObject.Name;
+            }
+         }
+         else
+         {
+            a_sName = a_oMemberPath.GetFileName();
+         }
+
+         a_oDataMember.Name = a_sName;
+         a_oDataMember.BasePath = "members\\" + a_oMemberPath.GetFileName();
+         a_oDataInterfaceConfigNode.AddChild( a_oDataMember );
+      }
+
+      Model.AddNode( a_oDataInterfaceConfigNode, p_oConfigNode, -1 );
+      //SpaStrListUtil.Out( a_slDirectoryContents );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function bool BuildDataInterfaceDocs(
+
+   ConfigNode p_oConfigNode,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   if( !p_oConfigNode )
+   {
+      string a_sMessage = "Unable to determine the FolderConfigNode " +
+         "into which to place the new data interface help.";
+      Console.Error( a_sMessage );
+      return false;
+   }
+
+   if( !( p_oConfigNode.IsDerived( FolderConfigNode ) ) )
+   {
+      string a_sMessage = "The selected node must be of type <FolderConfigNode>.";
+      Console.Error( a_sMessage );
+      return false;
+   }
+
+   FolderConfigNode a_oDataInterfaceHelpContainer = (FolderConfigNode)p_oConfigNode;
+
+   // Get the folder's data source, which must be a DataConfigNode.
+   Node a_oIsDataInterfaceLayout = (Node)a_oDataInterfaceHelpContainer.DataSource;
+   if( !a_oIsDataInterfaceLayout || !( a_oIsDataInterfaceLayout.IsDerived( DataConfigNode ) ) )
+   {
+      string a_sMessage = "The <FolderConfigNode> must have a data source of type DataConfigNode.";
+      Console.Error( a_sMessage );
+      return false;
+   }
+
+   DataConfigNode a_oDataConfigNode = (DataConfigNode)a_oIsDataInterfaceLayout;
+
+   // Delete all the existing data interface help nodes.
+   for( int d = 0; d < a_oDataInterfaceHelpContainer.ChildCount; ++d )
+   {
+      Node a_oChild = (Node)a_oDataInterfaceHelpContainer.Children[ d ];
+      Model.DeleteNode( a_oChild );
+   }
+
+   Node a_oParent = (Node)p_oConfigNode.Parent();
+   if( !a_oParent || !( a_oParent.IsDerived( HelpConfigNode ) ) )
+   {
+      string a_sMessage = "The parent node must be of type <HelpConfigNode>.";
+      Console.Error( a_sMessage );
+      return false;
+   }
+
+   HelpConfigNode a_oHelpConfigNode = (HelpConfigNode)a_oParent;
+
+   // Get the absolute path represented by the FolderConfigNode that
+   // will contain the data interface documentation nodes.
+   auto FilePath a_oBasePath = new FilePath( a_oDataInterfaceHelpContainer.GetAbsolutePath() );
+   a_oBasePath.Canonicalize();
+
+   auto List a_lDataInterfaceDocs;
+   auto IntegerNode a_oIntegerNode;
+   SpaHtmlUtil.GenerateScriptDocumentTree(
+      a_oHelpConfigNode,
+      a_oBasePath,
+      a_oDataConfigNode,
+      a_lDataInterfaceDocs,
+      null,
+      a_oIntegerNode );
+
+   for( int i = 0; i < a_lDataInterfaceDocs.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)a_lDataInterfaceDocs.Get( i );
+      Model.AddNode( a_oNode, a_oDataInterfaceHelpContainer, -1 );
+   }
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function void ExtractPathAndFilename(
+
+   FileConfigNode p_oFileConfigNode,
+   List p_lFileConfigNodes,
+   StrList p_slFilePaths,
+   StrList p_slLocalFolderPaths
+
+   )
+{
+   if( p_oFileConfigNode.GetAbsolutePath() != "" )
+   {
+      p_lFileConfigNodes.AddRef( p_oFileConfigNode );
+      auto FilePath a_oContentPath = new FilePath( p_oFileConfigNode.GetAbsolutePath() );
+      a_oContentPath.Canonicalize();
+      if( p_slFilePaths.Find( a_oContentPath.GetPath() ) == -1 )
+      {
+         p_slFilePaths.Add( a_oContentPath.GetPath() );
+      }
+      auto FilePath a_oUploadFilePath = new FilePath( a_oContentPath.GetPath() );
+      a_oUploadFilePath.RemoveFileName();
+      a_oUploadFilePath.Canonicalize();
+      if( p_slLocalFolderPaths.Find( a_oUploadFilePath.GetPath() ) == -1 )
+      {
+         p_slLocalFolderPaths.Add( a_oUploadFilePath.GetPath() );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function InterfaceElementNode GetInterfaceDefinition( Node p_oContainer )
+{
+   InterfaceElementNode p_oInterfaceElementNode;
+   if( p_oContainer.IsDerived( AppScaffoldNode ) )
+   {
+      AppScaffoldNode a_oApp = (AppScaffoldNode)p_oContainer;
+      Node a_oFirstChild = (Node)a_oApp.Children[0];
+      if( a_oFirstChild && a_oFirstChild.IsDerived( InterfaceElementNode ) )
+      {
+         InterfaceElementNode a_oInterface = (InterfaceElementNode)a_oFirstChild;
+         if( a_oInterface && a_oInterface.Element == Enum.InterfaceElements_Interface() )
+         {
+            p_oInterfaceElementNode = a_oInterface;
+         }
+      }
+   }
+   else
+   if( p_oContainer.IsDerived( InterfaceElementNode ) )
+   {
+      InterfaceElementNode a_oInterface = (InterfaceElementNode)p_oContainer;
+      if( a_oInterface && a_oInterface.Element == Enum.InterfaceElements_Interface() )
+      {
+         p_oInterfaceElementNode = a_oInterface;
+      }
+   }
+   return p_oInterfaceElementNode;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function bool SaveShell(
+
+   Node p_oContainsShellDefinition,
+   StrList p_slMessages,
+   bool p_bProjectIsDebug,
+   bool p_bSuppressMessages
+
+   )
+{
+   string a_sShellPath;
+   InterfaceElementNode a_oInterfaceDefinition;
+   if( p_oContainsShellDefinition.IsDerived( AppScaffoldNode ) )
+   {
+      AppScaffoldNode a_oAppScaffoldNode =
+         (AppScaffoldNode)p_oContainsShellDefinition;
+      a_sShellPath = a_oAppScaffoldNode.AppXMLPath;
+      a_oInterfaceDefinition = GetInterfaceDefinition( a_oAppScaffoldNode );
+   }
+   else
+   if( p_oContainsShellDefinition.IsDerived( InterfaceElementNode ) )
+   {
+      InterfaceElementNode a_oInterfaceElementNode =
+         (InterfaceElementNode)p_oContainsShellDefinition;
+      a_sShellPath = a_oInterfaceElementNode.ShellOverload;
+      a_oInterfaceDefinition = GetInterfaceDefinition( p_oContainsShellDefinition );
+   }
+
+   if( a_sShellPath == "" )
+   {
+      return true;
+   }
+
+   auto FilePath a_oInterfaceDefinitionTarget = new FilePath( a_sShellPath );
+   a_oInterfaceDefinitionTarget.ResolveToModel( p_oContainsShellDefinition );
+   a_oInterfaceDefinitionTarget.Canonicalize();
+
+   if( a_oInterfaceDefinition && a_oInterfaceDefinitionTarget.FileExists() )
+   {
+      SpaInterfaceUtil.WriteInterfaceToDisk(
+         a_oInterfaceDefinition,
+         a_oInterfaceDefinitionTarget.GetPath(),
+         p_slMessages,
+         p_bProjectIsDebug,
+         p_bSuppressMessages );
+   }
+   else
+   {
+      string a_sMessage = "Unable to generate interface because the following file does not exist: " + 
+         a_oInterfaceDefinitionTarget.GetPath();
+      Console.Error( a_sMessage );
+      return false;
+   }
+
+   // Get the interface definition XML file from the running application.
+   auto FilePath a_oActiveInterfaceDefinition =
+      new FilePath( Application.GetInterfaceDefinitionFile() );
+   a_oActiveInterfaceDefinition.Canonicalize();
+
+   // Reload the current shell if the interface definition file we generated is the same
+   // as the interface definition file for the running application.
+   if( a_oInterfaceDefinitionTarget.GetPath() == a_oActiveInterfaceDefinition.GetPath() )
+   {
+      Application.SetInterfaceDefinitionFile( a_oActiveInterfaceDefinition.GetPath() );
+   }
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function bool SaveAppInterface(
+
+   AppScaffoldNode a_oAppScaffoldNode,
+   StrList p_slMessages,
+   bool p_bSuppressMessages,
+   bool p_bGenerateInterface
+
+   )
+{
+   if( !p_bGenerateInterface )
+   {
+      return 1;
+   }
+
+   // Check if the parent of the AppScaffoldNode is an ApplicationConfigNode.
+   Node a_oParent = (Node)a_oAppScaffoldNode.Parent();
+   ApplicationConfigNode a_oAppProjectRoot;
+   if( a_oParent && a_oParent.IsDerived( ApplicationConfigNode ) )
+   {
+      a_oAppProjectRoot = (ApplicationConfigNode)a_oParent;
+   }
+   else
+   {
+      string a_sMessage = "In order to build the user interface, the parent " +
+         "of the InterfaceDefinitionNode must be an ApplicationConfigNode.\n";
+      Console.Error( a_sMessage );
+      return false;
+   }
+
+   // Get the project's debug state.
+   bool a_bProjectIsDebug = a_oAppProjectRoot.BuildMode;
+
+   // Check if any children of the AppScaffoldNode are
+   // an InterfaceDefinitionNode of element type 'interface'.
+   auto List a_lInterfaceRoots;
+   for( int variation = 0; variation < a_oAppScaffoldNode.ChildCount; ++variation )
+   {
+      Node a_oIsInterfaceDefinition = (Node)a_oAppScaffoldNode.Children[ variation ];
+      if( a_oIsInterfaceDefinition && a_oIsInterfaceDefinition.IsDerived( InterfaceElementNode ) )
+      {
+         InterfaceElementNode a_oInterfaceElementRoot =
+            (InterfaceElementNode)a_oIsInterfaceDefinition;
+         if( a_oInterfaceElementRoot && a_oInterfaceElementRoot.Element == Enum.InterfaceElements_Interface() )
+         {
+            a_lInterfaceRoots.AddRef( a_oInterfaceElementRoot );
+         }
+      }
+   }
+
+   // Save the default shell for the application.
+   SaveShell( a_oAppScaffoldNode, p_slMessages, a_bProjectIsDebug, p_bSuppressMessages );
+
+   // Generate shell variations.
+   for( int v = 0; v < a_lInterfaceRoots.GetCount(); ++v )
+   {
+      InterfaceElementNode a_oInterfaceElementNode =
+         (InterfaceElementNode)a_lInterfaceRoots.Get( v );
+      SaveShell(
+         a_oInterfaceElementNode,
+         p_slMessages,
+         a_bProjectIsDebug,
+         p_bSuppressMessages );
+   }
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function void BuildApps(
+
+   List p_lAppScaffoldNodes,
+   StrList p_slMessages,
+   bool p_bSuppressMessages,
+   bool p_bGenerateInterface
+
+   )
+{
+   string a_sModelFileName = Application.GetFilePath( Model.Filename );
+   string a_sBuildFileName = a_sModelFileName + Main.GetAppBuildFileName();
+   // DEBUG
+   //Console.Out( a_sBuildFileName );
+
+   string a_sMessage;
+   string a_sBuildScript;
+   bool a_bGeneratedInterfaces = true;
+   for( int apps = 0; apps < p_lAppScaffoldNodes.GetCount(); ++apps )
+   {
+      AppScaffoldNode a_oAppScaffoldNode =
+         (AppScaffoldNode)p_lAppScaffoldNodes.Get( apps );
+      if( a_oAppScaffoldNode.ExportDisabled )
+      {
+         continue;
+      }
+
+      bool a_bSuppressMessages = true;
+      if( !SaveAppInterface(
+         a_oAppScaffoldNode,
+         p_slMessages,
+         a_bSuppressMessages,
+         p_bGenerateInterface ) )
+      {
+         a_bGeneratedInterfaces = false;
+         break;
+      }
+      else
+      {
+         a_sBuildScript += CreateAppBuildScript( a_oAppScaffoldNode );
+         a_sBuildScript += "\n\n";
+         p_slMessages.Add( "Saved the interface definition and wrote build script entry for the following application: '" + a_oAppScaffoldNode.Name + "'" );
+      }
+   }
+
+   if( a_bGeneratedInterfaces )
+   {
+      Expression.WriteFileToDisk( a_sBuildFileName, a_sBuildScript );
+      Application.ShellExec( a_sBuildFileName );
+   }
+
+   // Return the build message;
+   if( p_bSuppressMessages == false && a_bGeneratedInterfaces == true )
+   {
+      p_slMessages.Add( "Ran the build script at the following location: " + a_sBuildFileName + " ( via shell execute )." );
+      Console.Message( a_sMessage );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int RefreshInterfaceElement(
+
+   InterfaceElementNode p_oInterfaceElementNode,
+   StrList p_slMessages,
+   int p_nCurrentIndex,
+   int p_nTotalRefreshCount,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   if( !( p_oInterfaceElementNode ) || p_oInterfaceElementNode.Element != Enum.InterfaceElements_Item() )
+   {
+      return 0;
+   }
+
+   // Try to find the CommandConfigNode, which is a dictionary
+   // of commands represented by CommandRepNodes.
+   bool a_bSynchedNode;
+   CommandConfigNode a_oCommandConfigNode =
+      (CommandConfigNode)Model.GetChildByType( CommandConfigNode );
+   if( !a_oCommandConfigNode )
+   {
+      string a_sMessage = "Unable to refresh the ApplicationConfigNode because the " + 
+         "CommandConfigNode ( the command dictionary ) is missing.";
+      Console.Error( a_sMessage );
+      return 0;
+   }
+
+   // Compare every InterfaceElementNode to every CommandRepNode.
+   for( int child = 0; child < a_oCommandConfigNode.ChildCount; ++child )
+   {
+      CommandRepNode a_oCommandRepNode = (CommandRepNode)a_oCommandConfigNode.Children[ child ];
+
+      // If we find an InterfaceElementNode that references the CommandRepNode.
+      if( a_oCommandRepNode.Guid().Value == p_oInterfaceElementNode.GuidString )
+      {
+         commandInfo.Status.SetHint( "Refreshing: " + p_nCurrentIndex + " / " + p_nTotalRefreshCount +
+            " " + p_oInterfaceElementNode.Name );
+
+         if(   a_oCommandRepNode.CommandStatus == Enum.CommandStatusOption_Removed() ||
+               a_oCommandRepNode.CommandStatus == Enum.CommandStatusOption_Deprecated() )
+         {
+            string a_sBadStatus;
+            if( a_oCommandRepNode.CommandStatus == Enum.CommandStatusOption_Removed() )
+            {
+               a_sBadStatus = "removed";
+            }
+            else
+            if( a_oCommandRepNode.CommandStatus == Enum.CommandStatusOption_Deprecated() )
+            {
+               a_sBadStatus = "deprecated";
+            }
+
+            p_slMessages.Add( "The InterfaceElementNode at the following address references " +
+               "a command that has been " + a_sBadStatus + ": " +
+               p_oInterfaceElementNode.GetPathToNode() );
+         }
+         else
+         {
+            // If the InterfaceElementNode name is blank for some reason:
+            if( p_oInterfaceElementNode.NameString == "" )
+            {
+               p_oInterfaceElementNode.NameString == a_oCommandRepNode.CommandName;
+            }
+            p_oInterfaceElementNode.GuidString = a_oCommandRepNode.Guid().Value;
+            p_oInterfaceElementNode.CommandNameString = a_oCommandRepNode.CommandName;
+            a_bSynchedNode = true;
+         }
+      }
+   }
+
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int RefreshAppConfig(
+
+   ApplicationConfigNode p_oAppConfigNode,
+   StrList p_slMessages,
+   CommandPresentationModuleInfo commandInfo
+
+   )
+{
+   int a_nMessageCount = p_slMessages.GetCount();
+   // Get all the InterfaceElementNodes from the AppConfigNode.
+   // We will compare these to the command and type dictionaries
+   // stored as child nodes of the CommandConfigNode and TypeConfigNode.
+   auto List a_lInterfaceElementNodes;
+   Graph.GetNodesFromDatabase( p_oAppConfigNode,
+      a_lInterfaceElementNodes, InterfaceElementNode );
+
+   // Iterate all the InterfaceElementNodes and
+   // make sure that each InterfaceElementNode
+   // command GUID is still valid. Otherwise, mark
+   // the InterfaceElementNode as 'Removed'
+   // and add its graph address to the list.
+
+   for( int node = 0; node < a_lInterfaceElementNodes.GetCount(); ++node )
+   {
+      InterfaceElementNode a_oInterfaceElementNode =
+         (InterfaceElementNode)a_lInterfaceElementNodes.Get( node );
+
+      RefreshInterfaceElement( a_oInterfaceElementNode, p_slMessages,
+         node, a_lInterfaceElementNodes.GetCount(), commandInfo );
+   }
+
+   if( p_slMessages.GetCount() == a_nMessageCount )
+   {
+      p_slMessages.Add( "Successfully refreshed " + a_lInterfaceElementNodes.GetCount() +
+         " InterfaceElementNodes of element type 'Item'." );
+   }
+
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function string GenerateItem(
+
+   DataMemberNode p_oDataMemberNode,
+   string p_sPropertyItemType
+
+   )
+{
+   string a_sPropItemEntry;
+   a_sPropItemEntry += "         SpaInterfaceUtil.CreatePropertySheetEntry( a_oTypeRepNode, " +
+                                 "\"" + p_oDataMemberNode.Name + "\", " +
+                                 p_sPropertyItemType +
+                                 ", " +
+                                 "\"" + "\", " +
+                                 "\"" + p_oDataMemberNode.Documentation + "\" );\n";
+   return a_sPropItemEntry;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function string GenerateEnum(
+
+   DataMemberNode p_oDataMemberNode,
+   string p_sPropertyItemType,
+   int p_iChildIndex
+
+   )
+{
+   auto Str a_oDataMemberName = new Str( p_oDataMemberNode.Name );
+   a_oDataMemberName.Value = a_oDataMemberName.Replace( "/", "" );
+   a_oDataMemberName.Value = a_oDataMemberName.Replace( " ", "" );
+   string a_sStrListName = "a_slEnumerationItems" + a_oDataMemberName.Value;
+   string a_sDataMemberNodeName = "a_oEnumeratedProperty" + a_oDataMemberName.Value;
+   string a_sEnumEntry;
+   a_sEnumEntry += "\n";
+   a_sEnumEntry += "         DataMemberNode " + a_sDataMemberNodeName + " = SpaInterfaceUtil.CreatePropertySheetEntry( a_oTypeRepNode, " +
+                             "\"" + p_oDataMemberNode.Name + "\", " +
+                             "a_sEnumPropertyType, " +
+                             "\"" + "\"" + ", " +
+                             "\"" + "\" );\n";
+
+   a_sEnumEntry += "         auto StrList " + a_sStrListName + ";\n";
+   
+   for( int child = 0; child < p_oDataMemberNode.ChildCount; ++child )
+   {
+      Node a_oIsEnumerationItem = (Node)p_oDataMemberNode.Children[ child ];
+      if( a_oIsEnumerationItem && a_oIsEnumerationItem.IsDerived( DataMemberNode ) )
+      {
+         DataMemberNode a_oEnumerationItem = (DataMemberNode)a_oIsEnumerationItem;
+         if( a_oEnumerationItem.PropertyItemType == 8 )
+         {
+            a_sEnumEntry += "         " + a_sStrListName + ".Add( \"" + a_oEnumerationItem.Name + "\" );\n";
+            a_sEnumEntry += "         " + a_sStrListName + ".Add( \"" + a_oEnumerationItem.Documentation + "\" );\n";
+         }
+      }
+   }
+
+   a_sEnumEntry += "         SpaInterfaceUtil.CreateEnumEntry( " + a_sDataMemberNodeName + ", " + a_sStrListName + ", a_sEnumItemPropertyType );\n";
+
+   return a_sEnumEntry;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function string GeneratePropItemEntry( DataMemberNode p_oDataMemberNode, int p_iChildIndex )
+{
+   string a_sPropertyDoc;
+   if( p_oDataMemberNode.PropertyItemType == 1 )
+   {
+      a_sPropertyDoc = GenerateItem( p_oDataMemberNode, "a_sBoolPropertyType" );
+   }
+   else
+   if( p_oDataMemberNode.PropertyItemType == 2 )
+   {
+      a_sPropertyDoc = GenerateItem( p_oDataMemberNode, "a_sIntPropertyType" );
+   }
+   else
+   if( p_oDataMemberNode.PropertyItemType == 3 )
+   {
+      a_sPropertyDoc = GenerateItem( p_oDataMemberNode, "a_sStringPropertyType" );
+   }
+   else
+   if( p_oDataMemberNode.PropertyItemType == 4 )
+   {
+      a_sPropertyDoc = GenerateItem( p_oDataMemberNode, "a_sFloatPropertyType" );
+   }
+   else
+   if( p_oDataMemberNode.PropertyItemType == 5 )
+   {
+      a_sPropertyDoc = GenerateItem( p_oDataMemberNode, "a_sDoublePropertyType" );
+   }
+   else
+   if( p_oDataMemberNode.PropertyItemType == 6 )
+   {
+      a_sPropertyDoc = GenerateItem( p_oDataMemberNode, "a_sCoordPropertyType" );
+   }
+   else
+   if( p_oDataMemberNode.PropertyItemType == 7 ) // Enumeration
+   {
+      a_sPropertyDoc = GenerateEnum( p_oDataMemberNode, "a_sEnumPropertyType", p_iChildIndex );
+
+   }
+   else
+   if( p_oDataMemberNode.PropertyItemType == 8 ) // Enumeration Item
+   {
+      // This case is always handled by case 7 above, but I'm leaving this code so
+      // it doesn't look like we forgot to handle this case.
+   }
+   else
+   if( p_oDataMemberNode.PropertyItemType == 9 )
+   {
+      a_sPropertyDoc = GenerateItem( p_oDataMemberNode, "a_sFilePathPropertyType" );
+   }
+   else
+   if( p_oDataMemberNode.PropertyItemType == 10 )
+   {
+      a_sPropertyDoc = GenerateItem( p_oDataMemberNode, "a_sNodeRefPropertyType" );
+   }
+   else
+   if( p_oDataMemberNode.PropertyItemType == 11 )
+   {
+      a_sPropertyDoc = GenerateItem( p_oDataMemberNode, "a_sColorPropertyType" );
+   }
+
+   return a_sPropertyDoc;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function int WriteTypeTreeCommand( TypeConfigNode p_oTypeConfigNode )
+{
+   string a_sAppPath = Application.GetApplicationDataPath();
+   string a_sScriptsPath = "scripts\\";
+   string a_sCommandName = "create_type_tree_util.ssl";
+   auto FilePath a_oTypeTreePath = new FilePath( a_sAppPath + a_sScriptsPath + a_sCommandName );
+
+   auto TextFile a_oCommandFile;
+   if( a_oCommandFile.Open( a_oTypeTreePath.GetPath(), 0 ) == false )
+   {
+      string a_sMessage = "Unable to open the command file at: " + a_oTypeTreePath.GetPath();
+      Console.Error( a_sMessage );
+      return 0;
+   }
+
+   string a_sTypeTreeFunction;
+
+   a_sTypeTreeFunction += "////////////////////////////////////////////////////////////////////////////////\n";
+   a_sTypeTreeFunction += "// $file             CREATE_TYPE_TREE.SSL\n";
+   a_sTypeTreeFunction += "// $author           Scenomics LLC\n";
+   a_sTypeTreeFunction += "// $privacy          PUBLIC\n";
+   a_sTypeTreeFunction += "// $description      This script implements automatic generation for node properties.\n";
+   a_sTypeTreeFunction += "// $legal            Reserved * r_rLegal\n";
+   a_sTypeTreeFunction += "//\n";
+   a_sTypeTreeFunction += "// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.\n";
+   a_sTypeTreeFunction += "////////////////////////////////////////////////////////////////////////////////\n\n";
+
+   a_sTypeTreeFunction += "library SpaTypeTreeUtil;\n\n";
+
+   a_sTypeTreeFunction += "import library \"interface_util.ssl\";\n";
+   a_sTypeTreeFunction += "import library \"list_util.ssl\";\n";
+   a_sTypeTreeFunction += "import library \"message_util.ssl\";\n";
+   a_sTypeTreeFunction += "import library \"module_util.ssl\";\n";
+   a_sTypeTreeFunction += "import library \"str_list_util.ssl\";\n\n";
+
+   a_sTypeTreeFunction += "///////////////////////////////////////////////////////////////////////////////\n";
+   a_sTypeTreeFunction += "// WARNING\n";
+   a_sTypeTreeFunction += "///////////////////////////////////////////////////////////////////////////////\n\n";
+   a_sTypeTreeFunction += "// THIS SCRIPT IS AUTOMATICALLY GENERATED. LOCAL CHANGES WILL BE OVERWRITTEN.\n\n";
+
+   a_sTypeTreeFunction += "///////////////////////////////////////////////////////////////////////////////\n";
+   a_sTypeTreeFunction += "// function\n";
+   a_sTypeTreeFunction += "///////////////////////////////////////////////////////////////////////////////\n\n";
+
+   a_sTypeTreeFunction += "function void CreateTypeTree( List p_lTypeRepNodes )\n";
+   a_sTypeTreeFunction += "{\n";
+
+   a_sTypeTreeFunction += "   // This must remain synchronized with the list in DataMemberNodeItems.cpp.\n";
+   a_sTypeTreeFunction += "   string a_sObjectPropertyType     = \"object <T>\";\n";
+   a_sTypeTreeFunction += "   string a_sBoolPropertyType       = \"bool\";\n";
+   a_sTypeTreeFunction += "   string a_sIntPropertyType        = \"int\";\n";
+   a_sTypeTreeFunction += "   string a_sStringPropertyType     = \"string\";\n";
+   a_sTypeTreeFunction += "   string a_sFloatPropertyType      = \"float\";\n";
+   a_sTypeTreeFunction += "   string a_sDoublePropertyType     = \"double\";\n";
+   a_sTypeTreeFunction += "   string a_sCoordPropertyType      = \"coord\";\n";
+   a_sTypeTreeFunction += "   string a_sEnumPropertyType       = \"enumeration\";\n";
+   a_sTypeTreeFunction += "   string a_sEnumItemPropertyType   = \"enumeration item\";\n";
+   a_sTypeTreeFunction += "   string a_sFilePathPropertyType   = \"file path\";\n";
+   a_sTypeTreeFunction += "   string a_sNodeRefPropertyType    = \"node reference\";\n";
+   a_sTypeTreeFunction += "   string a_sColorPropertyType      = \"color\";\n\n";
+
+   a_sTypeTreeFunction += "   for( int nodes = 0; nodes < p_lTypeRepNodes.GetCount(); ++nodes )\n";
+   a_sTypeTreeFunction += "   {\n";
+   a_sTypeTreeFunction += "      TypeRepNode a_oTypeRepNode = (TypeRepNode)p_lTypeRepNodes.Get( nodes );\n";
+
+   for( int node = 0; node < p_oTypeConfigNode.ChildCount; ++node )
+   {
+      Node a_oChild = (Node)p_oTypeConfigNode.Children[ node ];
+      if( a_oChild && a_oChild.IsDerived( TypeRepNode ) )
+      {
+         TypeRepNode a_oTypeRepNode = (TypeRepNode)a_oChild;
+         if( a_oTypeRepNode.TypeStatus == 0 )
+         {
+            continue;
+         }
+         a_sTypeTreeFunction += "      if( a_oTypeRepNode && a_oTypeRepNode.Name == " + "\"" + a_oTypeRepNode.Type + "\" )\n";
+         a_sTypeTreeFunction += "      {\n";
+         a_sTypeTreeFunction += "         // Document the node.\n";
+         a_sTypeTreeFunction += "         string a_sTypeDocumentation = \"" + a_oTypeRepNode.Documentation + "\";\n";
+         a_sTypeTreeFunction += "         SpaInterfaceUtil.ConfigureTypeDocumentation( a_oTypeRepNode, a_oTypeRepNode.Name, a_sTypeDocumentation, " +
+                                          "\"" + a_oTypeRepNode.Module + "\", " +
+                                          "\"" + a_oTypeRepNode.Implementation  + "\", " +
+                                          "\"" + a_oTypeRepNode.Type + "\" );\n";
+
+         // Iterate the TypeRepNode's child nodes and generate the generation code.
+         // We will need to generate the TypeRepNode documentation for new projects.
+         for( int child = 0; child < a_oTypeRepNode.ChildCount; ++child )
+         {
+            Node a_oIsProperty = (Node)a_oTypeRepNode.Children[ child ];
+            if( a_oIsProperty && a_oIsProperty.IsDerived( DataMemberNode ) )
+            {
+               DataMemberNode a_oDataMemberNode = (DataMemberNode)a_oIsProperty;
+               a_sTypeTreeFunction += GeneratePropItemEntry( a_oDataMemberNode, child );
+            }
+         }
+
+         string a_sFinalTypeString = "false";
+         bool a_bIsFinalType = a_oTypeRepNode.IsFinalType;
+         if( a_bIsFinalType )
+         {
+            a_sFinalTypeString = "true";
+         }
+
+         a_sTypeTreeFunction += "         a_oTypeRepNode.TypeStatus = " + a_oTypeRepNode.TypeStatus + ";\n";
+         a_sTypeTreeFunction += "         a_oTypeRepNode.IsFinalType = " + a_sFinalTypeString + ";\n";
+         a_sTypeTreeFunction += "      }\n";
+
+         if( node < p_oTypeConfigNode.ChildCount - 1 )
+         {
+            a_sTypeTreeFunction += "      else\n";
+         }
+      }
+   }
+
+   a_sTypeTreeFunction += "   }\n";
+   a_sTypeTreeFunction += "}\n";
+
+   a_oCommandFile.Write( a_sTypeTreeFunction );
+   a_oCommandFile.Close();
+
+
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string SetClassDocInfo( Node p_oSubject, string p_sInfoBase )
+{
+   string a_sClassDocInfo;
+   auto Str a_oType = new Str( p_sInfoBase );
+   SpaHtmlUtil.MakeUppercase( a_oType );
+   Node a_oParent = (Node)p_oSubject.Parent();
+   if( a_oParent && a_oParent.IsDerived( TypeRepNode ) )
+   {
+      TypeRepNode a_oTypeRepNode = (TypeRepNode)a_oParent;
+      string a_sBaseInfo = a_oTypeRepNode.Class + "_";
+      a_sClassDocInfo = a_sBaseInfo + a_oType.Value;
+   }
+
+   return a_sClassDocInfo;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateDocumentationInfoStringNames( Node p_oNode, Str p_oBaseInfoString )
+{
+   if( p_oNode.IsDerived( TypeRepNode ) )
+   {
+      TypeRepNode a_oTypeRepNode = (TypeRepNode)p_oNode;
+      auto Str a_oType = new Str( a_oTypeRepNode.Type );
+      SpaHtmlUtil.MakeUppercase( a_oType );
+      a_oTypeRepNode.Class = p_oBaseInfoString.Value + a_oType.Value;
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( DataMemberNode ) )
+   {
+      DataMemberNode a_oDataMemberNode = (DataMemberNode)p_oNode;
+      a_oDataMemberNode.Class =
+         SetClassDocInfo(
+            a_oDataMemberNode,
+            a_oDataMemberNode.Name );
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( DeclareFunctionNode ) )
+   {
+      DeclareFunctionNode a_oDeclareFunctionNode =
+         (DeclareFunctionNode)p_oNode;
+      a_oDeclareFunctionNode.Class =
+         SetClassDocInfo(
+            a_oDeclareFunctionNode,
+            a_oDeclareFunctionNode.FunctionName );
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( FunctionParameterNode ) )
+   {
+      FunctionParameterNode a_oFunctionParameterNode =
+         (FunctionParameterNode)p_oNode;
+      Node a_oParent = (Node)a_oFunctionParameterNode.Parent();
+      if( a_oParent && a_oParent.IsDerived( DeclareFunctionNode ) )
+      {
+         DeclareFunctionNode a_oDeclareFunctionNode = (DeclareFunctionNode)a_oParent;
+         int a_nParamIndex = a_oFunctionParameterNode.ChildIndex() + 1;
+         string a_sBaseParamInfo =
+            a_oDeclareFunctionNode.Class + "_PARAM_NAME_" + a_nParamIndex;
+         string a_sBaseDocInfo =
+            a_oDeclareFunctionNode.Class + "_PARAM_DOCUMENTATION_" + a_nParamIndex;
+         a_oFunctionParameterNode.Class = a_sBaseParamInfo;
+         a_oFunctionParameterNode.ID = a_sBaseDocInfo;
+      }
+   }
+
+   if( p_oNode && p_oNode.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)p_oNode;
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         Node a_oNode = (Node)a_oGroup.Children[ i ];
+         CreateDocumentationInfoStringNames( a_oNode, p_oBaseInfoString );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateDocumentInfoFiles( FilePath p_oDocsBasePath, Node p_oNode )
+{
+   //Console.Out( p_oNode.Name );
+
+   auto StrList a_slDocInfoFileNames;
+   auto List a_lNodes;
+
+   string a_sParamName;
+   string a_sDocumentation;
+   if( p_oNode.IsDerived( TypeRepNode ) )
+   {
+      TypeRepNode a_oTypeRepNode = (TypeRepNode)p_oNode;
+      a_sDocumentation = a_oTypeRepNode.Documentation;
+   }
+   else
+   if( p_oNode.IsDerived( DataMemberNode ) )
+   {
+      DataMemberNode a_oDataMemberNode = (DataMemberNode)p_oNode;
+      a_sDocumentation = a_oDataMemberNode.Documentation;
+   }
+   else
+   if( p_oNode.IsDerived( DeclareFunctionNode ) )
+   {
+      DeclareFunctionNode a_oDeclareFunctionNode = (DeclareFunctionNode)p_oNode;
+      a_sDocumentation = a_oDeclareFunctionNode.Documentation;
+   }
+   else
+   if( p_oNode.IsDerived( FunctionParameterNode ) )
+   {
+      FunctionParameterNode a_oFunctionParameterNode = (FunctionParameterNode)p_oNode;
+      a_sDocumentation = a_oFunctionParameterNode.Documentation;
+      a_sParamName = a_oFunctionParameterNode.ParameterName;
+   }
+
+   string a_sClass = p_oNode.Class;
+   string a_sID = p_oNode.ID;
+
+   if( a_sClass != "" )
+   {
+      string a_sCompletePath = p_oDocsBasePath.GetPath();
+      a_sCompletePath += "\\" + a_sClass + ".txt";
+
+      // Only write the file if it doesn't exist.
+      // We don't want to overwrite existing docs.
+      auto FilePath a_oNewDocPath = new FilePath( a_sCompletePath );
+      if( !( a_oNewDocPath.FileExists() ) )
+      {
+         auto TextFile a_oDocumentation;
+         if( a_oDocumentation.Open( a_sCompletePath, 0 ) )
+         {
+            Console.Out( "Writing: " + a_sCompletePath );
+            a_oDocumentation.Write( a_sParamName );
+            a_oDocumentation.Close();
+         }
+         //Console.Out( "Writing: " + a_sCompletePath + "    " + a_sParamName );
+      }
+   }
+   if( a_sID != "" )
+   {
+      string a_sCompletePath = p_oDocsBasePath.GetPath();
+      a_sCompletePath += "\\" + a_sID + ".txt";
+
+      // Only write the file if it doesn't exist.
+      // We don't want to overwrite existing docs.
+      auto FilePath a_oNewDocPath = new FilePath( a_sCompletePath );
+      if( !( a_oNewDocPath.FileExists() ) )
+      {
+         auto TextFile a_oDocumentation;
+         if( a_oDocumentation.Open( a_sCompletePath, 0 ) )
+         {
+            Console.Out( "Writing: " + a_sCompletePath );
+            a_oDocumentation.Write( a_sDocumentation );
+            a_oDocumentation.Close();
+         }
+         //Console.Out( "Writing: " + a_sCompletePath + "    " + a_sDocumentation );
+      }
+   }
+
+   if( p_oNode && p_oNode.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)p_oNode;
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         Node a_oNode = (Node)a_oGroup.Children[ i ];
+         CreateDocumentInfoFiles( p_oDocsBasePath, a_oNode );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string ReadDocs( FilePath p_oDocsBasePath, string p_sDocIdentifier )
+{
+   string a_sDocs;
+   string a_sDocPath = p_oDocsBasePath.GetPath();
+   a_sDocPath += "\\" + p_sDocIdentifier + ".txt";
+   auto FilePath a_oDocPath = new FilePath( a_sDocPath );
+
+   if( a_oDocPath.FileExists() )
+   {
+      auto TextFile a_oDocumentation;
+      if( a_oDocumentation.Open( a_sDocPath, 1 ) )
+      {
+         while( !a_oDocumentation.IsEndOfFile() )
+         {
+            a_sDocs = a_oDocumentation.ReadLine();
+         }
+      }
+   }
+
+   return a_sDocs;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void LoadDocumentationFromInfoStrings( Node p_oNode, FilePath p_oDocsBasePath )
+{
+   if( p_oNode.IsDerived( TypeRepNode ) )
+   {
+      TypeRepNode a_oTypeRepNode = (TypeRepNode)p_oNode;
+      a_oTypeRepNode.Documentation = ReadDocs( p_oDocsBasePath, a_oTypeRepNode.Class );
+      //Console.Out( a_oTypeRepNode.Documentation );
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( DataMemberNode ) )
+   {
+      DataMemberNode a_oDataMemberNode = (DataMemberNode)p_oNode;
+      a_oDataMemberNode.Documentation = ReadDocs( p_oDocsBasePath, a_oDataMemberNode.Class );
+      //Console.Out( a_oDataMemberNode.Documentation );
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( DeclareFunctionNode ) )
+   {
+      DeclareFunctionNode a_oDeclareFunctionNode =
+         (DeclareFunctionNode)p_oNode;
+      a_oDeclareFunctionNode.Documentation = ReadDocs( p_oDocsBasePath, a_oDeclareFunctionNode.Class );
+      //Console.Out( a_oDeclareFunctionNode.Documentation );
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( FunctionParameterNode ) )
+   {
+      FunctionParameterNode a_oFunctionParameterNode =
+         (FunctionParameterNode)p_oNode;
+      a_oFunctionParameterNode.Documentation = ReadDocs( p_oDocsBasePath, a_oFunctionParameterNode.ID );
+      a_oFunctionParameterNode.ParameterName = ReadDocs( p_oDocsBasePath, a_oFunctionParameterNode.Class );
+      a_oFunctionParameterNode.Name = a_oFunctionParameterNode.ParameterType + " " +
+         a_oFunctionParameterNode.ParameterName;
+      //Console.Out( a_oFunctionParameterNode.Documentation );
+   }
+
+   if( p_oNode && p_oNode.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)p_oNode;
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         Node a_oNode = (Node)a_oGroup.Children[ i ];
+         LoadDocumentationFromInfoStrings( a_oNode, p_oDocsBasePath );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateDataInterfaceMasks( StrList p_slDeleteDataInterfaces )
+{
+   p_slDeleteDataInterfaces.Add( "BoxImageProcessor" );
+   p_slDeleteDataInterfaces.Add( "BoxGeometryModifierMaterialDependency" );
+   p_slDeleteDataInterfaces.Add( "Classes" );
+   p_slDeleteDataInterfaces.Add( "Classes" );
+   p_slDeleteDataInterfaces.Add( "Console" );
+   p_slDeleteDataInterfaces.Add( "Create" );
+   p_slDeleteDataInterfaces.Add( "CylinderGeometryModifierMaterialDependency" );
+   p_slDeleteDataInterfaces.Add( "Data" );
+   p_slDeleteDataInterfaces.Add( "Dialog" );
+   p_slDeleteDataInterfaces.Add( "Enum" );
+   p_slDeleteDataInterfaces.Add( "Expression" );
+   p_slDeleteDataInterfaces.Add( "GPU" );
+   p_slDeleteDataInterfaces.Add( "Graph" );
+   p_slDeleteDataInterfaces.Add( "ImageProcessor" );
+   p_slDeleteDataInterfaces.Add( "ImageProcessorList" );
+   p_slDeleteDataInterfaces.Add( "InputNode" );
+   p_slDeleteDataInterfaces.Add( "Iterate" );
+   p_slDeleteDataInterfaces.Add( "LightArrayNode" );
+   p_slDeleteDataInterfaces.Add( "ListNode" );
+   p_slDeleteDataInterfaces.Add( "LoftGeometryModifierGroupDependency" );
+   p_slDeleteDataInterfaces.Add( "LoftGeometryModifierMaterialDependency" );
+   p_slDeleteDataInterfaces.Add( "Main" );
+   p_slDeleteDataInterfaces.Add( "Meta" );
+   p_slDeleteDataInterfaces.Add( "NodeArray" );
+   p_slDeleteDataInterfaces.Add( "NodeLinkDependency" );
+   p_slDeleteDataInterfaces.Add( "NodeLinkNodeDependency" );
+   p_slDeleteDataInterfaces.Add( "Parse" );
+   p_slDeleteDataInterfaces.Add( "PathPaletteGroupDependency" );
+   p_slDeleteDataInterfaces.Add( "PlanarProjectTexturePrimitiveMaterialDependency" );
+   p_slDeleteDataInterfaces.Add( "RectangleGeometryModifierMaterialDependency" );
+   p_slDeleteDataInterfaces.Add( "RectangleGeometryModifierVectorNode" );
+   p_slDeleteDataInterfaces.Add( "SpaApplicationUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaBuildUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaControlShaderUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaDependencyUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaEvaluationShaderUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaFileUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaFragmentShaderUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaGenerateShaderUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaGeometryShaderUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaHtmlUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaImageUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaIntArrayUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaInterfaceUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaListUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaMathUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaMenuUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaMeshUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaModuleUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaNodeDocumentationUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaNodeUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaPerformanceUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaPropertySheetUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaRemoteDatabaseUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaSelectUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaStatisticsUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaStrListUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaTerrainUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaTextureUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaTypeTreeUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaTypeUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaValidationUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaVariableUtil" );
+   p_slDeleteDataInterfaces.Add( "SpaVertexShaderUtil" );
+   p_slDeleteDataInterfaces.Add( "SphereGeometryModifierMaterialDependency" );
+   p_slDeleteDataInterfaces.Add( "SubdivideGeotiffModifier" );
+   p_slDeleteDataInterfaces.Add( "SubdivideMrSidModifier" );
+   p_slDeleteDataInterfaces.Add( "SubdivideQuadModifier" );
+   p_slDeleteDataInterfaces.Add( "SubroutineIntegerNode" );
+   p_slDeleteDataInterfaces.Add( "SweepGeometryModifierCrossSectionsGroupDependency" );
+   p_slDeleteDataInterfaces.Add( "SweepGeometryModifierMaterialDependency" );
+   p_slDeleteDataInterfaces.Add( "SweepGeometryModifierRailsGroupDependency" );
+   p_slDeleteDataInterfaces.Add( "Template" );
+   p_slDeleteDataInterfaces.Add( "TemplateUtil" );
+   p_slDeleteDataInterfaces.Add( "TextureAlphaChannelDependency" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void DeleteMaskedItems( List p_lDataInterfaceGraphNodes )
+{
+   auto StrList a_slDeleteDataInterfaces;
+   CreateDataInterfaceMasks( a_slDeleteDataInterfaces );
+
+   for( int i = 0; i < p_lDataInterfaceGraphNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lDataInterfaceGraphNodes.Get( i );
+
+      if( a_slDeleteDataInterfaces.Find( a_oNode.Name ) != -1 )
+      {
+         Model.DeleteNode(  a_oNode );
+      }
+   }
+}

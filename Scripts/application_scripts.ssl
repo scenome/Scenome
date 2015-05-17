@@ -1,0 +1,1402 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// $file             APPLICATION_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $description      This script implements commands that modify the application state.
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+import library "application_util.ssl";
+import library "expression_util.ssl";
+import library "file_util.ssl";
+import library "graph_util.ssl";
+import library "html_util.ssl";
+import library "int_array_util.ssl";
+import library "opengl_util.ssl";
+import library "list_util.ssl";
+import library "message_util.ssl";
+import library "meta_util.ssl";
+import library "module_util.ssl";
+import library "statistics_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void HandleOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Node, hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ShellLoad_OnUpdate( CommandPresentationModuleInfo commandInfo, string appfolder, string appname )
+{
+   commandInfo.SetCheck( SpaApplicationUtil.SPA_IsApplicationFileLoaded( appfolder, appname ) );
+   commandInfo.Status.SetHint( "Switch to the Scenome application named '" + appname + "'" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int SwitchShell( string p_sShellName )
+{
+   string a_sAppFilePath = Application.GetApplicationDocumentsFilePath(
+      "Applications\\" + p_sShellName + "\\" + p_sShellName + ".scenomeapp" );
+   bool a_bSaveAsDefaultShell = true;
+   Application.LoadApplicationFile( a_sAppFilePath, a_bSaveAsDefaultShell );
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExecuteShell( string p_sShellIdentifier )
+{
+   Application.ShellExec( Application.GetApplicationDocumentsFilePath(
+      "Applications\\" + p_sShellIdentifier + "\\" + p_sShellIdentifier + ".scenomeapp" ) );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationLoadProjectDesignerShell_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ShellLoad_OnUpdate( commandInfo, "ProjectDesigner", "ProjectDesigner" );
+}
+
+macro ApplicationLoadProjectDesignerShell()
+[Category="Desktop Commands", Guid="{89326B10-023E-4F5B-927A-4236DA89E71C}", Image=".\\icons\\start_project_designer.bmp"]
+{
+   ExecuteShell( "ProjectDesigner" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationLoadShaderDesignerShell_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ShellLoad_OnUpdate( commandInfo, "ShaderDesigner", "ShaderDesigner" );
+}
+
+macro ApplicationLoadShaderDesignerShell()
+[Category="Desktop Commands", Guid="{1F922072-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\start_shader_designer.bmp"]
+{
+   ExecuteShell( "ShaderDesigner" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationLoadMaterialDesignerShell_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ShellLoad_OnUpdate( commandInfo, "MaterialDesigner", "MaterialDesigner" );
+}
+
+macro ApplicationLoadMaterialDesignerShell()
+[Category="Desktop Commands", Guid="{1F922070-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\start_material_designer.bmp"]
+{
+   ExecuteShell( "MaterialDesigner" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationLoadSceneDesignerShell_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ShellLoad_OnUpdate( commandInfo, "SceneDesigner", "SceneDesigner" );
+}
+
+macro ApplicationLoadSceneDesignerShell()
+[Category="Desktop Commands", Guid="{004AA530-8937-4373-B5A3-42AE2C2BF4D7}", Image=".\\icons\\start_scene_designer.bmp"]
+{
+   ExecuteShell( "SceneDesigner" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationLoadRenderDesignerShell_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ShellLoad_OnUpdate( commandInfo, "RenderDesigner", "RenderDesigner" );
+}
+
+macro ApplicationLoadRenderDesignerShell()
+[Category="Desktop Commands", Guid="{A4B0ECFA-F3D4-4A44-867E-319563EE0BE1}", Image=".\\icons\\start_render_designer.bmp"]
+{
+   ExecuteShell( "RenderDesigner" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationLoadScenomeProjectShell_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ShellLoad_OnUpdate( commandInfo, "Scenome", "project mode" );
+}
+
+macro ApplicationLoadScenomeProjectShell()
+[Category="Desktop Commands", Guid="{890631A2-B33D-47F9-ABEC-4F950840C4CF}", Image=".\\icons\\load_scenome_project_shell.bmp"]
+{
+   SwitchShell( "Scenome" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationLoadScenomeLayoutShell_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ShellLoad_OnUpdate( commandInfo, "Scenome", "layout mode" );
+}
+
+macro ApplicationLoadScenomeLayoutShell()
+[Category="Desktop Commands", Guid="{1265001D-0FC7-411A-8094-2B5AE6834727}", Image=".\\icons\\load_scenome_layout_shell.bmp"]
+{
+   SwitchShell( "Layout" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationLoadProductShell_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ShellLoad_OnUpdate( commandInfo, "Product", "Product" );
+}
+
+macro ApplicationLoadProductShell()
+[Category="Desktop Commands", Guid="{CD8D2EF3-C474-483D-A4ED-3822F615102C}", Image=".\\icons\\load_product_shell.bmp"]
+{
+   SwitchShell( "Product" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationLoadGraphShell_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ShellLoad_OnUpdate( commandInfo, "Graph", "Graph" );
+}
+
+macro ApplicationLoadGraphShell()
+[Category="Desktop Commands", Guid="{D9003646-665A-4F71-9914-80DA13EDF12E}", Image=".\\icons\\load_graph_shell.bmp"]
+{
+   SwitchShell( "Graph" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationLoadShaderShell_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ShellLoad_OnUpdate( commandInfo, "Shader", "Shader" );
+}
+
+macro ApplicationLoadShaderShell()
+[Category="Desktop Commands", Guid="{78438592-3E15-4808-8445-A6C516C4AFC4}", Image=".\\icons\\load_shader_shell.bmp"]
+{
+   SwitchShell( "Shader" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationStartAnotherShell_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Start another copy of the current application" );
+}
+
+macro ApplicationStartAnotherShell()
+[Category="Desktop Commands", Guid="{8E66B88A-E54A-422D-AAF4-C558A68BCD8C}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Application.ShellExec( Application.GetActiveApplicationFile() );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationReloadInterface_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Reloads the current interface with current changes" );
+}
+
+macro ApplicationReloadInterface()
+[Category="Desktop Commands", Guid="{55A653B0-5C74-442C-AAD7-25B0043FBF9B}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   bool a_bSaveAsDefaultShell = true;
+   string a_sCurrentAppFile = Application.GetInterfaceDefinitionFile();
+   Application.SetInterfaceDefinitionFile( a_sCurrentAppFile );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CopyNewNodeCommandScriptToClipboard_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Copies a new, blank macro and empty macro body to the Windows clipboard." );
+}
+
+macro CopyNewNodeCommandScriptToClipboard()
+[Category="Application Commands", Guid="{0C6D168F-989D-46FD-87F1-455C1E98C617}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).Clear();
+   
+   Guid guid = new Guid;
+   
+   guid.Generate();
+   
+   string a_sNewNodeCommandScript = 
+
+   "////////////////////////////////////////////////////////////////////////////////" + "\n" +
+   "// MACRO-NAME-GOES-HERE" + "\n" +
+   "////////////////////////////////////////////////////////////////////////////////" + "\n" +
+   "\n" +
+   "function void MACRO-NAME-GOES-HERE_OnUpdate( CommandPresentationModuleInfo commandInfo )" + "\n" +
+   "{" + "\n" +
+   "  ValidateNodeCommandContext.TestContext( commandInfo, NODE-TYPE, \"COMMAND DESCRIPTION GOES HERE\" );" + "\n" +
+   "}" + "\n" +
+   "\n" +
+   "macro MACRO-NAME-GOES-HERE()" + "\n" +
+   "[Category=\"COMMAND-CATEGORY-GOES-HERE\", Guid=\"" + guid.Value + "\", Image=\".\\\\icons\\\\SCRIPT-COMMAND-ICON-GOES-HERE.BMP\"]" + "\n" +
+   "{" + "\n" +
+   "  for( int i = 0; i < Model.GetSelectCount(); ++i )" + "\n" +
+   "  {" + "\n" +
+   "     Node node = Model.GetSelectedNode( i ).GetNode();" + "\n" +
+   "\n" +
+   "     if( node.IsDerived( NODE-TYPE ) )" + "\n" +
+   "     {" + "\n" +
+   "        NODE-TYPE NODE-NAME = (NODE-TYPE)Model.EditNode( node );" + "\n" +
+   "        // Command body goes here. Something like:" + "\n" +
+   "        // material.AlphaBlend = !material.AlphaBlend;" + "\n" +
+   "        // material.Opacity = 0.5;" + "\n" +
+   "     }" + "\n" +
+   "  }" + "\n" +                                    
+   "}";
+
+   ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( a_sNewNodeCommandScript );
+
+   // This is going to clear the Windows clipboard.
+   Clipboard.SetString ( a_sNewNodeCommandScript );
+
+   // Clean up after yourself.  
+   delete guid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CopyNewFunctionToClipboard_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Copies a new, blank function prototype and empty function body to the Windows clipboard." );
+}
+
+macro CopyNewFunctionToClipboard()
+[Category="Application Commands", Guid="{3E9EB344-BC1E-499C-B9EC-EBB42C0AA480}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).Clear();
+   
+   string a_sNewFunction = 
+
+   "////////////////////////////////////////////////////////////////////////////////" + "\n" +
+   "// FUNCTION-NAME-GOES-HERE" + "\n" +
+   "////////////////////////////////////////////////////////////////////////////////" + "\n" +
+   "\n" +
+   "function void FUNCTION-NAME-GOES-HERE()" + "\n" +
+   "{" + "\n" +
+   "  // Function body goes here." + "\n" +
+   "}";
+
+   ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( a_sNewFunction );
+
+   // This is going to clear the Windows clipboard.
+   Clipboard.SetString ( a_sNewFunction );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationDisplayDataDirectories_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Enumerates the application data directories in the output window." );
+}
+
+macro ApplicationDisplayDataDirectories()
+[Category="Application Commands", Guid="{10BC23FC-B996-42DF-914B-E8F2945E33C5}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Console.Message( "\n<Application Data Directories>\n" );
+
+   auto FilePath a_oAppPath = new FilePath( Application.GetApplicationPath() );
+   a_oAppPath.Canonicalize();
+
+   auto FilePath a_oAppData = new FilePath( Application.GetApplicationDataPath() );
+   a_oAppData.Canonicalize();
+
+   auto FilePath a_oAppDocs = new FilePath( Application.GetApplicationDocumentsPath() );
+   a_oAppDocs.Canonicalize();
+
+   auto FilePath a_oTextures = new FilePath( Application.GetApplicationDocumentsPath() );
+   a_oTextures.AppendPath( "samples" );
+   a_oTextures.AppendPath( "textures" );
+   a_oTextures.Canonicalize();
+
+   auto FilePath a_oIncludes = new FilePath( Application.GetApplicationDocumentsPath() );
+   a_oIncludes.AppendPath( "includes" );
+   a_oIncludes.Canonicalize();
+
+   auto FilePath a_oScripts = new FilePath( Application.GetApplicationDataPath() );
+   a_oScripts.AppendPath( "scripts" );
+   a_oScripts.Canonicalize();
+
+   Console.Message( "Application Path             " + a_oAppPath.GetPath() );
+   Console.Message( "Application Data Path        " + a_oAppData.GetPath() );
+   Console.Message( "Application Documents Path   " + a_oAppDocs.GetPath() );
+   Console.Message( "Application Textures Path    " + a_oTextures.GetPath() );
+   Console.Message( "Application Includes Path    " + a_oIncludes.GetPath() );
+   Console.Message( "Application Scripts Path     " + a_oScripts.GetPath() );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string CreateExtensionString( StrList p_slExtensions )
+{
+   string a_sReport = "<?spa?><xml>";
+
+   for( int i = 0; i < p_slExtensions.GetCount(); ++i )
+   {
+      a_sReport += p_slExtensions.Get(i);
+   }
+
+   a_sReport += "</xml>";
+
+   return a_sReport;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationDisplaySystemHardwareCapabilities_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Enumerates the current CPU and GPU hardware capabilities." );
+}
+
+macro ApplicationDisplaySystemHardwareCapabilities()
+[Category="Application Commands", Guid="{C5E1F0C8-B343-4E17-A845-D782B6BE2875}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   OutputViewEditor outputView = (OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" );
+
+   Render3D render = Model.ActiveView.Render;
+
+   auto IntArray a_aiValues;
+   auto Str a_sValue;
+   a_aiValues.Count = 4;
+
+   if( 1 )
+   {
+      // Enumerate OpenGL hardware parameters. Keep this list alphabetical.
+      Console.Message( "\n<OpenGL glGet Queries>\n" );
+      render.QueryDeviceParameterInt( GPU.GL_ACTIVE_ATTRIBUTE_MAX_LENGTH(), a_aiValues );
+      Console.Message( "GL ActiveAttributeMaxLength: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_ACTIVE_UNIFORM_MAX_LENGTH(), a_aiValues );
+      Console.Message( "GL ActiveUniformMaxLength: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_3D_TEXTURE_SIZE(), a_aiValues );
+      Console.Message( "GL Max3DTextureSize: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_ATTRIB_STACK_DEPTH(), a_aiValues );
+      Console.Message( "GL MaxAttribStackDepth: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_CLIP_PLANES(), a_aiValues );
+      Console.Message( "GL MaxClipPlanes: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS(), a_aiValues );
+      Console.Message( "GL MaxCombinedTextureImageUnits: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_CUBE_MAP_TEXTURE_SIZE(), a_aiValues );
+      Console.Message( "GL MaxCubeMapTextureSize: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_DRAW_BUFFERS(), a_aiValues );
+      Console.Message( "GL MaxRenderTargets: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_ELEMENTS_INDICES(), a_aiValues );
+      Console.Message( "GL MaxElementsIndices: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_ELEMENTS_VERTICES(), a_aiValues );
+      Console.Message( "GL MaxElementsVertices: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_EVAL_ORDER(), a_aiValues );
+      Console.Message( "GL MaxEvalOrder: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_FRAGMENT_UNIFORM_COMPONENTS(), a_aiValues );
+      Console.Message( "GL MaxFragmentUniformComponents: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_LIGHTS(), a_aiValues );
+      Console.Message( "GL MaxLights: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_LIST_NESTING(), a_aiValues );
+      Console.Message( "GL MaxListNesting: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_MODELVIEW_STACK_DEPTH(), a_aiValues );
+      Console.Message( "GL MaxModelViewStack: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_NAME_STACK_DEPTH(), a_aiValues );
+      Console.Message( "GL MaxNameStackDepth: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_PIXEL_MAP_TABLE(), a_aiValues );
+      Console.Message( "GL MaxPixelMapTable: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_PROJECTION_STACK_DEPTH(), a_aiValues );
+      Console.Message( "GL MaxProjectionStackDepth: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_TEXTURE_COORDS(), a_aiValues );
+      Console.Message( "GL MaxTextureCoords: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_TEXTURE_IMAGE_UNITS(), a_aiValues );
+      Console.Message( "GL MaxTextureImageUnits: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_TEXTURE_LOD_BIAS(), a_aiValues );
+      Console.Message( "GL MaxTextureLODBias: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_TEXTURE_STACK_DEPTH(), a_aiValues );
+      Console.Message( "GL MaxTextureStackDepth: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_TEXTURE_SIZE(), a_aiValues );
+      Console.Message( "GL MaxTextureSize: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_TEXTURE_UNITS(), a_aiValues );
+      Console.Message( "GL MaxTextureUnits: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_VARYING_FLOATS(), a_aiValues );
+      Console.Message( "GL MaxTextureBufferSize: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_TEXTURE_BUFFER_SIZE(), a_aiValues );
+      Console.Message( "GL MaxVaryingFloats: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_VERTEX_ATTRIBS(), a_aiValues );
+      Console.Message( "GL MaxVertexAttribs: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS(), a_aiValues );
+      Console.Message( "GL MaxVertexTextureImageUnits: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_VERTEX_UNIFORM_COMPONENTS(), a_aiValues );
+      Console.Message( "GL MaxVertexUniformComponents: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_VIEWPORT_DIMS(), a_aiValues );
+      Console.Message( "GL MaxViewport: " + a_aiValues.Objects[0] + " x " + + a_aiValues.Objects[1] );
+      render.QueryDeviceParameterString( GPU.GL_RENDERER(), a_sValue );
+      Console.Message( "GL Renderer: " + a_sValue.Value );
+      render.QueryDeviceParameterString( GPU.GL_VENDOR(), a_sValue );
+      Console.Message( "GL Vendor: " + a_sValue.Value );
+      render.QueryDeviceParameterString( GPU.GL_VERSION(), a_sValue );
+      Console.Message( "GL Version: " + a_sValue.Value );
+      render.QueryDeviceParameterString( GPU.GL_SHADING_LANGUAGE_VERSION(), a_sValue );
+      Console.Message( "GL Shading Language Version: " + a_sValue.Value );
+      render.QueryDeviceParameterInt( GPU.GL_MAJOR_VERSION(), a_aiValues );
+      Console.Message( "GL Major Version: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MINOR_VERSION(), a_aiValues );
+      Console.Message( "GL Minor Version: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_GEOMETRY_SHADER_INVOCATIONS(), a_aiValues );
+      Console.Message( "GL MaxGeometryShaderInvocations: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_VERTEX_STREAMS(), a_aiValues );
+      Console.Message( "GL MaxVertexStreams: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_PATCH_VERTICES(), a_aiValues );
+      Console.Message( "GL MaxPatchVertices: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_SUBROUTINES(), a_aiValues );
+      Console.Message( "GL MaxSubroutines: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_ACTIVE_SUBROUTINE_UNIFORM_LOCATIONS(), a_aiValues );
+      Console.Message( "GL ActiveSubroutineUniformLocations: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GL_MAX_VERTEX_SHADER_INSTRUCTIONS_EXT(), a_aiValues );
+      Console.Message( "GL MaxVertexShaderInstructions: " + a_aiValues.Objects[0] );
+
+      // NVIDIA SPECIFIC QUERIES
+      Console.Message( "\n<NVIDIA SPECIFIC>\n" );
+      render.QueryDeviceParameterInt( GPU.GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX(), a_aiValues );
+      Console.Message( "NVIDIA Dedicated Video Memory: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX(), a_aiValues );
+      Console.Message( "NVIDIA Total Available Memory: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX(), a_aiValues );
+      Console.Message( "NVIDIA Memory Available Right Now: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GPU_MEMORY_INFO_EVICTION_COUNT_NVX(), a_aiValues );
+      Console.Message( "NVIDIA Memory Eviction Count: " + a_aiValues.Objects[0] );
+      render.QueryDeviceParameterInt( GPU.GPU_MEMORY_INFO_EVICTED_MEMORY_NVX(), a_aiValues );
+      Console.Message( "NVIDIA Evicted Memory: " + a_aiValues.Objects[0] );
+
+      // Enumerate basic Render3D device parameters.
+      RenderDeviceCaps a_oDeviceCaps = render.GetDeviceCapabilities();
+      Console.Message( "\n<Render3D.DeviceCaps>\n" );
+      Console.Message( "Version : " + a_oDeviceCaps.Version );
+      Console.Message( " Major, Minor: " + a_oDeviceCaps.VersionMajor + ", " + a_oDeviceCaps.VersionMinor );
+      Console.Message( "LanguageVersion: " + a_oDeviceCaps.LanguageVersion );
+      Console.Message( " Major, Minor: " + a_oDeviceCaps.LanguageVersionMajor + ", " + a_oDeviceCaps.LanguageVersionMinor );
+      Console.Message( "MaxTextureWidth: " + a_oDeviceCaps.MaxTextureWidth );
+      Console.Message( "MaxTextureHeight: " + a_oDeviceCaps.MaxTextureHeight );
+      Console.Message( "MaxViewportWidth: " + a_oDeviceCaps.MaxViewportWidth );
+      Console.Message( "MaxViewportHeight: " + a_oDeviceCaps.MaxViewportHeight );
+   }
+
+   auto BaseSystemInformation baseInfo;
+   Console.Message( "\n<BaseSystemInfo>\n" );
+   Console.Message( "CPU RAM: " + baseInfo.GetRam() + " MB" );
+   Console.Message( "CPU Count: " + baseInfo.GetCpuCount() );
+
+   int i;
+   for( i = 0; i < baseInfo.GetCpuCount(); ++i )
+   {
+      Console.Message( "Cores: " + baseInfo.GetCpuCores( i ) );
+      Console.Message( "MHz: " + baseInfo.GetCpuMhz( i ) );
+   }
+
+   Console.Message( "GPU Count: " + baseInfo.GetGpuCount() );
+
+   for( i = 0; i < baseInfo.GetGpuCount(); ++i )
+   {
+      Console.Message( "GPU RAM: " + baseInfo.GetGpuRam( i ) + " MB" );
+   }
+
+   string a_sReport;
+
+   Console.Message( "\n<GL_AMD Extensions>\n" );
+   auto StrList a_slExtensions_GLAMD;
+   GPU.CreateExtensionsList( a_slExtensions_GLAMD, "GLAMD", true );
+   a_sReport = CreateExtensionString( a_slExtensions_GLAMD );
+   Console.Message( a_sReport );
+   a_sReport = "";
+
+   Console.Message( "\n<GL_ATI Extensions>\n" );
+   auto StrList a_slExtensions_GLATI;
+   GPU.CreateExtensionsList( a_slExtensions_GLATI, "GLATI", true );
+   a_sReport = CreateExtensionString( a_slExtensions_GLATI );
+   Console.Message( a_sReport );
+   a_sReport = "";
+
+   Console.Message( "\n<GL_ARB Extensions>\n" );
+   auto StrList a_slExtensions_GLARB;
+   GPU.CreateExtensionsList( a_slExtensions_GLARB, "GLARB", true );
+   a_sReport = CreateExtensionString( a_slExtensions_GLARB );
+   Console.Message( a_sReport );
+   a_sReport = "";
+
+   Console.Message( "\n<GL_EXT Extensions>\n" );
+   auto StrList a_slExtensions_GLEXT;
+   GPU.CreateExtensionsList( a_slExtensions_GLEXT, "GLEXT", true );
+   a_sReport = CreateExtensionString( a_slExtensions_GLEXT );
+   Console.Message( a_sReport );
+   a_sReport = "";
+
+   Console.Message( "\n<GL_NVX Extensions>\n" );
+   auto StrList a_slExtensions_GLNVX;
+   GPU.CreateExtensionsList( a_slExtensions_GLNVX, "GLNVX", true );
+   a_sReport = CreateExtensionString( a_slExtensions_GLNVX );
+   Console.Message( a_sReport );
+   a_sReport = "";
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationCheckDatabaseClass( ApplicationEvent event )
+[HandleEvent="SPA.FileEvents.FileOpening"]
+{
+   string a_sCurrentShell;
+   int a_iShaderDesignerShell = SpaApplicationUtil.IsShaderDesignerApplicationLoaded();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateDatabaseClassList()
+{
+   string a_sDatabaseClasses;
+
+   a_sDatabaseClasses += "Shader\n";
+   a_sDatabaseClasses += "v1_shader\n";
+   a_sDatabaseClasses += "v2_shader\n";
+   a_sDatabaseClasses += "v3_shader\n";
+   a_sDatabaseClasses += "StaticShaderGraph\n";
+   a_sDatabaseClasses += "DynamicShaderGraph\n";
+   a_sDatabaseClasses += "VertexFragmentGraph\n";
+   a_sDatabaseClasses += "VertexGeometryFragmentGraph\n";
+   a_sDatabaseClasses += "VertexTessellationFragmentGraph\n";
+   a_sDatabaseClasses += "VertexTessellationGeometryFragmentGraph\n";
+   a_sDatabaseClasses += "Material\n";
+   a_sDatabaseClasses += "Scene\n";
+   a_sDatabaseClasses += "Terrain\n";
+   a_sDatabaseClasses += "Tree\n";
+   a_sDatabaseClasses += "Render\n";
+   a_sDatabaseClasses += "Project\n";
+   a_sDatabaseClasses += "DocumentationProject\n";
+   a_sDatabaseClasses += "ApplicationProject\n";
+   a_sDatabaseClasses += "Table\n";
+   a_sDatabaseClasses += "Palette\n";
+   a_sDatabaseClasses += "Include\n";
+   a_sDatabaseClasses += "Library\n";
+   a_sDatabaseClasses += "Product\n";
+   a_sDatabaseClasses += "Product_Empty\n";
+   a_sDatabaseClasses += "ClassDeclarations\n";
+   a_sDatabaseClasses += "ClassObjects\n";
+
+   return a_sDatabaseClasses;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Please call functions from this event handler.
+
+function void ApplicationWriteScenomeInterface()
+[HandleEvent="SPA.ApplicationStateEvents.ShutdownStage0"]
+{
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Please call functions from this event handler.
+
+function void ApplicationWriteShadingLanguageVersion()
+[HandleEvent="SPA.ApplicationStateEvents.Running"]
+{
+   // Write GLSL version.
+   // Do this once when the application starts.
+   Expression.WriteGLSLVersion();
+   Expression.WriteGlobalConstantValues();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Please call functions from this event handler. Do not alter any pre-existing
+// functionality, just extend the existing functionality. Some pre-existing
+// functionality may be provided for backwards compatibility.
+
+function void ApplicationUpdateFileOnOpening( FileOpeningEvent event )
+[HandleEvent="SPA.FileEvents.FileOpening"]
+{
+   // GREAT DEBUGGING FEATURE - DISABLES RENDERING
+   //Model.Visible = false;
+   //Graph.RestoreLinkNodes( false );
+
+   // We need to rewrite the SSL code generation function
+   // when we open any database. Rather than performing
+   // an expensive search, we will check the directory
+   // and see if the file GENERATE_SHADER_CODE.SSL is
+   // inside the folder.
+
+   // Get the current document's complete filename.
+   // Remove the filename.
+   auto FilePath a_oModelDirectory = new FilePath( Model.Filename );
+   a_oModelDirectory.Canonicalize();
+   a_oModelDirectory.RemoveFileName();
+
+   // Append the shader code generator file to
+   // the path we prepared above.
+   auto FilePath a_oShaderGenerator = new FilePath( a_oModelDirectory.GetPath() );
+   a_oShaderGenerator.AppendPath( Main.GetShaderGenerationFile() );
+   
+   // Rewrite the shader generator file if it exists in the directory.
+   if( a_oShaderGenerator.FileExists() )
+   {
+      Expression.GenerateExpressionTemplates( a_oModelDirectory.GetPath() );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Please call functions from this event handler. Do not alter any pre-existing
+// functionality, just extend the existing functionality. Some pre-existing
+// functionality may be provided for backwards compatibility.
+
+function void ApplicationUpdateFileOnOpened( FileOpenedEvent event )
+[HandleEvent="SPA.FileEvents.FileOpened"]
+{
+   // Perform synchronization.
+   bool a_bVerbose = false;
+   Graph.UpdateSelectionSets( event );
+
+   // Generate SSL template code. Please generate all template code
+   // into template_util.ssl. Do not alter template_util.ssl in such
+   // a way that it includes anything not already included.
+   //Meta.CompileTemplateFunctions();
+
+   if( Model.Class == "v0_shader" )
+   {
+      if( SpaApplicationUtil.IsShaderApplicationLoaded() )
+      {
+         SpaApplicationUtil.GetShellForClass( Model.Class );
+      }
+   }
+   else
+   if( Model.Class == "v1_shader" )
+   {
+      if( SpaApplicationUtil.IsShaderApplicationLoaded() )
+      {
+         SpaApplicationUtil.GetShellForClass( Model.Class );
+         // Optional - If you want a very clean appearance on startup.
+         //Console.ClearOutputWindow();
+      }
+   }
+   else
+   if( Model.Class == "v2_shader" )
+   {
+      if( SpaApplicationUtil.IsShaderApplicationLoaded() )
+      {
+         SpaApplicationUtil.GetShellForClass( Model.Class );
+         // Optional - If you want a very clean appearance on startup.
+         //Console.ClearOutputWindow();
+      }
+   }
+   else
+   if( Model.Class == "v3_shader" )
+   {
+      if( SpaApplicationUtil.IsShaderApplicationLoaded() )
+      {
+         SpaApplicationUtil.GetShellForClass( Model.Class );
+         // Optional - If you want a very clean appearance on startup.
+         //Console.ClearOutputWindow();
+      }
+   }
+   else
+   if( Model.Class == "Material" )
+   {
+      // DO NOTHING.
+   }
+   else
+   if( Model.Class == "Scene" )
+   {
+      // DO NOTHING.
+   }
+   else
+   if( Model.Class == "Terrain" )
+   {
+      if( SpaApplicationUtil.IsTerrainApplicationLoaded() )
+      {
+         SpaApplicationUtil.GetShellForClass( Model.Class );
+         // Optional - If you want a very clean appearance on startup.
+         //Console.ClearOutputWindow();
+      }
+   }
+   else
+   if( Model.Class == "Terrain_Empty" )
+   {
+      if( SpaApplicationUtil.IsTerrainApplicationLoaded() )
+      {
+         SpaApplicationUtil.GetShellForClass( Model.Class );
+         // Optional - If you want a very clean appearance on startup.
+         //Console.ClearOutputWindow();
+      }
+   }
+   else
+   if( Model.Class == "Tree" )
+   {
+      // DO NOTHING.
+   }
+   else
+   if( Model.Class == "Render" )
+   {
+      // DO NOTHING.
+   }
+   else
+   if( Model.Class == "Project" )
+   {
+      // DO NOTHING.
+   }
+   else
+   if( Model.Class == "Table" )
+   {
+      // DO NOTHING.
+   }
+   else
+   if( Model.Class == "Palette" )
+   {
+      // DO NOTHING.
+   }
+   else
+   if( Model.Class == "Include" )
+   {
+      if( SpaApplicationUtil.IsShaderApplicationLoaded() )
+      {
+         SpaApplicationUtil.GetShellForClass( "v3_shader" );
+         Console.ClearOutputWindow();
+      }
+   }
+   else
+   if( Model.Class == "Template" )
+   {
+      // DO NOTHING.
+   }
+   else
+   if( Model.Class == "Library" )
+   {
+      // DO NOTHING.
+   }
+   else
+   if( Model.Class == "Product" )
+   {
+      if( SpaApplicationUtil.IsProductApplicationLoaded() )
+      {
+         SpaApplicationUtil.GetShellForClass( Model.Class );
+      }
+      //SpaApplicationUtil.MaybeOverrideDefaultProjectPaths( Model );
+   }
+   else
+   if( Model.Class == "Product_Empty" )
+   {
+      if( SpaApplicationUtil.IsProductApplicationLoaded() )
+      {
+         SpaApplicationUtil.GetShellForClass( Model.Class );
+      }
+   }
+   else
+   if( Model.Class == "ClassDeclarations" )
+   {
+      // DO NOTHING.
+   }
+   else
+   if( Model.Class == "ClassObjects" )
+   {
+      // DO NOTHING.
+   }
+   else
+   if( Model.Class == "Utility" )
+   {
+      if( SpaApplicationUtil.IsUtilityApplicationLoaded() )
+      {
+         SpaApplicationUtil.GetShellForClass( Model.Class );
+         // Optional - If you want a very clean appearance on startup.
+         //Console.ClearOutputWindow();
+      }
+   }
+   else
+   if( Model.Class == "Utility_Empty" )
+   {
+      if( SpaApplicationUtil.IsUtilityApplicationLoaded() )
+      {
+         SpaApplicationUtil.GetShellForClass( Model.Class );
+         // Optional - If you want a very clean appearance on startup.
+         //Console.ClearOutputWindow();
+      }
+   }
+   else
+   {
+      string a_sMessage = "This database does not belong to any registered database class.\n";
+      a_sMessage += "Double-click the root node ( at the top of the graph ) and set the 'Class' parameter to one of the following:\n\n";
+      a_sMessage += GenerateDatabaseClassList();
+      Console.GenerateOutputMessage( a_sMessage, "WARN" );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationOnFileSaving( FileSavingEvent event )
+[HandleEvent="SPA.FileEvents.FileSaving"]
+{
+   // Save the GUID map to disk
+   Graph.SaveGuidMap();
+
+   if( Model.Class == "Product" )
+   {
+      SpaApplicationUtil.WriteOverridePaths( Model );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro OpenExecutablesFolder( CommandPresentationModuleInfo commandInfo )
+[Category="Application Commands", Guid="{2197366A-CD61-473D-9033-09997BEBF9EA}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Application.ShellExec( Application.GetApplicationPath() );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro OpenApplicationDocumentsFolder( CommandPresentationModuleInfo commandInfo )
+[Category="Application Commands", Guid="{F4F34BC0-614B-4B9D-8F07-B1E239AE0EDA}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Application.ShellExec( Application.GetApplicationDocumentsPath() );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro OpenApplicationDataFolder( CommandPresentationModuleInfo commandInfo )
+[Category="Application Commands", Guid="{B9D9320F-8F15-44F4-9B3C-627DB5ED0C97}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Application.ShellExec( Application.GetApplicationDataPath() );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro OpenInterfaceDefinitionFile( CommandPresentationModuleInfo commandInfo )
+[Category="Application Commands", Guid="{7799151D-2480-4EBE-A52A-C19BD7F495AA}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Application.ShellExec( Application.GetInterfaceDefinitionFile() );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScriptSetModeSelectMeshes_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the software to select mode + meshes." );
+}
+
+macro ScriptSetModeSelectMeshes()
+[Category="Select Commands", Guid="{E75C5087-48C6-472F-BDFD-F9DD6570E747}", Image=".\\icons\\activate_select_mesh_mode.bmp"]
+{
+   Graph.SetSelectPickMode( "SetMeshPick" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScriptSetModeSelectFaces_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the software to select mode + faces." );
+}
+
+macro ScriptSetModeSelectFaces()
+[Category="Select Commands", Guid="{96BE9859-5575-4EF2-AD85-1A2D7BAA45D4}", Image=".\\icons\\activate_select_face_mode.bmp"]
+{
+   Graph.SetSelectPickMode( "SetMeshFacePick" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScriptSetModeSelectEdges_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the software to select mode + edges." );
+}
+
+macro ScriptSetModeSelectEdges()
+[Category="Select Commands", Guid="{C0267F31-5BDE-4E1B-AF2F-DB7BA2DE0404}", Image=".\\icons\\activate_select_edge_mode.bmp"]
+{
+   Graph.SetSelectPickMode( "SetMeshEdgePick" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScriptSetModeSelectVertices_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the software to select mode + vertices." );
+}
+
+macro ScriptSetModeSelectVertices()
+[Category="Select Commands", Guid="{47A8551B-5374-4ECD-A145-D9D40DF7FD24}", Image=".\\icons\\activate_select_vertex_mode.bmp"]
+{
+   Graph.SetSelectPickMode( "SetMeshVertexPick" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScriptSetModeSelectCurves_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the software to select mode + curves." );
+}
+
+macro ScriptSetModeSelectCurves()
+[Category="Select Commands", Guid="{687E6588-8DEB-4C18-A011-58F19F4146E8}", Image=".\\icons\\activate_select_curve_mode.bmp"]
+{
+   Graph.SetSelectPickMode( "SetCurvePick" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScriptSetModeSelectSegments_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the software to select mode + curve segments." );
+}
+
+macro ScriptSetModeSelectCurveSegments()
+[Category="Select Commands", Guid="{FF1AAB52-9268-439F-8410-6A690FFD8A93}", Image=".\\icons\\activate_select_segment_mode.bmp"]
+{
+   Graph.SetSelectPickMode( "SetCurveSegmentPick" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScriptSetModeSelectPoints_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the software to select mode + curve points." );
+}
+
+macro ScriptSetModeSelectCurvePoints()
+[Category="Select Commands", Guid="{67804294-C0E8-4F25-BDFB-2175D5ADDB57}", Image=".\\icons\\activate_select_point_mode.bmp"]
+{
+   Graph.SetSelectPickMode( "SetCurvePointPick" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScriptSetModeSelectLights_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the software to select mode + lights." );
+}
+
+macro ScriptSetModeSelectLights()
+[Category="Select Commands", Guid="{1724FE99-7B9A-4AF0-9364-F76E9378792A}", Image=".\\icons\\activate_select_light_mode.bmp"]
+{
+   Graph.SetSelectPickMode( "SetLightPick" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScriptSetModeSelectCamera_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the software to select mode + camera." );
+}
+
+macro ScriptSetModeSelectCamera()
+[Category="Select Commands", Guid="{EFD1C65A-0CE9-447A-A87D-B334169DCEB4}", Image=".\\icons\\activate_select_camera_mode.bmp"]
+{
+   Graph.SetSelectPickMode( "SetCameraPick" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void OutputWindowSetMarginsToNone_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the software to select mode + camera." );
+}
+
+macro OutputWindowSetMarginsToNone()
+[Category="Application Commands", Guid="{15646FD5-8D69-40B6-A24E-95D9462974C3}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   OutputViewEditor outputView = (OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" );
+   outputView.SetMargins( 0, 0, true );
+
+   //Other examples.
+   //outputView.SetMargins( 50, 100, true );
+   //outputView.SetMargins( 0, 0, true );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void OutputWindowSetMarginsTenPixels_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Sets the software to select mode + camera." );
+}
+
+macro OutputWindowSetMarginsTenPixels()
+[Category="Application Commands", Guid="{AB6C6B8C-0CAE-4A31-A6B3-9E39041C3463}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   OutputViewEditor outputView = (OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" );
+   outputView.SetMargins( 10, 0, true );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro StubForTestingDataInterfaces()
+[Category="Application Commands", Guid="{0FA71930-7F5D-4113-BF2C-5A3A703BEAF0}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void DesktopClearOutput_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Clear the text in the output window" );
+}
+
+macro DesktopClearOutput()
+[Category="Desktop Commands", Guid="{1F91FA1B-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\clear_log_window.bmp"]
+{
+   ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).Clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationEnumerateGlobalModules_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Enumerates the global module list in the output window." );
+}
+
+macro ApplicationEnumerateGlobalModules()
+[Category="Desktop Commands", Guid="{C0FC20CE-4D6B-4DC2-9EBB-86DC9D0F6A39}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   auto StrList a_slGlobalModules;
+   SpaModuleUtil.GetModuleNames( a_slGlobalModules );
+   SpaStrListUtil.Out( a_slGlobalModules );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationEnumerateDockBarNamesAndGuids_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Enumerates the dockbar names and GUIDs in the output window." );
+}
+
+macro ApplicationEnumerateDockBarNamesAndGuids()
+[Category="Desktop Commands", Guid="{8CCBD13F-95DC-4738-893B-A35FB57CBBCF}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   auto StrList a_slDockBarNames;
+   auto StrList a_slDockBarGuids;
+   SpaModuleUtil.GetDockBarGuids( a_slDockBarNames, a_slDockBarGuids );
+   string a_sMessage = "\n<Panel Info \"dockbar\" xml element>\n";
+   for( int mod = 0; mod < a_slDockBarNames.GetCount(); ++mod )
+   {
+      a_sMessage += a_slDockBarNames.GetAt( mod ) + ": " + a_slDockBarGuids.GetAt( mod ) + "\n";
+   }
+
+   Console.Out( a_sMessage );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationEnumerateEditorNamesAndGuids_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Enumerates the editor names and GUIDs in the output window." );
+}
+
+macro ApplicationEnumerateEditorNamesAndGuids()
+[Category="Desktop Commands", Guid="{CE032BB2-BD04-4E40-ACE3-B2B0AE6743E6}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   auto StrList a_slEditorNames;
+   auto StrList a_slEditorGuids;
+   SpaModuleUtil.GetEditorGuids( a_slEditorNames, a_slEditorGuids );
+   string a_sMessage = "\n<Editor Info \"dockedview\" xml element>\n";
+   for( int mod = 0; mod < a_slEditorNames.GetCount(); ++mod )
+   {
+      a_sMessage += a_slEditorNames.GetAt( mod ) + ": " + a_slEditorGuids.GetAt( mod ) + "\n";
+   }
+
+   Console.Out( a_sMessage );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void DesktopClearPropertySheet_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Clear the property sheet" );
+}
+
+macro DesktopClearPropertySheet()
+[Category="Desktop Commands", Guid="{BE5B900E-16F8-437C-85A6-8A9F2DF3E7F1}"]
+{
+   PropertyListViewEditor a_oEditor = (PropertyListViewEditor)Application.GetEditor( "{1F91F9F5-F612-46D4-A453-4B81096121A9}" );
+   //a_oEditor.View.LoadPropertiesUI();
+   PropertyEditorModule a_oPropertyEditorModule = a_oEditor.View.GetPropertyEditorModule();
+
+   Console.Out( a_oEditor );
+   Console.Out( a_oPropertyEditorModule );
+
+   if( a_oPropertyEditorModule )
+   {
+      ModelView a_oView = Model.ActiveView;
+      PropertyList a_oPropertyList = a_oPropertyEditorModule.PropertyList;
+      PropertyEditorExecutionModuleInfo a_oPropertyEditorExecutionModuleInfo
+         = a_oPropertyEditorModule.GetPropertyEditorExecutionModuleInfo();
+      a_oPropertyEditorExecutionModuleInfo.SetModel( Model );
+      Console.Out( a_oPropertyList.GetCount() );
+      //a_oEditor.View.LoadPropertiesUI();
+
+      ModuleRegistry a_oModuleRegistry = ModuleRegistry.GetGlobalModules();
+      PropertyEditorExecutionModule a_oPEEM =
+         (PropertyEditorExecutionModule)a_oModuleRegistry.GetClassModuleByType( null, PropertyEditorExecutionModule );
+      Console.Out( a_oPEEM );
+      a_oPropertyList.Clear();
+      DrawCurveLattice a_oDrawCurveLattice = (DrawCurveLattice)Application.GetDrawMode( "DrawLatticeWithLinearCurves" );
+      Console.Out( a_oDrawCurveLattice );
+      a_oDrawCurveLattice.EnumerateProperties( a_oView, a_oPropertyList, a_oPropertyEditorExecutionModuleInfo );
+      a_oEditor.View.LoadPropertiesUI();
+      Console.Out( a_oPropertyList.GetCount() );
+   }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+/*
+function void DesktopSetThumbnailSize64_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   MaterialViewEditor a_oEditor = (MaterialViewEditor)Application.GetEditor( "{1F922102-F612-46D4-A453-4B81096121A9}" );
+   commandInfo.SetCheck( a_oEditor.View.GetThumbnailSize() == 64 );
+   commandInfo.Status.SetHint( "Set the material view thumbnail size to 64 x 64 pixels" );
+}
+
+macro DesktopSetThumbnailSize64()
+[Category="Desktop Commands", Guid="{1F91FAC7-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_thumbnail_size_small.bmp"]
+{
+   MaterialViewEditor a_oEditor = (MaterialViewEditor)Application.GetEditor( "{1F922102-F612-46D4-A453-4B81096121A9}" );
+   a_oEditor.View.SetThumbnailSize( 64 );
+}
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+/*
+function void DesktopSetThumbnailSize128_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   MaterialViewEditor a_oEditor = (MaterialViewEditor)Application.GetEditor( "{1F922102-F612-46D4-A453-4B81096121A9}" );
+   commandInfo.SetCheck( a_oEditor.View.GetThumbnailSize() == 128 );
+   commandInfo.Status.SetHint( "Set the material view thumbnail size to 128 x 128 pixels" );
+}
+
+macro DesktopSetThumbnailSize128()
+[Category="Desktop Commands", Guid="{1F91FAB4-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_thumbnail_size_medium.bmp"]
+{
+   MaterialViewEditor a_oEditor = (MaterialViewEditor)Application.GetEditor( "{1F922102-F612-46D4-A453-4B81096121A9}" );
+   a_oEditor.View.SetThumbnailSize( 128 );
+}
+*/
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+/*
+function void DesktopSetThumbnailSize256_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   MaterialViewEditor a_oEditor = (MaterialViewEditor)Application.GetEditor( "{1F922102-F612-46D4-A453-4B81096121A9}" );
+   commandInfo.SetCheck( a_oEditor.View.GetThumbnailSize() == 256 );
+   commandInfo.Status.SetHint( "Set the material view thumbnail size to 256 x 256 pixels" );
+}
+
+macro DesktopSetThumbnailSize256()
+[Category="Desktop Commands", Guid="{1F91FAC8-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_thumbnail_size_large.bmp"]
+{
+   MaterialViewEditor a_oEditor = (MaterialViewEditor)Application.GetEditor( "{1F922102-F612-46D4-A453-4B81096121A9}" );
+   a_oEditor.View.SetThumbnailSize( 256 );
+}
+*/
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+/*
+function void DesktopToggleDefaultMaterialViewShader_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   MaterialViewEditor editor = (MaterialViewEditor)Application.GetEditor( "{1F922102-F612-46D4-A453-4B81096121A9}" );
+   commandInfo.SetCheck( editor.View.UseDefaultShader );
+   string hint;
+   if( editor.View.UseDefaultShader )
+   {
+      hint = "Use the program specified by each material when rendering the materials in the material view";
+   }
+   else
+   {
+      hint = "Use the default program when rendering the materials in the material view";
+   }
+   commandInfo.Status.SetHint( hint );
+}
+
+macro DesktopToggleDefaultMaterialViewShader()
+[Category="Desktop Commands", Guid="{1F92206B-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   MaterialViewEditor a_oEditor = (MaterialViewEditor)Application.GetEditor( "{1F922102-F612-46D4-A453-4B81096121A9}" );
+   a_oEditor.View.UseDefaultShader = !a_oEditor.View.UseDefaultShader;
+}
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void FileClose_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Closes the current file and prompts you to save changes." );
+}
+
+macro FileClose()
+[Category="Desktop Commands", Guid="{1705C6FD-8DDC-4ECC-85BD-C0AEC6F5B9DC}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Application.ExecuteCommand( "File Commands", "FileNew" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationCompileTemplates_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Compiles template functions and macro scripts." );
+}
+
+macro ApplicationCompileTemplates()
+[Category="Desktop Commands", Guid="{1DBF181C-49F1-4A60-B648-7C9A61A09C09}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Console.ClearOutputWindow();
+
+   // There are no dependencies for these compiler calls.
+   //Meta.CompileGlslFunctions();
+   //Meta.CompileEnumerations();
+   //Meta.CompileClasses();
+
+   // Always compile template functions before template macros.
+   Meta.CompileTemplateFunctions();
+   Meta.CompileTemplateMacros();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationCompileEnumerations_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Parses C++ files and generates SSL-language support for enumerated types." );
+}
+
+macro ApplicationCompileEnumerations()
+[Category="Desktop Commands", Guid="{A2E48DB7-CB86-4487-8375-B72BF160F1E1}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Console.ClearOutputWindow();
+   Meta.CompileEnumerations();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationCompileClasses_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Compiles SSL class declarations into callable SSL functions." );
+}
+
+macro ApplicationCompileClasses()
+[Category="Desktop Commands", Guid="{9548ED3C-C5DA-4542-A1DF-4A92B779E445}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Console.ClearOutputWindow();
+   Meta.CompileClasses();
+}

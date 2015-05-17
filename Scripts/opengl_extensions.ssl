@@ -1,0 +1,755 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             OPENGL_EXTENSIONS.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements commands that set or enumerate OpenGL features and capabilities.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "create_util.ssl";
+import library "expression_util.ssl";
+import library "file_util.ssl";
+import library "iterate_util.ssl";
+import library "list_util.ssl";
+import library "menu_util.ssl";
+import library "message_util.ssl";
+import library "node_util.ssl";
+import library "opengl_util.ssl";
+import library "glsl_util.ssl";
+import library "graph_util.ssl";
+import library "remote_database_util.ssl";
+import library "variable_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void PopulateMenu( StrList p_slExtensions, StrList p_slTitles,
+   IntArray p_iaExtensions )
+{
+   for( int i = 0; i < p_slExtensions.GetCount(); ++i )
+   {
+      p_slTitles.Add( p_slExtensions.Get( i ) );
+      p_iaExtensions.Add( i );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateHardwareExtensionsSelectorPopupMenu( CommandBar menu,
+   string commandGuid, string eventHandler, int p_iMenuCase )
+{
+   auto StrList titles;
+   auto IntArray extensions;
+   auto StrList a_slExtensions;
+
+   if( p_iMenuCase == 0 )
+   {
+      GPU.CreateExtensionsList( a_slExtensions, "GLAMD", false );
+      PopulateMenu( a_slExtensions, titles, extensions );
+   }
+   else
+   if( p_iMenuCase == 1 )
+   {
+      GPU.CreateExtensionsList( a_slExtensions, "GLATI", false );
+      PopulateMenu( a_slExtensions, titles, extensions );
+   }
+   else
+   if( p_iMenuCase == 2 )
+   {
+      GPU.CreateExtensionsList( a_slExtensions, "GLARB", false );
+      PopulateMenu( a_slExtensions, titles, extensions );
+   }
+   else
+   if( p_iMenuCase == 3 )
+   {
+      GPU.CreateExtensionsList( a_slExtensions, "GLEXT", false );
+      PopulateMenu( a_slExtensions, titles, extensions );
+   }
+   else
+   if( p_iMenuCase == 4 )
+   {
+      GPU.CreateExtensionsList( a_slExtensions, "GLNVX", false );
+      PopulateMenu( a_slExtensions, titles, extensions );
+   }
+
+   SpaMenuUtil.BuildMenuFromIntArray( menu,
+                                      0,
+                                      commandGuid,
+                                      Script,
+                                      eventHandler,
+                                      titles,
+                                      extensions,
+                                      null );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExpressionNodeHardwareExtensionsSelector_OnShowPopupMenu( CommandBarEvent event )
+[HandleEvent="SPA.ShellUIEvents.ShowPopupMenu"]
+{
+   // Create a list of command items handled by this event.
+   CommandItem itemAMD = event.Bar.GetItemByText( 0, "AMD_HardwareExtensionsSelector" );
+   CommandItem itemATI = event.Bar.GetItemByText( 0, "ATI_HardwareExtensionsSelector" );
+   CommandItem itemARB = event.Bar.GetItemByText( 0, "ARB_HardwareExtensionsSelector" );
+   CommandItem itemEXT = event.Bar.GetItemByText( 0, "EXT_HardwareExtensionsSelector" );
+   CommandItem itemNVD = event.Bar.GetItemByText( 0, "NVD_HardwareExtensionsSelector" );
+
+   if( itemAMD )
+   {
+      itemAMD.Text = "&AMD Hardware Extensions";
+      itemAMD.IsPopup = true;
+      itemAMD.ImageIndex = -1;
+   }
+   if( event.Bar.Title == "&AMD Hardware Extensions" )
+   {
+      event.Bar.RemoveAllItems();
+      CreateHardwareExtensionsSelectorPopupMenu( event.Bar,
+         "{4608C907-E0C5-49F0-80C0-01C559A57BB6}",
+         "HandleHardwareExtensionsSelector",
+         0 );
+   }
+
+   if( itemATI )
+   {
+      itemATI.Text = "A&TI Hardware Extensions";
+      itemATI.IsPopup = true;
+      itemATI.ImageIndex = -1;
+   }
+   if( event.Bar.Title == "A&TI Hardware Extensions" )
+   {
+      event.Bar.RemoveAllItems();
+      CreateHardwareExtensionsSelectorPopupMenu( event.Bar,
+         "{4608C907-E0C5-49F0-80C0-01C559A57BB6}",
+         "HandleHardwareExtensionsSelector",
+         1 );
+   }
+
+   if( itemARB )
+   {
+      itemARB.Text = "A&RB Hardware Extensions";
+      itemARB.IsPopup = true;
+      itemARB.ImageIndex = -1;
+   }
+   if( event.Bar.Title == "A&RB Hardware Extensions" )
+   {
+      event.Bar.RemoveAllItems();
+      CreateHardwareExtensionsSelectorPopupMenu( event.Bar,
+         "{4608C907-E0C5-49F0-80C0-01C559A57BB6}",
+         "HandleHardwareExtensionsSelector",
+         2 );
+   }
+
+   if( itemEXT )
+   {
+      itemEXT.Text = "&EXT Hardware Extensions";
+      itemEXT.IsPopup = true;
+      itemEXT.ImageIndex = -1;
+   }
+   if( event.Bar.Title == "&EXT Hardware Extensions" )
+   {
+      event.Bar.RemoveAllItems();
+      CreateHardwareExtensionsSelectorPopupMenu( event.Bar,
+         "{4608C907-E0C5-49F0-80C0-01C559A57BB6}",
+         "HandleHardwareExtensionsSelector",
+         3 );
+   }
+
+   if( itemNVD )
+   {
+      itemNVD.Text = "&NVIDIA Hardware Extensions";
+      itemNVD.IsPopup = true;
+      itemNVD.ImageIndex = -1;
+   }
+   if( event.Bar.Title == "&NVIDIA Hardware Extensions" )
+   {
+      event.Bar.RemoveAllItems();
+      CreateHardwareExtensionsSelectorPopupMenu( event.Bar,
+         "{4608C907-E0C5-49F0-80C0-01C559A57BB6}",
+         "HandleHardwareExtensionsSelector",
+         4 );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void HandleHardwareExtensionsSelector( ApplicationEventSource source,
+   CommandExecutionEvent event, string title, int type )
+{
+   // Define HardwareExtensions strings that contain hardware scanning code.
+   Render3D a_oRender = Model.ActiveView.Render;
+   auto BaseSystemInformation baseInfo;
+   auto IntArray value;
+   auto Str a_sValue;
+   value.Count = 4;
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = (Node)Model.GetSelectedNode( i ).GetNode();
+      if( a_oNode && a_oNode.IsDerived( ExtensionNode ) )
+      {
+         ExtensionNode a_oExtensionNode = (ExtensionNode)Model.EditNode( a_oNode );
+         SpaVariableUtil.UpdateExtensionNodeName( a_oExtensionNode, title, a_oExtensionNode.Mode );
+      }
+   }
+}
+
+function void HandleHardwareExtensionsSelector_OnUpdate( ApplicationEventSource source,
+   CommandUpdateEvent event, string title, int type )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, ExtensionNode,
+      "Sets the hardware extension to " + title );
+}
+
+macro HardwareExtensionsSelector()
+[Category="Expression Commands", Guid="{4608C907-E0C5-49F0-80C0-01C559A57BB6}", Image=".\\icons\\hardware_sensor.bmp"]
+{
+   // Dummy command to reserve the GUID and associate the image.
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreatePreprocessorInstructionPopupMenu( CommandBar menu,
+   string commandGuid, string eventHandler )
+{
+   auto StrList a_slPreprocessorMode;
+   auto IntArray a_aiModeIndices;
+   auto PreprocessorNode a_oPreprocessor;
+   a_oPreprocessor.GetModeItems( a_slPreprocessorMode, a_aiModeIndices );
+
+   SpaMenuUtil.BuildMenuFromIntArray( menu,
+                                      0,
+                                      commandGuid,
+                                      Script,
+                                      eventHandler,
+                                      a_slPreprocessorMode,
+                                      a_aiModeIndices,
+                                      null );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void PreprocessorInstruction_OnShowPopupMenu( CommandBarEvent event )
+[HandleEvent="SPA.ShellUIEvents.ShowPopupMenu"]
+{
+   CommandItem a_oItem = event.Bar.GetItemByText( 0, "PreprocessorNodeSetDirective" );
+
+   if( a_oItem )
+   {
+      a_oItem.Text = "&Preprocessor";
+      a_oItem.IsPopup = true;
+      a_oItem.ImageIndex = -1;
+   }
+   if( event.Bar.Title == "&Preprocessor" )
+   {
+      event.Bar.RemoveAllItems();
+      CreatePreprocessorInstructionPopupMenu( event.Bar,
+         "{3F86798B-B57B-473C-9076-B45AE4BFF4BA}", "HandleSetPreprocessorDirective" );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void HandleSetPreprocessorDirective( ApplicationEventSource source,
+   CommandExecutionEvent event, string title, int type )
+{
+   Iterate.SetEnumeration( PreprocessorNode, "Mode", type );
+   Iterate.SetString( PreprocessorNode, "Name", title );
+}
+
+function void HandleSetPreprocessorDirective_OnUpdate( ApplicationEventSource source,
+   CommandUpdateEvent event, string title, int type )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, PreprocessorNode,
+      "Sets a preprocessor directive." );
+}
+
+macro SetPreprocessorDirective()
+[Category="Expression Commands", Guid="{3F86798B-B57B-473C-9076-B45AE4BFF4BA}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   // Dummy command to reserve the GUID and associate the image.
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// "Hardware Capabilities" popup for ExpressionNode
+
+function void CreateExpressionNodePrefabSelectorPopupMenu( CommandBar menu,
+   string commandGuid, string eventHandler )
+{
+   auto StrList a_slHardwareFeatures;
+   auto IntArray a_aiHardwareFeatureIndex;
+
+   a_slHardwareFeatures.Add( "Max Varying Floats" );
+   a_slHardwareFeatures.Add( "Max Render Targets" );
+   a_slHardwareFeatures.Add( "Max Combined Texture Image Units" );
+   a_slHardwareFeatures.Add( "Active Attribute Max Length" );
+   a_slHardwareFeatures.Add( "Active Uniform Max Length" );
+   a_slHardwareFeatures.Add( "Max 3D Texture Size" );
+   a_slHardwareFeatures.Add( "Max Attribute Stack Depth" );
+   a_slHardwareFeatures.Add( "Max Clip Planes" );
+   a_slHardwareFeatures.Add( "Max Cube Map Texture Size" );
+   a_slHardwareFeatures.Add( "Max Elements Indices" );
+   a_slHardwareFeatures.Add( "Max Elements Vertices" );
+   a_slHardwareFeatures.Add( "Max Evaluation Order" );
+   a_slHardwareFeatures.Add( "Max Fragment Uniform Components" );
+   a_slHardwareFeatures.Add( "Max Lights" );
+   a_slHardwareFeatures.Add( "Max List Nesting" );
+   a_slHardwareFeatures.Add( "Max ModelView Stack Depth" );
+   a_slHardwareFeatures.Add( "Max Name Stack Depth" );
+   a_slHardwareFeatures.Add( "Max Pixel Map Table" );
+   a_slHardwareFeatures.Add( "Max Projection Stack Depth" );
+   a_slHardwareFeatures.Add( "Max Texture Coords" );
+   a_slHardwareFeatures.Add( "Max Texture Image Units" );
+   a_slHardwareFeatures.Add( "Max Texture LOD Bias" );
+   a_slHardwareFeatures.Add( "Max Texture Stack Depth" );
+   a_slHardwareFeatures.Add( "Max Texture Size" );
+   a_slHardwareFeatures.Add( "Max Texture Units" );
+   a_slHardwareFeatures.Add( "Max Vertex Attributes" );
+   a_slHardwareFeatures.Add( "Max Vertex Texture Image Units" );
+   a_slHardwareFeatures.Add( "Max Vertex Uniform Components" );
+   a_slHardwareFeatures.Add( "Max Viewport Dimensions" );
+   a_slHardwareFeatures.Add( "GL Renderer" );
+   a_slHardwareFeatures.Add( "GL Vendor" );
+   a_slHardwareFeatures.Add( "GL Version" );
+   a_slHardwareFeatures.Add( "Max Texture Width" );
+   a_slHardwareFeatures.Add( "Max Texture Height" );
+   a_slHardwareFeatures.Add( "Max Viewport Width" );
+   a_slHardwareFeatures.Add( "Max Viewport Height" );
+   a_slHardwareFeatures.Add( "System RAM" );
+   a_slHardwareFeatures.Add( "System CPU Count" );
+
+   // Create an IntArray with the index values from a_slHardwareFeatures.
+   for( int count = 0; count < a_slHardwareFeatures.GetCount(); ++count )
+   {
+      a_aiHardwareFeatureIndex.Add( count );
+   }
+
+   SpaMenuUtil.BuildMenuFromIntArray( menu,
+                                      0,
+                                      commandGuid,
+                                      Script,
+                                      eventHandler,
+                                      a_slHardwareFeatures,
+                                      a_aiHardwareFeatureIndex,
+                                      null );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExpressionNodePrefabSelector_OnShowPopupMenu( CommandBarEvent event )
+[HandleEvent="SPA.ShellUIEvents.ShowPopupMenu"]
+{
+   CommandItem item = event.Bar.GetItemByText( 0, "ExpressionNodePrefabSelector" );
+   if( item )
+   {
+      item.Text = "&OpenGL Capabilities";
+      item.IsPopup = true;
+      item.ImageIndex = -1;
+   }
+   if( event.Bar.Title == "&OpenGL Capabilities" )
+   {
+      event.Bar.RemoveAllItems();
+      CreateExpressionNodePrefabSelectorPopupMenu( event.Bar,
+         "{D7FF853B-CC67-46C2-942D-8F98142C9AFF}", "ExpressionNodeHandlePrefabSelector" );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetHardwareSensingExpression( string p_sFunction, IntArray p_aiValue )
+{
+   string a_sHardwareSensingExpression;
+
+   a_sHardwareSensingExpression = 
+
+      "auto IntArray value;\n" +
+      "value.Count = 4;\n" +
+      "render.Render.QueryDeviceParameterInt( GPU." + p_sFunction + "(), value );\n" +
+      "return value.Objects[0] >= " + p_aiValue.Objects[0] + ";";
+
+   return a_sHardwareSensingExpression;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ConfigureExpressionNode( Render3D p_oRender3D, BaseSystemInformation p_oBaseInfo,
+   ExpressionNode p_oExpressionNode, string p_sHardwareFeature, IntArray p_aiValue, Str p_oValue )
+{
+   if( p_sHardwareFeature == "Max Varying Floats" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_VARYING_FLOATS(), p_aiValue );
+      string a_sMaxVaryingFloats = GetHardwareSensingExpression( "GL_MAX_VARYING_FLOATS", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxVaryingFloats;
+      p_oExpressionNode.Name = "MaxVaryingFloats";
+   }
+   else
+   if( p_sHardwareFeature == "Max p_oRender3D Targets" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_DRAW_BUFFERS(), p_aiValue );
+      string a_sMaxRenderTargets = GetHardwareSensingExpression( "GL_MAX_DRAW_BUFFERS", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxRenderTargets;
+      p_oExpressionNode.Name = "MaxRenderTargets";
+   }
+   else
+   if( p_sHardwareFeature == "Max Combined Texture Image Units" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS(), p_aiValue );
+      string a_sMaxCombinedTextureImageUnits = GetHardwareSensingExpression( "GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxCombinedTextureImageUnits;
+      p_oExpressionNode.Name = "MaxCombinedTextureImageUnits";
+   }
+   else
+   if( p_sHardwareFeature == "Active Attribute Max Length" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_ACTIVE_ATTRIBUTE_MAX_LENGTH(), p_aiValue );
+      string a_sActiveAttributeMaxLen = GetHardwareSensingExpression( "GL_ACTIVE_ATTRIBUTE_MAX_LENGTH", p_aiValue );
+      p_oExpressionNode.Code = a_sActiveAttributeMaxLen;
+      p_oExpressionNode.Name = "ActiveAttributeMaxLength";
+   }
+   else
+   if( p_sHardwareFeature == "Active Uniform Max Length" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_ACTIVE_UNIFORM_MAX_LENGTH(), p_aiValue );
+      string a_sActiveUniformMaxLen = GetHardwareSensingExpression( "GL_ACTIVE_UNIFORM_MAX_LENGTH", p_aiValue );
+      p_oExpressionNode.Code = a_sActiveUniformMaxLen;
+      p_oExpressionNode.Name = "ActiveUniformMaxLength";
+   }
+   else
+   if( p_sHardwareFeature == "Max 3D Texture Size" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_3D_TEXTURE_SIZE(), p_aiValue );
+      string a_sMax3DTextureSize = GetHardwareSensingExpression( "GL_MAX_3D_TEXTURE_SIZE", p_aiValue );
+      p_oExpressionNode.Code = a_sMax3DTextureSize;
+      p_oExpressionNode.Name = "Max3DTextureSize";
+   }
+   else
+   if( p_sHardwareFeature == "Max Attribute Stack Depth" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_ATTRIB_STACK_DEPTH(), p_aiValue );
+      string a_sMaxAttributeStackDepth = GetHardwareSensingExpression( "GL_MAX_ATTRIB_STACK_DEPTH", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxAttributeStackDepth;
+      p_oExpressionNode.Name = "MaxAttributeStackDepth";
+   }
+   else
+   if( p_sHardwareFeature == "Max Clip Planes" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_CLIP_PLANES(), p_aiValue );
+      string a_sMaxClipPlanes = GetHardwareSensingExpression( "GL_MAX_CLIP_PLANES", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxClipPlanes;
+      p_oExpressionNode.Name = "MaxClipPlanes";
+   }
+   else
+   if( p_sHardwareFeature == "Max Cube Map Texture Size" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_CUBE_MAP_TEXTURE_SIZE(), p_aiValue );
+      string a_sMaxCubeMapTextureSize = GetHardwareSensingExpression( "GL_MAX_CUBE_MAP_TEXTURE_SIZE", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxCubeMapTextureSize;
+      p_oExpressionNode.Name = "MaxCubeMapTextureSize";
+   }
+   else
+   if( p_sHardwareFeature == "Max Elements Indices" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_ELEMENTS_INDICES(), p_aiValue );
+      string a_sMaxElementsIndices = GetHardwareSensingExpression( "GL_MAX_ELEMENTS_INDICES", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxElementsIndices;
+      p_oExpressionNode.Name = "MaxElementsIndices";
+   }
+   else
+   if( p_sHardwareFeature == "Max Elements Vertices" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_ELEMENTS_VERTICES(), p_aiValue );
+      string a_sMaxElementsVertices = GetHardwareSensingExpression( "GL_MAX_ELEMENTS_VERTICES", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxElementsVertices;
+      p_oExpressionNode.Name = "MaxElementsVertices";
+   }
+   else
+   if( p_sHardwareFeature == "Max Evaluation Order" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_EVAL_ORDER(), p_aiValue );
+      string a_sMaxEvalOrder = GetHardwareSensingExpression( "GL_MAX_EVAL_ORDER", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxEvalOrder;
+      p_oExpressionNode.Name = "MaxEvalOrder";
+   }
+   else
+   if( p_sHardwareFeature == "Max Fragment Uniform Components" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_FRAGMENT_UNIFORM_COMPONENTS(), p_aiValue );
+      string a_sMaxFragmentUniformComponents = GetHardwareSensingExpression( "GL_MAX_FRAGMENT_UNIFORM_COMPONENTS", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxFragmentUniformComponents;
+      p_oExpressionNode.Name = "MaxFragmentUniformComponents";
+   }
+   else
+   if( p_sHardwareFeature == "Max Lights" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_LIGHTS(), p_aiValue );
+      string a_sMaxLights = GetHardwareSensingExpression( "GL_MAX_LIGHTS", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxLights;
+      p_oExpressionNode.Name = "MaxLights";
+   }
+   else
+   if( p_sHardwareFeature == "Max List Nesting" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_LIST_NESTING(), p_aiValue );
+      string a_sMaxListNesting = GetHardwareSensingExpression( "GL_MAX_LIST_NESTING", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxListNesting;
+      p_oExpressionNode.Name = "MaxListNesting";
+   }
+   else
+   if( p_sHardwareFeature == "Max ModelView Stack Depth" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_MODELVIEW_STACK_DEPTH(), p_aiValue );
+      string a_sMaxModelViewStackDepth = GetHardwareSensingExpression( "GL_MAX_MODELVIEW_STACK_DEPTH", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxModelViewStackDepth;
+      p_oExpressionNode.Name = "MaxModelViewStackDepth";
+   }
+   else
+   if( p_sHardwareFeature == "Max Name Stack Depth" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_NAME_STACK_DEPTH(), p_aiValue );
+      string a_sMaxNameStackDepth = GetHardwareSensingExpression( "GL_MAX_NAME_STACK_DEPTH", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxNameStackDepth;
+      p_oExpressionNode.Name = "MaxNameStackDepth";
+   }
+   else
+   if( p_sHardwareFeature == "Max Pixel Map Table" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_PIXEL_MAP_TABLE(), p_aiValue );
+      string a_sMaxPixelMapTable = GetHardwareSensingExpression( "GL_MAX_PIXEL_MAP_TABLE", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxPixelMapTable;
+      p_oExpressionNode.Name = "MaxPixelMapTable";
+   }
+   else
+   if( p_sHardwareFeature == "Max Projection Stack Depth" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_PROJECTION_STACK_DEPTH(), p_aiValue );
+      string a_sMaxProjectionStackDepth = GetHardwareSensingExpression( "GL_MAX_PROJECTION_STACK_DEPTH", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxProjectionStackDepth;
+      p_oExpressionNode.Name = "MaxProjectionStackDepth";
+   }
+   else
+   if( p_sHardwareFeature == "Max Texture Coords" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_TEXTURE_COORDS(), p_aiValue );
+      string a_sMaxTextureCoords = GetHardwareSensingExpression( "GL_MAX_TEXTURE_COORDS", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxTextureCoords;
+      p_oExpressionNode.Name = "MaxTextureCoords";
+   }
+   else
+   if( p_sHardwareFeature == "Max Texture Image Units" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_TEXTURE_IMAGE_UNITS(), p_aiValue );
+      string a_sMaxTextureImageUnits = GetHardwareSensingExpression( "GL_MAX_TEXTURE_IMAGE_UNITS", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxTextureImageUnits;
+      p_oExpressionNode.Name = "MaxTextureImageUnits";
+   }
+   else
+   if( p_sHardwareFeature == "Max Texture LOD Bias" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_TEXTURE_LOD_BIAS(), p_aiValue );
+      string a_sMaxTextureLODBias = GetHardwareSensingExpression( "GL_MAX_TEXTURE_LOD_BIAS", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxTextureLODBias;
+      p_oExpressionNode.Name = "MaxTextureLODBias";
+   }
+   else
+   if( p_sHardwareFeature == "Max Texture Stack Depth" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_TEXTURE_STACK_DEPTH(), p_aiValue );
+      string a_sMaxTextureStackDepth = GetHardwareSensingExpression( "GL_MAX_TEXTURE_STACK_DEPTH", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxTextureStackDepth;
+      p_oExpressionNode.Name = "MaxTextureStackDepth";
+   }
+   else
+   if( p_sHardwareFeature == "Max Texture Size" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_TEXTURE_SIZE(), p_aiValue );
+      string a_sMaxTextureSize = GetHardwareSensingExpression( "GL_MAX_TEXTURE_SIZE", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxTextureSize;
+      p_oExpressionNode.Name = "MaxTextureSize";
+   }
+   else
+   if( p_sHardwareFeature == "Max Texture Units" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_TEXTURE_UNITS(), p_aiValue );
+      string a_sMaxTextureUnits = GetHardwareSensingExpression( "GL_MAX_TEXTURE_UNITS", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxTextureUnits;
+      p_oExpressionNode.Name = "MaxTextureUnits";
+   }
+   else
+   if( p_sHardwareFeature == "Max Vertex Attribs" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_VERTEX_ATTRIBS(), p_aiValue );
+      string a_sMaxVertexAttribs = GetHardwareSensingExpression( "GL_MAX_VERTEX_ATTRIBS", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxVertexAttribs;
+      p_oExpressionNode.Name = "MaxVertexAttribs";
+   }
+   else
+   if( p_sHardwareFeature == "Max Vertex Texture Image Units" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS(), p_aiValue );
+      string a_sMaxVertexTextureImageUnits = GetHardwareSensingExpression( "GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxVertexTextureImageUnits;
+      p_oExpressionNode.Name = "MaxVertexTextureImageUnits";
+   }
+   else
+   if( p_sHardwareFeature == "Max Vertex Uniform Components" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_VERTEX_UNIFORM_COMPONENTS(), p_aiValue );
+      string a_sMaxVertexUniformComponents = GetHardwareSensingExpression( "GL_MAX_VERTEX_UNIFORM_COMPONENTS", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxVertexUniformComponents;
+      p_oExpressionNode.Name = "MaxVertexUniformComponents";
+   }
+   else
+   if( p_sHardwareFeature == "Max Viewport Dimensions" )
+   {
+      p_oRender3D.QueryDeviceParameterInt( GPU.GL_MAX_VIEWPORT_DIMS(), p_aiValue );
+      string a_sMaxViewportDims = GetHardwareSensingExpression( "GL_MAX_VIEWPORT_DIMS", p_aiValue );
+      p_oExpressionNode.Code = a_sMaxViewportDims;
+      p_oExpressionNode.Name = "MaxViewportDims";
+   }
+   else
+   if( p_sHardwareFeature == "GL p_oRender3Der" )
+   {
+      p_oRender3D.QueryDeviceParameterString( GPU.GL_p_oRender3DER(), p_oValue );
+      string a_sGLp_oRender3Der =
+
+         "auto Str a_sp_aiValue;\n" +
+         "p_oRender3D.p_oRender3D.QueryDeviceParameterString( GPU.GL_p_oRender3DER(), a_sp_aiValue );\n" +
+         "return a_sp_aiValue.p_aiValue == \"" + p_oValue.Value + "\"" + ";";
+
+      p_oExpressionNode.Code = a_sGLp_oRender3Der;
+      p_oExpressionNode.Name = "GLp_oRender3Der";
+   }
+   else
+   if( p_sHardwareFeature == "GL Vendor" )
+   {
+      p_oRender3D.QueryDeviceParameterString( GPU.GL_VENDOR(), p_oValue );
+
+      string a_sGLVendor =
+
+         "auto Str a_sp_aiValue;\n" +
+         "p_oRender3D.p_oRender3D.QueryDeviceParameterString( GPU.GL_VENDOR(), a_sp_aiValue );\n" +
+         "return a_sp_aiValue.p_aiValue == \"" + p_oValue.Value + "\"" + ";";
+
+      p_oExpressionNode.Code = a_sGLVendor;
+      p_oExpressionNode.Name = "GLVendor";
+   }
+   else
+   if( p_sHardwareFeature == "GL Version" )
+   {
+      p_oRender3D.QueryDeviceParameterString( GPU.GL_VERSION(), p_oValue );
+
+      string a_sGLVersion =
+
+         "auto Str a_sp_aiValue;\n" +
+         "p_oRender3D.p_oRender3D.QueryDeviceParameterString( GPU.GL_VERSION(), a_sp_aiValue );\n" +
+         "return a_sp_aiValue.p_aiValue == \"" + p_oValue.Value + "\"" + ";";
+
+      p_oExpressionNode.Code = a_sGLVersion;
+      p_oExpressionNode.Name = "GLVersion";
+   }
+   else
+   if( p_sHardwareFeature == "Max Texture Width" )
+   {
+      string a_sMaxTextureWidth = "return " + p_oRender3D.GetDeviceCapabilities().MaxTextureWidth + ";";
+      p_oExpressionNode.Code = a_sMaxTextureWidth;
+      p_oExpressionNode.Name = "MaxTextureWidth";
+   }
+   else
+   if( p_sHardwareFeature == "Max Texture Height" )
+   {
+      string a_sMaxTextureHeight = "return " + p_oRender3D.GetDeviceCapabilities().MaxTextureHeight + ";";
+      p_oExpressionNode.Code = a_sMaxTextureHeight;
+      p_oExpressionNode.Name = "MaxTextureHeight";
+   }
+   else
+   if( p_sHardwareFeature == "Max Viewport Width" )
+   {
+      string a_sMaxViewportWidth = "return " + p_oRender3D.GetDeviceCapabilities().MaxViewportWidth + ";";
+      p_oExpressionNode.Code = a_sMaxViewportWidth;
+      p_oExpressionNode.Name = "MaxViewportWidth";
+   }
+   if( p_sHardwareFeature == "Max Viewport Height" )
+   {
+      string a_sMaxViewportHeight = "return " + p_oRender3D.GetDeviceCapabilities().MaxViewportHeight + ";";
+      p_oExpressionNode.Code = a_sMaxViewportHeight;
+      p_oExpressionNode.Name = "MaxViewportHeight";
+   }
+   else
+   if( p_sHardwareFeature == "System RAM" )
+   {
+      string a_sSysRam = "int systemRam;\n" + "return systemRam >= " + p_oBaseInfo.GetRam() + ";";
+      p_oExpressionNode.Code = a_sSysRam;
+      p_oExpressionNode.Name = "SysRam";
+   }
+   else
+   if( p_sHardwareFeature == "System CPU Count" )
+   {
+      string a_sSysCpuCount = "int systemCpuCount;\n" + "return systemCpuCount >= " + p_oBaseInfo.GetCpuCount() + ";";
+      p_oExpressionNode.Code = a_sSysCpuCount;
+      p_oExpressionNode.Name = "SysCpuCount";
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void a_oExpressionNodeHandlePrefabSelector( ApplicationEventSource source,
+   CommandExecutionEvent event, string p_sHardwareFeature, int p_iHardwareFeatureIndex )
+{
+   // Define prefab strings that contain hardware scanning code.
+
+   Render3D a_oRender3D = Model.ActiveView.Render;
+   auto BaseSystemInformation a_oBaseInfo;
+   auto IntArray a_aiValue;
+   auto Str a_sValue;
+   a_aiValue.Count = 4;
+
+   // Apply the appropriate string to the "code" parameter of the ExpressionNode.
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = (Node)Model.GetSelectedNode( i ).GetNode();
+      if( a_oNode && a_oNode.IsDerived( ExpressionNode ) )
+      {
+         ExpressionNode a_oExpressionNode = (ExpressionNode)Model.EditNode( a_oNode );
+         a_oExpressionNode.Type = "int";
+         ConfigureExpressionNode( a_oRender3D, a_oBaseInfo, a_oExpressionNode,
+            p_sHardwareFeature, a_aiValue, a_sValue );
+      }
+   }
+}
+
+function void ExpressionNodeHandlePrefabSelector_OnUpdate( ApplicationEventSource source,
+   CommandUpdateEvent event, string title, int type )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, ExpressionNode,
+      "Sets the prefab expression to " + type );
+}
+
+macro ExpressionNodePrefabSelector()
+[Category="Expression Commands", Guid="{D7FF853B-CC67-46C2-942D-8F98142C9AFF}", Image=".\\icons\\hardware_sensor.bmp"]
+{
+   // Dummy command to reserve the GUID and associate the image.
+}

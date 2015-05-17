@@ -1,0 +1,205 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             LIST_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements linked list helper functions.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+library SpaListUtil;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void RemoveItemFromList( List p_lGraphNodes, int p_iIndex )
+{
+   Node a_oNode = (Node)p_lGraphNodes.Get( p_iIndex );
+   p_lGraphNodes.Del( a_oNode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function List RemoveDuplicatesFromList( List p_lSourceList )
+{
+   string a_sNode;
+   List n_lSorted = new List;
+   int a_iIterate = p_lSourceList.GetCount();
+
+   for( int i = 0; i < p_lSourceList.GetCount(); ++i )
+   {
+      Node a_oChild = (Node)p_lSourceList.Get( i );
+
+      if( !n_lSorted.In( a_oChild ) )
+      {
+         n_lSorted.AddRef( a_oChild );
+      }
+   }
+
+   return n_lSorted;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// This function returns a list of the selected nodes.
+// Helper only; not in use.
+
+function List CreateListFromSelection( TypeInformation type )
+{
+   if( Model.GetSelectCount() > 1 )
+   {
+      List n_lNodes = new List;
+      for( int i = 0; i < Model.GetSelectCount(); ++i )
+      {
+         Node node = Model.GetSelectedNode( i ).GetNode();
+         if( node.IsDerived( type ) )
+         {
+            n_lNodes.AddRef( node );
+         }
+      }
+      return n_lNodes;
+   }
+   return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function Node GetNodeFromListByType( List p_lSourceList, TypeInformation type )
+{
+   for( int i = 0; i < p_lSourceList.GetCount(); ++i )
+   {
+      Node a_oListMember = (Node)p_lSourceList.Get( i );
+
+      if( a_oListMember.IsDerived( type ) )
+      {
+         return a_oListMember;
+      }
+   }
+   return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetNodesFromListByType( List p_lSourceList, List p_lDestinationList, TypeInformation type )
+{
+   int a_nCount;
+   for( int i = 0; i < p_lSourceList.GetCount(); ++i )
+   {
+      Node a_oListMember = (Node)p_lSourceList.Get( i );
+
+      if( a_oListMember.IsDerived( type ) )
+      {
+         p_lDestinationList.AddRef( a_oListMember );
+         ++a_nCount;
+      }
+   }
+   return a_nCount;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function Node GetNodeLinkFromListByTypeAndName( List p_lSourceList, TypeInformation type, string p_sNodeLinkName )
+{
+   for( int i = 0; i < p_lSourceList.GetCount(); ++i )
+   {
+      Node a_oListMember = (Node)p_lSourceList.Get( i );
+
+      if( a_oListMember.IsDerived( NodeLink ) )
+      {
+         NodeLink a_oNodeLink = (NodeLink)a_oListMember;
+
+         if( a_oNodeLink.Name == p_sNodeLinkName )
+         {
+            return a_oListMember;
+         }
+      }
+   }
+   return null;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function Node GetNodeFromListByName( List p_lSourceList, string p_sName, ref int p_iIndex )
+{
+   for( int i = 0; i < p_lSourceList.GetCount(); ++i )
+   {
+      Node a_oListMember = (Node)p_lSourceList.Get( i );
+
+      if( a_oListMember.Name == p_sName )
+      {
+         p_iIndex = i;
+         return a_oListMember;
+      }
+   }
+
+   return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetIndexByName( List p_lSourceList, string p_sName )
+{
+   int a_iIndex;
+
+   for( int i = 0; i < p_lSourceList.GetCount(); ++i )
+   {
+      Node a_oListMember = (Node)p_lSourceList.Get( i );
+
+      if( a_oListMember.Name == p_sName )
+      {
+         a_iIndex = i;
+      }
+   }
+
+   return a_iIndex;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SendToOutput( List p_lSourceList )
+{
+   Console.Message( "LIST OUTPUT generated by LIST_UTIL.SSL" );
+
+   for( int i = 0; i < p_lSourceList.GetCount(); ++i )
+   {
+      Type a_oType = (Type)p_lSourceList.Get(i);
+
+      if( a_oType && a_oType.IsDerived( Node ) )
+      {
+         Node a_oNode = (Node)a_oType;
+         Console.Message( a_oNode.Name + " <" + a_oNode.GetType().GetTypeName() + ">" );
+      }
+      else
+      {
+         Console.Message( " <" + a_oType.GetType().GetTypeName() + ">" );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void Out( List p_lSourceList )
+{
+   SendToOutput( p_lSourceList );
+}

@@ -1,0 +1,1956 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             MODIFIER_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements commands for modifying modifiers.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "graph_util.ssl";
+import library "node_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+//  This function handles common OnUpdate functionality for modifier
+//  creation commands.
+
+function void HandleModifierCreateOnUpdate( CommandPresentationModuleInfo commandInfo, TypeInformation modifierType, string modifierTypeNameOverride )
+{
+   bool enabled = Model.GetSelectBuffer().IsNodeTypeSelected( ParametricMesh );
+   
+   // If the caller did not specify a type name override,
+   // use the real modifier type name.
+   if( modifierTypeNameOverride == "" )
+   {
+      modifierTypeNameOverride = modifierType.GetTypeName();
+   }
+
+   // Put together the hint.  If the command is disabled, explain why
+   // we are disabling it.
+   string hint = "Create a new " + modifierTypeNameOverride;
+   if( !enabled )
+   {
+      hint += ": to enable this command, select a mesh node";
+   }
+
+   commandInfo.SetEnabled( enabled );
+   commandInfo.Status.SetHint( hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+//  Handles common UI update functionality for Modifier commands.
+
+function void HandleOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Modifier, hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Update the UI state for commands that only depend on a SimplifyModifier being selected.
+
+function void HandleSimplifyModifierOnUpdate( CommandPresentationModuleInfo commandInfo, string commandHint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, SimplifyModifier, commandHint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+//  This function handles common UI update functionality for EdgeModifier
+//  commands.
+
+function void HandleEdgeModifierOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, EdgeModifier, hint );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+// This modifier creates an AddChannelModifier in the mesh construction
+// history of the selected mesh.
+
+function void CreateAddChannelModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, AddChannelModifier, "" );
+}
+
+macro CreateAddChannelModifier()
+[Category="Modifier Commands", Guid="{41F499DA-714B-455A-A1A1-396D71558D80}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         AddChannelModifier channel_modifier = new AddChannelModifier;
+         channel_modifier.Name = "AttributesChannelModifier";
+   
+         SpaNodeUtil.AddModifier( channel_modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+// This modifier creates a LoftGeometryModifier in the mesh construction
+// history of the selected mesh.
+
+function void CreateLoftGeometryModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, LoftGeometryModifier, "" );
+}
+
+macro CreateLoftGeometryModifier()
+[Category="Modifier Commands", Guid="{D6330B8A-8AF9-458E-AE8D-B2DA3D4AA0E2}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         LoftGeometryModifier loft_modifier = new LoftGeometryModifier;
+         loft_modifier.Name = "LoftModifier";
+   
+         SpaNodeUtil.AddModifier( loft_modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+// This modifier creates a SweepModifier in the mesh construction
+// history of the selected mesh.
+
+function void CreateSweepGeometryModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, SweepGeometryModifier, "" );
+}
+
+macro CreateSweepGeometryModifier  ()
+[Category="Modifier Commands", Guid="{110E5229-8AFA-4200-B8B0-CAD89F87A1C6}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         SweepGeometryModifier sweep_modifier = new SweepGeometryModifier;
+         sweep_modifier.Name = "SweepModifier";
+   
+         SpaNodeUtil.AddModifier( sweep_modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+// This modifier creates a DelaunayTrimModifier in the mesh construction
+// history of the selected mesh.
+
+function void CreateDelaunayTrimModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, DelaunayTrimModifier, "" );
+}
+
+macro CreateDelaunayTrimModifier()
+[Category="Modifier Commands", Guid="{DF0FA27D-AFA6-4CE8-ADF7-0660B7F57FB9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         DelaunayTrimModifier dtm_modifier = new DelaunayTrimModifier;
+         dtm_modifier.Name = "DelaunayTrimModifier";
+   
+         SpaNodeUtil.AddModifier( dtm_modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+// This modifier creates an ExportOptionsModifier in the mesh construction
+// history of the selected mesh.
+
+function void CreateExportOptionsModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, ExportOptionsModifier, "" );
+}
+
+macro CreateExportOptionsModifier()
+[Category="Modifier Commands", Guid="{1F91FB17-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         ExportOptionsModifier eom_modifier = new ExportOptionsModifier;
+         eom_modifier.Name = "ExportOptionsModifier";
+   
+         SpaNodeUtil.AddModifier( eom_modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+// This modifier creates a DynamicTextureModifier in the mesh construction
+// history of the selected mesh.
+
+function void CreateDynamicTextureModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, DynamicTextureModifier, "" );
+}
+
+macro CreateDynamicTextureModifier()
+[Category="Modifier Commands", Guid="{1F91FAD8-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         DynamicTextureModifier dtm_modifier = new DynamicTextureModifier;
+         dtm_modifier.Name = "DynamicTextureModifier";
+   
+         SpaNodeUtil.AddModifier( dtm_modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+// This modifier creates a PlanarProjectModifier in the mesh construction
+// history of the selected mesh.
+
+function void CreatePlanarProjectTextureModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, PlanarProjectTextureModifier, "" );
+}
+
+macro CreatePlanarProjectTextureModifier()
+[Category="Modifier Commands", Guid="{1F91FAD6-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         ParametricMesh a_oMesh = (ParametricMesh)selNode;
+         PlanarProjectTextureModifier modifier = new PlanarProjectTextureModifier;
+         modifier.Name = "PlanarProjectTextureModifier";
+         modifier.MaterialLink = Graph.FindMeshMaterial( a_oMesh );
+               
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+// This modifier creates a CalculateNormalsModifier in the mesh construction
+// history of the selected mesh.
+
+function void CreateCalculateNormalsModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, CalculateNormalsModifier, "" );
+}
+
+macro CreateCalculateNormalsModifier()
+[Category="Modifier Commands", Guid="{1F91F966-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         CalculateNormalsModifier modifier = new CalculateNormalsModifier;
+         modifier.Name = "CalculateNormalsModifier";
+         modifier.CreaseAngle = 180;
+         modifier.FaceWeight = 0;
+   
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateRectangleGeometryModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, RectangleGeometryModifier, "" );
+}
+
+macro CreateRectangleGeometryModifier()
+[Category="Modifier Commands", Guid="{1F91F96B-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         RectangleGeometryModifier modifier = new RectangleGeometryModifier;
+         modifier.Name = "RectangleGeometryModifier";
+         modifier.XMin = -32;
+         modifier.YMin = -32;
+         modifier.XMax = 32;
+         modifier.YMax = 32;
+         modifier.XSubdivision = 8;
+         modifier.YSubdivision = 8;
+
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateBoxGeometryModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, BoxGeometryModifier, "" );
+}
+
+macro CreateBoxGeometryModifier()
+[Category="Modifier Commands", Guid="{7945202B-30B6-45A2-97DA-158C8BEC1B95}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+       BoxGeometryModifier modifier = new BoxGeometryModifier;
+       modifier.Name = "BoxGeometryModifier";
+       modifier.Min.X = -4;
+       modifier.Min.Y = -4;
+       modifier.Min.Z = -4;
+       modifier.Max.X = 4;
+       modifier.Max.Y = 4;
+       modifier.Max.Z = 4;
+       modifier.Resolution[ 0 ] = 4;
+       modifier.Resolution[ 1 ] = 4;
+       modifier.Resolution[ 2 ] = 4;
+       modifier.Material = Model.GetActiveMaterial();
+       SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateCircleGeometryModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, CircleGeometryModifier, "" );
+}
+
+macro CreateCircleGeometryModifier()
+[Category="Modifier Commands", Guid="{A80880EA-9DAA-4E35-B196-710B94C7FCF7}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         CircleGeometryModifier modifier = new CircleGeometryModifier;
+         modifier.Name = "CircleGeometryModifier";
+         modifier.Triangulate = 1;
+         modifier.Center.X = 0.0;
+         modifier.Center.Y = 0.0;
+         modifier.Center.Z = 0.0;
+         modifier.Radius = 8;
+         modifier.Resolution = 16;
+         modifier.Angle[ 0 ] = 0;
+         modifier.Angle[ 1 ] = 360;
+         modifier.Material = Model.GetActiveMaterial();
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateCylinderGeometryModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, CylinderGeometryModifier, "" );
+}
+
+macro CreateCylinderGeometryModifier()
+[Category="Modifier Commands", Guid="{468EFA9A-46D9-4E8E-801E-F90F3DDD205A}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         CylinderGeometryModifier modifier = new CylinderGeometryModifier;
+         modifier.Name = "CylinderGeometryModifier";
+         modifier.Triangulate = 1;
+         modifier.Center.X = 0.0;
+         modifier.Center.Y = 0.0;
+         modifier.Center.Z = 0.0;
+         modifier.Radius = 4;
+         modifier.Height = 8;
+         modifier.Resolution[ 0 ] = 16;
+         modifier.Resolution[ 1 ] = 4;
+         modifier.TextureCoordinates[ 0 ] = 1.0;
+         modifier.TextureCoordinates[ 1 ] = 2.0;
+         modifier.TextureCoordinates[ 2 ] = 1.0;
+         modifier.TextureCoordinates[ 3 ] = 2.0;
+         modifier.Material = Model.GetActiveMaterial();
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateSphereGeometryModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, SphereGeometryModifier, "" );
+}
+
+macro CreateSphereGeometryModifier()
+[Category="Modifier Commands", Guid="{0A20EADA-F917-4E01-B378-641346E27991}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         SphereGeometryModifier modifier = new SphereGeometryModifier;
+         modifier.Name = "SphereGeometryModifier";
+         modifier.Triangulate = 1;
+         modifier.Center.X = 1.0;
+         modifier.Center.Y = 1.0;
+         modifier.Center.Z = 1.0;
+         modifier.Radius = 8;
+         modifier.Resolution[ 0 ] = 16;
+         modifier.Resolution[ 1 ] = 16;
+         modifier.Material = Model.GetActiveMaterial();
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateDisplaceModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, DisplaceModifier, "" );
+}
+
+macro CreateDisplaceModifier()
+[Category="Modifier Commands", Guid="{1F91F963-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         DisplaceModifier modifier = new DisplaceModifier;
+         modifier.Name = "DisplaceModifier";
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateMergeModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, MergeFacesModifier, "" );
+}
+
+macro CreateMergeModifier()
+[Category="Modifier Commands", Guid="{1F91FA91-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         MergeFacesModifier modifier = new MergeFacesModifier;
+         modifier.Name = "MergeFacesModifier";
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateGeographicProjectionModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, GeographicProjectionModifier, "" );
+}
+
+macro CreateGeographicProjectionModifier()
+[Category="Modifier Commands", Guid="{1F91FA93-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         GeographicProjectionModifier modifier = new GeographicProjectionModifier;
+         modifier.Name = "GeographicProjectionModifier";
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateGeographicTextureModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, GeographicTextureModifier, "" );
+}
+
+macro CreateGeographicTextureModifier()
+[Category="Modifier Commands", Guid="{1F91FA9C-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( ParametricMesh ) )
+      {
+         GeographicTextureModifier modifier = new GeographicTextureModifier;
+         modifier.Name = "GeographicTextureModifier";
+         modifier.MaterialLink = Graph.FindMeshMaterial( (ParametricMesh)selNode );
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateTerrainOptionsModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, TerrainOptionsModifier, "" );
+}
+
+macro CreateTerrainOptionsModifier()
+[Category="Modifier Commands", Guid="{1F91FAAD-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         TerrainOptionsModifier modifier = new TerrainOptionsModifier;
+         modifier.Name = "ImageryOptionsModifier";
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateDelaunayTriangulateModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, DelaunayModifier, "" );
+}
+
+macro CreateDelaunayTriangulateModifier()
+[Category="Modifier Commands", Guid="{1F91FA90-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         DelaunayModifier modifier = new DelaunayModifier;
+         modifier.Name = "DelaunayTriangulateModifier";
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro CreateSimplifyModifier()
+[Category="Modifier Commands", Guid="{1F91F964-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         SimplifyModifier modifier = new SimplifyModifier;
+         modifier.Name = "SimplifyModifier";
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+      else
+      if( selNode.IsDerived( DynamicTextureModifier ) )
+      {
+         int a_iChildIndex = selNode.Parent().GetChildIndex( selNode );
+         SimplifyModifier modifier = new SimplifyModifier;
+         modifier.Name = "SimplifyModifier";
+         Model.AddNode( modifier, selNode.Parent(), a_iChildIndex );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateFormQuadsModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, DissolveTriangleEdgesModifier, "" );
+}
+
+macro CreateFormQuadsModifier()
+[Category="Modifier Commands", Guid="{1F91F965-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node selNode = Model.GetSelectedNode( i ).GetNode();
+      if( selNode.IsDerived( Mesh ) )
+      {
+         DissolveTriangleEdgesModifier modifier = new DissolveTriangleEdgesModifier;
+         modifier.Name = "FormQuadsModifier";
+         SpaNodeUtil.AddModifier( modifier, i );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateBevelModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, BevelModifier, "" );
+}
+
+macro CreateBevelModifier()
+[Category="Modifier Commands", Guid="{1F91FA5E-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   BevelModifier modifier = new BevelModifier;
+   modifier.Name = "BevelModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateBevelVertexModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, BevelVertexModifier, "" );
+}
+
+macro CreateBevelVertexModifier()
+[Category="Modifier Commands", Guid="{1F91FB0E-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   BevelVertexModifier modifier = new BevelVertexModifier;
+   modifier.Name = "BevelVertexModifier";
+   modifier.SetPercentageMode();
+   modifier.Radius = 2.12;
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateCollapseModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, EdgeModifier, "CollapseModifier" );
+}
+
+macro CreateCollapseModifier()
+[Category="Modifier Commands", Guid="{1F91F99F-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   EdgeModifier modifier = new EdgeModifier;
+   modifier.Name = "CollapseModifier";
+   modifier.EdgeModify = 3;
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateExtrudeModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, ExtrudeModifier, "" );
+}
+
+macro CreateExtrudeModifier()
+[Category="Modifier Commands", Guid="{1F91FA5F-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   ExtrudeModifier modifier = new ExtrudeModifier;
+   modifier.Name = "ExtrudeModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+   modifier.DirectionZ = 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateInsetModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, ExtrudeModifier, "InsetModifier" );
+}
+
+macro CreateInsetModifier()
+[Category="Modifier Commands", Guid="{1F91FA60-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   ExtrudeModifier modifier = new ExtrudeModifier;
+   modifier.Name = "InsetModifier";
+   modifier.DirectionX = 0;
+   modifier.DirectionY = 0;
+   modifier.DirectionZ = 0;
+   modifier.FaceNormalExtrude = 0;
+   modifier.VertexNormalExtrude = 0;
+   modifier.Taper = -1;
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateMaterialModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, MaterialModifier, "" );
+}
+
+macro CreateMaterialModifier()
+[Category="Modifier Commands", Guid="{1F91F9A1-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   MaterialModifier modifier = new MaterialModifier;
+   modifier.Name = "MaterialModifier";
+   Material default = Model.GetActiveMaterial();
+   modifier.Material = default;
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateMoveModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, NormalTranslateModifier, "MoveModifier" );
+}
+
+macro CreateMoveModifier()
+[Category="Modifier Commands", Guid="{1F91F9A2-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   NormalTranslateModifier modifier = new NormalTranslateModifier;
+   modifier.Name = "MoveModifier";
+   modifier.Translation = 4;
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateInsertVertexModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, InsertVertexModifier, "" );
+}
+
+macro CreateInsertVertexModifier()
+[Category="Modifier Commands", Guid="{1F91FADC-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   InsertVertexModifier modifier = new InsertVertexModifier;
+   modifier.Name = "InsertVertexModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreatePokeModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, InsertQuadCenterVertexModifier, "PokeModifier" );
+}
+
+macro CreatePokeModifier()
+[Category="Modifier Commands", Guid="{1F91F9A3-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   InsertQuadCenterVertexModifier modifier = new InsertQuadCenterVertexModifier;
+   modifier.Name = "PokeModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateSubdivideModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, InsertTriangleIntoTriangleModifier, "SubdivideModifier" );
+}
+
+macro CreateSubdivideModifier()
+[Category="Modifier Commands", Guid="{1F91F9A4-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   InsertTriangleIntoTriangleModifier modifier = new InsertTriangleIntoTriangleModifier;
+   modifier.Name = "SubdivideModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateTransformModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, TransformModifier, "" );
+}
+
+macro CreateTransformModifier()
+[Category="Modifier Commands", Guid="{1F91F92A-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   TransformModifier modifier = new TransformModifier;
+   modifier.Name = "TransformModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateTriangulateModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, TriangulateModifier, "" );
+}
+
+macro CreateTriangulateModifier()
+[Category="Modifier Commands", Guid="{1F91F9A5-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   TriangulateModifier modifier = new TriangulateModifier;
+   modifier.Name = "TriangulateModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateDeleteFaceModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, DeleteFaceModifier, "" );
+}
+
+macro CreateDeleteFaceModifier()
+[Category="Modifier Commands", Guid="{1F91F998-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   DeleteFaceModifier modifier = new DeleteFaceModifier;
+   modifier.Name = "DeleteFaceModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateConnectModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, ConnectModifier, "" );
+}
+
+macro CreateConnectModifier()
+[Category="Modifier Commands", Guid="{1F91F927-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   ConnectModifier modifier = new ConnectModifier;
+   modifier.Name = "ConnectModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateDissolveFaceModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, DissolveFaceModifier, "" );
+}
+
+macro CreateDissolveFaceModifier()
+[Category="Modifier Commands", Guid="{1F91F9A0-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   DissolveFaceModifier modifier = new DissolveFaceModifier;
+   modifier.Name = "DissolveFaceModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateDissolveEdgeModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, DissolveModifier, "DissolveEdgeModifier" );
+}
+
+macro CreateDissolveEdgeModifier()
+[Category="Modifier Commands", Guid="{1F91F928-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   DissolveModifier modifier = new DissolveModifier;
+   modifier.Name = "DissolveEdgeModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateScaleModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, EdgeModifier, "ScaleModifier" );
+}
+
+macro CreateScaleModifier()
+[Category="Modifier Commands", Guid="{1F91F929-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   EdgeModifier modifier = new EdgeModifier;
+   modifier.Name = "ScaleEdgeModifier";
+   modifier.EdgeModify = 4;
+   modifier.SplitAlpha = 50;
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateSplitEdgeModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, EdgeModifier, "SplitEdgeModifier" );
+}
+
+macro CreateSplitEdgeModifier()
+[Category="Modifier Commands", Guid="{1F91F92B-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   EdgeModifier modifier = new EdgeModifier;
+   modifier.Name = "SplitEdgeModifier";
+   modifier.EdgeModify = 0;
+   modifier.SplitAlpha = 50;
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateSplitEdgeWithGridModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, EdgeModifier, "SplitEdgeWithGridModifier" );
+}
+
+macro CreateSplitEdgeWithGridModifier()
+[Category="Modifier Commands", Guid="{1F91F9A6-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   EdgeModifier modifier = new EdgeModifier;
+   modifier.Name = "SplitEdgeWithGridModifier";
+   modifier.EdgeModify = 1;
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateTurnEdgeModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, TurnEdgeModifier, "" );
+}
+
+macro CreateTurnEdgeModifier()
+[Category="Modifier Commands", Guid="{1F91F9A7-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   TurnEdgeModifier modifier = new TurnEdgeModifier;
+   modifier.Name = "TurnEdgeModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateCollapseVertexModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, CollapseVertexModifier, "" );
+}
+
+macro CreateCollapseVertexModifier()
+[Category="Modifier Commands", Guid="{1F91F9A8-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   CollapseVertexModifier modifier = new CollapseVertexModifier;
+   modifier.Name = "CollapseVertexModifier";
+   modifier.RingMode = 0;
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateFormRingModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, CollapseVertexModifier, "FormRingModifier" );
+}
+
+macro CreateFormRingModifier()
+[Category="Modifier Commands", Guid="{1F91F9A9-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   CollapseVertexModifier modifier = new CollapseVertexModifier;
+   modifier.Name = "FormRingModifier";
+   modifier.RingMode = 1;
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateSmoothModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, SmoothModifier, "" );
+}
+
+macro CreateSmoothModifier()
+[Category="Modifier Commands", Guid="{1F91F9AA-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   SmoothModifier modifier = new SmoothModifier;
+   modifier.Name = "SmoothModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateToggleSpokesModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, ToggleVertexSpokeEdgesModifier, "" );
+}
+
+macro CreateToggleSpokesModifier()
+[Category="Modifier Commands", Guid="{1F91FA47-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   ToggleVertexSpokeEdgesModifier modifier = new ToggleVertexSpokeEdgesModifier;
+   modifier.Name = "ToggleSpokesModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateEditAttributesModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, EditAttributesModifier, "" );
+}
+
+macro CreateEditAttributesModifier()
+[Category="Modifier Commands", Guid="{1F91FA48-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   EditAttributesModifier modifier = new EditAttributesModifier;
+   modifier.Name = "EditAttributesModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+   modifier.Initialize();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateWeldVertexModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, WeldVertexModifier, "" );
+}
+
+macro CreateWeldVertexModifier()
+[Category="Modifier Commands", Guid="{1F91F9AB-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   WeldVertexModifier modifier = new WeldVertexModifier;
+   modifier.Name = "WeldVertexModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+function void CreateTextureCoordinatesModifier_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleModifierCreateOnUpdate( commandInfo, TextureCoordsModifier, "" );
+}
+
+macro CreateTextureCoordinatesModifier()
+[Category="Modifier Commands", Guid="{1F91FAC2-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\create_modifier.bmp"]
+{
+   TextureCoordsModifier modifier = new TextureCoordsModifier;
+   modifier.Name = "TextureCoordinatesModifier";
+   SpaNodeUtil.AddModifier( modifier, 0 );
+}
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CalculateNormalsModifierSetFlatShade_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Configures the modifier to generate hard normals." );
+}
+
+macro CalculateNormalsModifierSetFlatShade()
+[Category="Modifier Commands", Guid="{1F91F8FB-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\flat_shade.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( CalculateNormalsModifier ) )
+      {
+         CalculateNormalsModifier modifier = (CalculateNormalsModifier)Model.EditNode( node );
+         modifier.CreaseAngle = 45;
+         modifier.FaceWeight = 1;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CalculateNormalsModifierSetSmoothShade_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Configures the modifier to generate smooth normals." );
+}
+
+macro CalculateNormalsModifierSetSmoothShade()
+[Category="Modifier Commands", Guid="{1F91F8FC-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\smooth_shade.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( CalculateNormalsModifier ) )
+      {
+         CalculateNormalsModifier modifier = (CalculateNormalsModifier)Model.EditNode( node );
+         modifier.CreaseAngle = 180;
+         modifier.FaceWeight = 0;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CalculateNormalsModifierSetNormalTexCoordsChannel_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Sets the CalculateNormalModifier 'Normal Map Texture Coordinates Channel' to the selected TextureCoordinatesModifier." );
+}
+
+macro CalculateNormalsModifierSetNormalTexCoordsChannel()
+[Category="Modifier Commands", Guid="{871C139B-C08B-4B73-AE34-CE2D395C434E}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.ConfigureTangentSpaceAttributes( 3, "NormalMapTexCoords" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CalculateNormalsModifierSetNormalAttributesChannel_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Sets the CalculateNormalModifier 'Normal Attributes Channel' to the selected NormalAttributesChannelModifier." );
+}
+
+macro CalculateNormalsModifierSetNormalAttributesChannel()
+[Category="Modifier Commands", Guid="{F6C56B63-3496-4BB6-B82E-7E9B9830D378}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.ConfigureTangentSpaceAttributes( 1, "NormalAttributes" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CalculateNormalsModifierSetTangentAttributesChannel_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Sets the CalculateNormalModifier 'Tangent Attributes Channel' to the selected NormalAttributesChannelModifier." );
+}
+
+macro CalculateNormalsModifierSetTangentAttributesChannel()
+[Category="Modifier Commands", Guid="{698D7C32-58F1-40BD-90F5-2E916D694612}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.ConfigureTangentSpaceAttributes( 1, "TangentAttributes" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CalculateNormalsModifierSetBinormalAttributesChannel_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Sets the CalculateNormalModifier 'Binormal Attributes Channel' to the selected NormalAttributesChannelModifier." );
+}
+
+macro CalculateNormalsModifierSetBinormalAttributesChannel()
+[Category="Modifier Commands", Guid="{F9FE7711-28DB-4B37-86BB-20F5ED21FBA0}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.ConfigureTangentSpaceAttributes( 1, "BinormalAttributes" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ModifierToggleEnable_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Toggles the modifier on/off." );
+}
+
+macro ModifierToggleEnable()
+[Category="Modifier Commands", Guid="{1F91F9CF-F612-46d4-A453-4B81096121A9}", Image=".\\icons\\toggle_modifier_enable.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Modifier ) )
+      {
+         Modifier modifier = (Modifier)Model.EditNode( node );
+         modifier.Enable = !modifier.Enable;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro TransformModifierResetToZero()
+[Category="Modifier Commands", Guid="{1F91F9BB-F612-46d4-A453-4B81096121A9}", Image=".\\icons\\reset_transform_modifier.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( TransformModifier ) )
+      {
+         TransformModifier modifier = (TransformModifier)Model.EditNode( node );
+         Matrix reset = modifier.GetTransform();
+         reset.Position[0] = 0;
+         reset.Position[1] = 0;
+         reset.Position[2] = 0;
+         modifier.SetTransform( reset );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void PlanarProjectTextureDoubleTiling_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, PlanarProjectTextureModifier, "Doubles the current attribute tiling" );
+}
+
+macro PlanarProjectTextureDoubleTiling()
+[Category="Modifier Commands", Guid="{586CA4C2-A54E-43E5-9593-3550CF611CD4}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = (Node)Model.GetSelectedNode(i).GetNode();
+      if( a_oNode.IsDerived( PlanarProjectTextureModifier ) )
+      {
+         PlanarProjectTextureModifier ppt = (PlanarProjectTextureModifier)Model.EditNode( a_oNode );
+         Graph.PlanarProjectTextureModifierSetTiling( "double", 0, 0, 0, 0, 0, 0, 0, 0, 0, ppt );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void PlanarProjectTextureHalfTiling_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, PlanarProjectTextureModifier, "Halves the current attribute tiling" );
+}
+macro PlanarProjectTextureHalfTiling()
+[Category="Modifier Commands", Guid="{163EE4BA-B0D1-4D4F-AA4E-710FE0B2B5B2}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = (Node)Model.GetSelectedNode(i).GetNode();
+      if( a_oNode.IsDerived( PlanarProjectTextureModifier ) )
+      {
+         PlanarProjectTextureModifier ppt = (PlanarProjectTextureModifier)Model.EditNode( a_oNode );
+         Graph.PlanarProjectTextureModifierSetTiling( "half", 0, 0, 0, 0, 0, 0, 0, 0, 0, ppt );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro AddChannelModifierSetChannelTypePosition()
+[Category="Modifier Commands", Guid="{2710D3F3-5731-4AB2-8754-0046078689B4}", Image=".\\icons\\set_channel_type_position.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( AddChannelModifier ) )
+      {
+         AddChannelModifier modifier = (AddChannelModifier)Model.EditNode( node );
+         modifier.Name = "PositionAttributesChannelModifier";
+         modifier.Attribute = 0;
+         modifier.Dimension = 3;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro AddChannelModifierSetChannelTypeNormal()
+[Category="Modifier Commands", Guid="{723D084F-DA63-4903-BC02-C8E243F2A651}", Image=".\\icons\\set_channel_type_normal.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( AddChannelModifier ) )
+      {
+         AddChannelModifier modifier = (AddChannelModifier)Model.EditNode( node );
+         modifier.Name = "NormalAttributesChannelModifier";
+         modifier.Attribute = 1;
+         modifier.Dimension = 3;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro AddChannelModifierSetChannelTypeColor()
+[Category="Modifier Commands", Guid="{6F8290DC-9A2B-420B-841F-10C550DC2621}", Image=".\\icons\\set_channel_type_color.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( AddChannelModifier ) )
+      {
+         AddChannelModifier modifier = (AddChannelModifier)Model.EditNode( node );
+         modifier.Name = "ColorAttributesChannelModifier";
+         modifier.Attribute = 2;
+         modifier.Dimension = 4;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro AddChannelModifierSetChannelTypeTextureCoordinates()
+[Category="Modifier Commands", Guid="{CA0D51AF-0121-451E-AC77-F08748A9E20F}", Image=".\\icons\\set_channel_type_texture.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( AddChannelModifier ) )
+      {
+         AddChannelModifier modifier = (AddChannelModifier)Model.EditNode( node );
+         modifier.Name = "TextureAttributesChannelModifier";
+         modifier.Attribute = 3;
+         modifier.Dimension = 2;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro AddChannelModifierSetChannelTypeIntegerData()
+[Category="Modifier Commands", Guid="{68C5531B-86B5-4C3D-BEA0-52FC68C74D8C}", Image=".\\icons\\set_channel_type_data.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( AddChannelModifier ) )
+      {
+         AddChannelModifier modifier = (AddChannelModifier)Model.EditNode( node );
+         modifier.Name = "DataAttributesChannelModifier";
+         modifier.Attribute = 4;
+         modifier.Dimension = 3;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro AddChannelModifierSetDimensions1()
+[Category="Modifier Commands", Guid="{300543FE-B13A-4DBF-B172-28774F340B5D}", Image=".\\icons\\set_channel_dimension_one.bmp"]
+{
+   Graph.AddChannelModifierSetDimensions( 1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro AddChannelModifierSetDimensions2()
+[Category="Modifier Commands", Guid="{A72D5DA2-B5D9-4782-9A4F-BCC18C102531}", Image=".\\icons\\set_channel_dimension_two.bmp"]
+{
+   Graph.AddChannelModifierSetDimensions( 2 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro AddChannelModifierSetDimensions3()
+[Category="Modifier Commands", Guid="{2668F808-C851-41AF-A2E6-EBEC3295A485}", Image=".\\icons\\set_channel_dimension_three.bmp"]
+{
+   Graph.AddChannelModifierSetDimensions( 3 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro AddChannelModifierSetDimensions4()
+[Category="Modifier Commands", Guid="{0A4BD12E-EFD3-4899-9141-D455D796BBB2}", Image=".\\icons\\set_channel_dimension_four.bmp"]
+{
+   Graph.AddChannelModifierSetDimensions( 4 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro RectangleGeometryModifierInsertSimplification()
+[Category="Modifier Commands", Guid="{1D9F1E46-5D6C-49E8-8422-7335222941AB}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Node a_oNode = Model.GetSelectedNode( 0 ).GetNode();
+   ParametricMesh a_oMesh = (ParametricMesh)a_oNode.Parent();
+   int a_iInsertIndex = a_oMesh.GetChildIndex( a_oNode ) + 1;
+
+   SimplifyModifier a_oSimplify = new SimplifyModifier;
+   a_oSimplify.Name = "SimplifyModifier";
+   a_oSimplify.Percent = 90;
+   Model.AddNode( a_oSimplify, a_oMesh, a_iInsertIndex );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void DisplaceModifierOpenDisplacementMap_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, DisplaceModifier, "Opens the displacement map in the associated image editor." );
+}
+
+macro DisplaceModifierOpenDisplacementMap()
+[Category="Modifier Commands", Guid="{36E89B47-E819-4BF0-9D0F-4287D8116775}", Image=".\\icons\\displacement_map_open_file.bmp" ]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( DisplaceModifier ) )
+      {
+         DisplaceModifier displace = (DisplaceModifier)node;
+         string absolutepath = Application.ResolveModelRelativePath( displace.MapFile );
+         Application.ShellExec( absolutepath );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+//  This function sets the split percentage of all selected EdgeModifier nodes.
+
+function void SetSelectedEdgeModifierSplit( int alpha )
+{
+   string name = "Split: " + alpha + "%";
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( EdgeModifier ) )
+      {
+         EdgeModifier modifier = (EdgeModifier)Model.EditNode( node );
+
+         modifier.Name = name;
+         modifier.SplitAlpha = alpha;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void EdgeModifierSet10Percent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleEdgeModifierOnUpdate( commandInfo, "Set edge split alpha to 10%" );
+}
+
+macro EdgeModifierSet10Percent()
+[Category="Modifier Commands", Guid="{1F91F9AD-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\edge_modifier_set_custom_percent.bmp"]
+{
+   SetSelectedEdgeModifierSplit( 10 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void EdgeModifierSet25Percent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleEdgeModifierOnUpdate( commandInfo, "Set edge split alpha to 25%" );
+}
+
+macro EdgeModifierSet25Percent()
+[Category="Modifier Commands", Guid="{1F91F9AE-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\edge_modifier_set_custom_percent.bmp"]
+{
+   SetSelectedEdgeModifierSplit( 25 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void EdgeModifierSet33Percent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleEdgeModifierOnUpdate( commandInfo, "Set edge split alpha to 33%" );
+}
+
+macro EdgeModifierSet33Percent()
+[Category="Modifier Commands", Guid="{1F91F9AF-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\edge_modifier_set_custom_percent.bmp"]
+{
+   SetSelectedEdgeModifierSplit( 33 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void EdgeModifierSet50Percent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleEdgeModifierOnUpdate( commandInfo, "Set edge split alpha to 50%" );
+}
+
+macro EdgeModifierSet50Percent()
+[Category="Modifier Commands", Guid="{1F91F9B0-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\edge_modifier_set_custom_percent.bmp"]
+{
+   SetSelectedEdgeModifierSplit( 50 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void EdgeModifierSet66Percent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleEdgeModifierOnUpdate( commandInfo, "Set edge split alpha to 66%" );
+}
+
+macro EdgeModifierSet66Percent()
+[Category="Modifier Commands", Guid="{1F91F9B1-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\edge_modifier_set_custom_percent.bmp"]
+{
+   SetSelectedEdgeModifierSplit( 66 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void EdgeModifierSet75Percent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleEdgeModifierOnUpdate( commandInfo, "Set edge split alpha to 75%" );
+}
+
+macro EdgeModifierSet75Percent()
+[Category="Modifier Commands", Guid="{1F91F9B2-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\edge_modifier_set_custom_percent.bmp"]
+{
+   SetSelectedEdgeModifierSplit( 75 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void EdgeModifierSet90Percent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleEdgeModifierOnUpdate( commandInfo, "Set edge split alpha to 90%" );
+}
+
+macro EdgeModifierSet90Percent()
+[Category="Modifier Commands", Guid="{1F91F9B3-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\edge_modifier_set_custom_percent.bmp"]
+{
+   SetSelectedEdgeModifierSplit( 90 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void SimplifyModifierSet0Percent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleSimplifyModifierOnUpdate( commandInfo, "Set simplification to 0 percent." );
+}
+
+macro SimplifyModifierSet0Percent()
+[Category="Modifier Commands", Guid="{1F91FA54-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\simplify_set_custom_percent.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( SimplifyModifier ) )
+      {
+         SimplifyModifier modifier = (SimplifyModifier)Model.EditNode( node );
+         modifier.Name = "Simplified: 0%";
+         modifier.Percent = 0;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void SimplifyModifierSet10Percent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleSimplifyModifierOnUpdate( commandInfo, "Set simplification to 10 percent." );
+}
+
+macro SimplifyModifierSet10Percent()
+[Category="Modifier Commands", Guid="{1F91F972-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\simplify_set_custom_percent.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( SimplifyModifier ) )
+      {
+         SimplifyModifier modifier = (SimplifyModifier)Model.EditNode( node );
+         modifier.Name = "Simplified: 10%";
+         modifier.Percent = 10;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void SimplifyModifierSet25Percent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleSimplifyModifierOnUpdate( commandInfo, "Set simplification to 25 percent." );
+}
+
+macro SimplifyModifierSet25Percent()
+[Category="Modifier Commands", Guid="{1F91F973-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\simplify_set_custom_percent.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( SimplifyModifier ) )
+      {
+         SimplifyModifier modifier = (SimplifyModifier)Model.EditNode( node );
+         modifier.Name = "Simplified: 25%";
+         modifier.Percent = 25;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void SimplifyModifierSet50Percent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleSimplifyModifierOnUpdate( commandInfo, "Set simplification to 50 percent." );
+}
+
+macro SimplifyModifierSet50Percent()
+[Category="Modifier Commands", Guid="{1F91F971-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\simplify_set_custom_percent.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( SimplifyModifier ) )
+      {
+         SimplifyModifier modifier = (SimplifyModifier)Model.EditNode( node );
+         modifier.Name = "Simplified: 50%";
+         modifier.Percent = 50;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void SimplifyModifierSet75Percent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleSimplifyModifierOnUpdate( commandInfo, "Set simplification to 75 percent." );
+}
+
+macro SimplifyModifierSet75Percent()
+[Category="Modifier Commands", Guid="{1F91F974-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( SimplifyModifier ) )
+      {
+         SimplifyModifier modifier = (SimplifyModifier)Model.EditNode( node );
+         modifier.Name = "Simplified: 75%";
+         modifier.Percent = 75;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void SimplifyModifierSet90Percent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleSimplifyModifierOnUpdate( commandInfo, "Set simplification to 90 percent." );
+}
+
+macro SimplifyModifierSet90Percent()
+[Category="Modifier Commands", Guid="{1F91F975-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( SimplifyModifier ) )
+      {
+         SimplifyModifier modifier = (SimplifyModifier)Model.EditNode( node );
+         modifier.Name = "Simplified: 90%";
+         modifier.Percent = 90;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void RectangleGeometryModifierCreate7pt5MinuteTile_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, RectangleGeometryModifier, "Set extents to match a 7.5 minute geographic tile" );
+}
+
+macro RectangleGeometryModifierCreate7pt5MinuteTile()
+[Category="Terrain Commands", Guid="{6CA76F0A-2DF9-42CA-854A-1CA1104776AE}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      
+      if( node.IsDerived( RectangleGeometryModifier ) )
+      {
+         RectangleGeometryModifier mesh = (RectangleGeometryModifier)Model.EditNode( node );
+         mesh.XMax =  mesh.XMin + 0.125;
+         mesh.YMax =  mesh.YMin + 0.125;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void RectangleGeometryModifierTriangulate_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, RectangleGeometryModifier, "Toggle triangulation" );
+}
+
+macro RectangleGeometryModifierTriangulate()
+[Category="Rectangle Commands", Guid="{1F91F9CE-F612-46d4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( RectangleGeometryModifier ) )
+      {
+         RectangleGeometryModifier mesh = (RectangleGeometryModifier)Model.EditNode( node );
+         mesh.Triangulate = !mesh.Triangulate;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void RectangleGeometryModifierShiftAlongXpositive_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, RectangleGeometryModifier, "Shift by width along positive X axis" );
+}
+
+macro RectangleGeometryModifierShiftAlongXpositive()
+[Category="Rectangle Commands", Guid="{1F91FA8D-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( RectangleGeometryModifier ) )
+      {
+         RectangleGeometryModifier mesh = (RectangleGeometryModifier)Model.EditNode( node );
+         // Shift the rectangle by its current size.
+         double currentSizeX = mesh.XMax - mesh.XMin;
+         mesh.XMin += currentSizeX;
+         mesh.XMax += currentSizeX;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void RectangleGeometryModifierShiftAlongXnegative_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, RectangleGeometryModifier, "Shift by width along negative X axis" );
+}
+
+macro RectangleGeometryModifierShiftAlongXnegative()
+[Category="Rectangle Commands", Guid="{82576B9D-587C-4B7D-A2BF-43513005B81F}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( RectangleGeometryModifier ) )
+      {
+         RectangleGeometryModifier mesh = (RectangleGeometryModifier)Model.EditNode( node );
+         // Shift the rectangle by its current size.
+         double currentSizeX = mesh.XMax - mesh.XMin;
+         mesh.XMin -= currentSizeX;
+         mesh.XMax -= currentSizeX;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void RectangleGeometryModifierShiftAlongYpositive_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, RectangleGeometryModifier, "Shift by height along positive Y axis" );
+}
+
+macro RectangleGeometryModifierShiftAlongYpositive()
+[Category="Rectangle Commands", Guid="{1F91FA8E-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( RectangleGeometryModifier ) )
+      {
+         RectangleGeometryModifier mesh = (RectangleGeometryModifier)Model.EditNode( node );
+         // Shift the rectangle by its current size.
+         double currentSizeY = mesh.YMax - mesh.YMin;
+         mesh.YMin += currentSizeY;
+         mesh.YMax += currentSizeY;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void RectangleGeometryModifierShiftAlongYnegative_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, RectangleGeometryModifier, "Shift by height along negative Y axis" );
+}
+
+macro RectangleGeometryModifierShiftAlongYnegative()
+[Category="Rectangle Commands", Guid="{57115C4B-6306-492C-A2C5-0C83B9BB7456}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( RectangleGeometryModifier ) )
+      {
+         RectangleGeometryModifier mesh = (RectangleGeometryModifier)Model.EditNode( node );
+         // Shift the rectangle by its current size.
+         double currentSizeY = mesh.YMax - mesh.YMin;
+         mesh.YMin -= currentSizeY;
+         mesh.YMax -= currentSizeY;
+      }
+   }
+}

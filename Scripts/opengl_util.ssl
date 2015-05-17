@@ -1,0 +1,704 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             OPENGL_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements utility functions for OpenGL.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+library GPU;
+
+function int GL_VENDOR()                                          { return 0x1F00; }
+function int GL_RENDERER()                                        { return 0x1F01; }
+function int GL_VERSION()                                         { return 0x1F02; }
+function int GL_EXTENSIONS()                                      { return 0x1F03; }
+function int GL_MAX_VIEWPORT_DIMS()                               { return 0x0D3A; }
+function int GL_MAX_MODELVIEW_STACK_DEPTH()                       { return 0x0D36; }
+function int GL_MAX_TEXTURE_SIZE()                                { return 0x0D33; }
+function int GL_MAX_LIGHTS()                                      { return 0x0D31; }
+function int GL_MAX_ATTRIB_STACK_DEPTH()                          { return 0x0D35; }
+function int GL_MAX_DRAW_BUFFERS()                                { return 0x8824; }
+function int GL_MAX_VARYING_FLOATS()                              { return 0x8B4B; }
+function int GL_ACTIVE_ATTRIBUTE_MAX_LENGTH()                     { return 0x8B8A; }
+function int GL_ACTIVE_UNIFORM_MAX_LENGTH()                       { return 0x8B87; }
+function int GL_MAX_3D_TEXTURE_SIZE()                             { return 0x8073; }
+function int GL_ACTIVE_UNIFORMS()                                 { return 0x8B86; }
+function int GL_MAX_CLIP_PLANES()                                 { return 0x0D32; }
+function int GL_MAX_CLIP_DISTANCES()                              { return 0x0D32; }
+function int GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS()                { return 0x8B4D; }
+function int GL_MAX_CUBE_MAP_TEXTURE_SIZE()                       { return 0x851C; }
+function int GL_MAX_ELEMENTS_INDICES()                            { return 0x80E9; }
+function int GL_MAX_ELEMENTS_VERTICES()                           { return 0x80E8; }
+function int GL_MAX_EVAL_ORDER()                                  { return 0x0D30; }
+function int GL_MAX_FRAGMENT_UNIFORM_COMPONENTS()                 { return 0x8B49; }
+function int GL_MAX_LIST_NESTING()                                { return 0x0B31; }
+function int GL_MAX_NAME_STACK_DEPTH()                            { return 0x0D37; }
+function int GL_MAX_PIXEL_MAP_TABLE()                             { return 0x0D34; }
+function int GL_MAX_PROJECTION_STACK_DEPTH()                      { return 0x0D38; }
+function int GL_MAX_TEXTURE_COORDS()                              { return 0x8871; }
+function int GL_MAX_TEXTURE_LOD_BIAS()                            { return 0x84FD; }
+function int GL_MAX_TEXTURE_IMAGE_UNITS()                         { return 0x8872; }
+function int GL_MAX_TEXTURE_STACK_DEPTH()                         { return 0x0D39; }
+function int GL_MAX_TEXTURE_UNITS()                               { return 0x84E2; }
+function int GL_MAX_TEXTURE_BUFFER_SIZE()                         { return 0x8C2B; }
+function int GL_MAX_VERTEX_ATTRIBS()                              { return 0x8869; }
+function int GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS()                  { return 0x8B4C; }
+function int GL_MAX_VERTEX_UNIFORM_COMPONENTS()                   { return 0x8B4A; }
+function int GL_TEXTURE_MAX_LEVEL()                               { return 0x813D; }
+function int GL_TEXTURE_MAX_LOD()                                 { return 0x813B; }
+function int GL_SHADING_LANGUAGE_VERSION()                        { return 0x8B8C; }
+function int GL_MAJOR_VERSION()                                   { return 0x821B; }
+function int GL_MINOR_VERSION()                                   { return 0x821C; }
+function int GL_SHADER_COMPILER()                                 { return 0x8DFA; }
+function int GL_MAX_GEOMETRY_SHADER_INVOCATIONS()                 { return 0x8E5A; }
+function int GL_MAX_VERTEX_STREAMS()                              { return 0x8E71; }
+function int GL_MAX_PATCH_VERTICES()                              { return 0x8E7D; }
+function int GL_MAX_TESS_GEN_LEVEL()                              { return 0x8E7E; }
+function int GL_MAX_TESS_CONTROL_UNIFORM_COMPONENTS()             { return 0x8E7F; }
+function int GL_MAX_TESS_EVALUATION_UNIFORM_COMPONENTS()          { return 0x8E80; }
+function int GL_MAX_TESS_CONTROL_TEXTURE_IMAGE_UNITS()            { return 0x8E81; }
+function int GL_MAX_TESS_EVALUATION_TEXTURE_IMAGE_UNITS()         { return 0x8E82; }
+function int GL_MAX_TESS_CONTROL_OUTPUT_COMPONENTS()              { return 0x8E83; }
+function int GL_MAX_TESS_PATCH_COMPONENTS()                       { return 0x8E84; }
+function int GL_MAX_TESS_CONTROL_TOTAL_OUTPUT_COMPONENTS()        { return 0x8E85; }
+function int GL_MAX_TESS_EVALUATION_OUTPUT_COMPONENTS()           { return 0x8E86; }
+function int GL_MAX_TESS_CONTROL_UNIFORM_BLOCKS()                 { return 0x8E89; }
+function int GL_MAX_TESS_EVALUATION_UNIFORM_BLOCKS()              { return 0x8E8A; }
+function int GL_MAX_TESS_CONTROL_INPUT_COMPONENTS()               { return 0x886C; }
+function int GL_MAX_TESS_EVALUATION_INPUT_COMPONENTS()            { return 0x886D; }
+function int GL_MAX_COMBINED_TESS_CONTROL_UNIFORM_COMPONENTS()    { return 0x8E1E; }
+function int GL_MAX_COMBINED_TESS_EVALUATION_UNIFORM_COMPONENTS() { return 0x8E1F; }
+function int GL_ACTIVE_SUBROUTINES()                              { return 0x8DE5; }
+function int GL_ACTIVE_SUBROUTINE_UNIFORMS()                      { return 0x8DE6; }
+function int GL_ACTIVE_SUBROUTINE_UNIFORM_LOCATIONS()             { return 0x8E47; }
+function int GL_ACTIVE_SUBROUTINE_MAX_LENGTH()                    { return 0x8E48; }
+function int GL_ACTIVE_SUBROUTINE_UNIFORM_MAX_LENGTH()            { return 0x8E49; }
+function int GL_MAX_SUBROUTINES()                                 { return 0x8DE7; }
+function int GL_MAX_SUBROUTINE_UNIFORM_LOCATIONS()                { return 0x8DE8; }
+function int GL_NUM_COMPATIBLE_SUBROUTINES()                      { return 0x8E4A; }
+function int GL_COMPATIBLE_SUBROUTINES()                          { return 0x8E4B; }
+function int GL_MAX_VERTEX_SHADER_INSTRUCTIONS_EXT()              { return 0x87C5; }
+function int GL_MAX_VERTEX_OUTPUT_COMPONENTS()                    { return 0x9122; }
+function int GL_MAX_GEOMETRY_INPUT_COMPONENTS()                   { return 0x9123; }
+function int GL_MAX_GEOMETRY_OUTPUT_COMPONENTS()                  { return 0x9124; }
+function int GL_MAX_GEOMETRY_UNIFORM_COMPONENTS()                 { return 0x8DDF; }
+function int GL_MAX_GEOMETRY_TEXTURE_IMAGE_UNITS()                { return 0x8C29; }
+function int GL_MAX_GEOMETRY_OUTPUT_VERTICES()                    { return 0x8DE0; }
+function int GL_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS()            { return 0x8DE1; }
+function int GL_MAX_GEOMETRY_VARYING_COMPONENTS_ARB()             { return 0x8DDD; }
+function int GL_MAX_FRAGMENT_INPUT_COMPONENTS()                   { return 0x9125; }
+function int GL_MAX_VIEWPORTS()                                   { return 0x825B; }
+function int GL_MAX_VERTEX_UNIFORM_VECTORS()                      { return 0x8DFB; }
+function int GL_MAX_VARYING_VECTORS()                             { return 0x8DFC; }
+function int GL_MAX_FRAGMENT_UNIFORM_VECTORS()                    { return 0x8DFD; }
+
+function int GL_MAX_VERTEX_IMAGE_UNIFORMS()                       { return 0x90CA; }
+function int GL_MAX_VERTEX_ATOMIC_COUNTERS()                      { return 0x92D2; }
+function int GL_MAX_TESS_CONTROL_ATOMIC_COUNTERS()                { return 0x92D3; }
+function int GL_MAX_TESS_EVALUATION_ATOMIC_COUNTERS()             { return 0x92D4; }
+function int GL_MAX_TESS_EVALUATION_IMAGE_UNIFORMS()              { return 0x90CC; }
+function int GL_MAX_TESS_CONTROL_IMAGE_UNIFORMS()                 { return 0x90CB; }
+function int GL_MAX_GEOMETRY_ATOMIC_COUNTERS()                    { return 0x92D5; }
+function int GL_MAX_GEOMETRY_IMAGE_UNIFORMS()                     { return 0x90CD; }
+function int GL_MAX_FRAGMENT_ATOMIC_COUNTERS()                    { return 0x92D6; }
+function int GL_MAX_FRAGMENT_IMAGE_UNIFORMS()                     { return 0x90CE; }
+function int GL_MAX_COMBINED_ATOMIC_COUNTERS()                    { return 0x92D7; }
+
+// In GLEXT.H there is no available information for:
+//function int GL_MAX_ATOMIC_COUNTER_BINDINGS()                    { return ??????; }
+// This exists, but it may not be the same:
+//function int GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS               { return 0x92DC; }
+
+function int GL_MAX_VERTEX_ATOMIC_COUNTER_BUFFERS()               { return 0x92CC; }
+function int GL_MAX_TESS_CONTROL_ATOMIC_COUNTER_BUFFERS()         { return 0x92CD; }
+function int GL_MAX_TESS_EVALUATION_ATOMIC_COUNTER_BUFFERS()      { return 0x92CE; }
+function int GL_MAX_GEOMETRY_ATOMIC_COUNTER_BUFFERS()             { return 0x92CF; }
+function int GL_MAX_FRAGMENT_ATOMIC_COUNTER_BUFFERS()             { return 0x92D0; }
+function int GL_MAX_COMBINED_ATOMIC_COUNTER_BUFFERS()             { return 0x92D1; }
+function int GL_MAX_ATOMIC_COUNTER_BUFFER_SIZE()                  { return 0x92D8; }
+function int GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS()              { return 0x92DC; }
+function int GL_MIN_PROGRAM_TEXEL_OFFSET()                        { return 0x8904; }
+function int GL_MAX_PROGRAM_TEXEL_OFFSET()                        { return 0x8905; }
+function int GL_MAX_TRANSFORM_FEEDBACK_BUFFERS()                  { return 0x8E70; }
+function int GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS()   { return 0x8C8A; }
+function int GL_MAX_COMBINED_IMAGE_UNIFORMS()                     { return 0x90CF; }
+function int GL_MAX_IMAGE_UNITS()                                 { return 0x8F38; }
+function int GL_MAX_COMBINED_IMAGE_UNITS_AND_FRAGMENT_OUTPUTS()   { return 0x8F39; }
+function int GL_MAX_IMAGE_SAMPLES()                               { return 0x906D; }
+function int GL_MAX_SAMPLES()                                     { return 0x8D57; }
+function int GL_MAX_COMBINED_CLIP_AND_CULL_DISTANCES()            { return 0x82FA; }
+function int GL_MAX_COMBINED_SHADER_OUTPUT_RESOURCES()            { return 0x8F39; }
+function int GL_MAX_CULL_DISTANCES()                              { return 0x82F9; }
+
+// ATI Specific
+function int GL_VBO_FREE_MEMORY_ATI()                             { return 0x87FB; }
+function int GL_TEXTURE_FREE_MEMORY_ATI()                         { return 0x87FC; }
+function int GL_RENDERBUFFER_FREE_MEMORY_ATI()                    { return 0x87FD; }
+
+// NVIDIA SPECIFIC
+function int GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX()               { return 0x9047; }
+function int GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX()         { return 0x9048; }
+function int GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX()       { return 0x9049; }
+function int GPU_MEMORY_INFO_EVICTION_COUNT_NVX()                 { return 0x904A; }
+function int GPU_MEMORY_INFO_EVICTED_MEMORY_NVX()                 { return 0x904B; }
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void PopulateExtensions( StrList p_slExtensions, string p_sExtensionCategory )
+{
+   if( p_sExtensionCategory == "GLAMD" )
+   {
+      p_slExtensions.Add( "GL_AMD_blend_minmax_factor" );
+      p_slExtensions.Add( "GL_AMD_compressed_3DC_texture" );
+      p_slExtensions.Add( "GL_AMD_compressed_ATC_texture" );
+      p_slExtensions.Add( "GL_AMD_conservative_depth" );
+      p_slExtensions.Add( "GL_AMD_debug_output" );
+      p_slExtensions.Add( "GL_AMD_depth_clamp_separate" );
+      p_slExtensions.Add( "GL_AMD_draw_buffers_blend" );
+      p_slExtensions.Add( "GL_AMD_multi_draw_indirect" );
+      p_slExtensions.Add( "GL_AMD_name_gen_delete" );
+      p_slExtensions.Add( "GL_AMD_performance_monitor" );
+      p_slExtensions.Add( "GL_AMD_pinned_memory" );
+      p_slExtensions.Add( "GL_AMD_program_binary_Z400" );
+      p_slExtensions.Add( "GL_AMD_query_buffer_object" );
+      p_slExtensions.Add( "GL_AMD_sample_positions" );
+      p_slExtensions.Add( "GL_AMD_seamless_cubemap_per_texture" );
+      p_slExtensions.Add( "GL_AMD_shader_stencil_export" );
+      p_slExtensions.Add( "GL_AMD_shader_stencil_value_export" );
+      p_slExtensions.Add( "GL_AMD_shader_trace" );
+      p_slExtensions.Add( "GL_AMD_shader_trinary_minmax" );
+      p_slExtensions.Add( "GL_AMD_sparse_texture" );
+      p_slExtensions.Add( "GL_AMD_stencil_operation_extended" );
+      p_slExtensions.Add( "GL_AMD_texture_compression_dxt6" );
+      p_slExtensions.Add( "GL_AMD_texture_compression_dxt7" );
+      p_slExtensions.Add( "GL_AMD_texture_cube_map_array" );
+      p_slExtensions.Add( "GL_AMD_texture_texture4" );
+      p_slExtensions.Add( "GL_AMD_tiled_rendering" );
+      p_slExtensions.Add( "GL_AMD_transform_feedback3_lines_triangles" );
+      p_slExtensions.Add( "GL_AMD_transform_feedback4" );
+      p_slExtensions.Add( "GL_AMD_vertex_shader_layer" );
+      p_slExtensions.Add( "GL_AMD_vertex_shader_tessellator" );
+      p_slExtensions.Add( "GL_AMD_vertex_shader_viewport_index" );
+      p_slExtensions.Add( "GL_AMDX_abuffer_oit" );
+      p_slExtensions.Add( "GL_AMDX_debug_output" );
+      p_slExtensions.Add( "GL_AMDX_name_gen_delete" );
+      p_slExtensions.Add( "GL_AMDX_random_access_target" );
+      p_slExtensions.Add( "GL_AMDX_texture_compression_dxt6" );
+      p_slExtensions.Add( "GL_AMDX_texture_compression_dxt7" );
+      p_slExtensions.Add( "GL_AMDX_vertex_shader_tessellator" );
+   }
+   else
+   if( p_sExtensionCategory == "GLATI" )
+   {
+      p_slExtensions.Add( "GL_ATI_array_rev_comps_in_4_bytes" );
+      p_slExtensions.Add( "GL_ATI_blend_equation_separate" );
+      p_slExtensions.Add( "GL_ATI_blend_weighted_minmax" );
+      p_slExtensions.Add( "GL_ATI_draw_buffers" );
+      p_slExtensions.Add( "GL_ATI_element_array" );
+      p_slExtensions.Add( "GL_ATI_envmap_bumpmap" );
+      p_slExtensions.Add( "GL_ATI_fragment_shader" );
+      p_slExtensions.Add( "GL_ATI_lock_texture" );
+      p_slExtensions.Add( "GL_ATI_map_object_buffer" );
+      p_slExtensions.Add( "GL_ATI_meminfo" );
+      p_slExtensions.Add( "GL_ATI_pixel_format_float" );
+      p_slExtensions.Add( "GL_ATI_pn_triangles" );
+      p_slExtensions.Add( "GL_ATI_point_cull_mode" );
+      p_slExtensions.Add( "GL_ATI_separate_stencil" );
+      p_slExtensions.Add( "GL_ATI_shader_texture_lod" );
+      p_slExtensions.Add( "GL_ATI_text_fragment_shader" );
+      p_slExtensions.Add( "GL_ATI_texture_compression_3dc" );
+      p_slExtensions.Add( "GL_ATI_texture_env_combine3" );
+      p_slExtensions.Add( "GL_ATI_texture_float" );
+      p_slExtensions.Add( "GL_ATI_texture_mirror_once" );
+      p_slExtensions.Add( "GL_ATI_vertex_array_object" );
+      p_slExtensions.Add( "GL_ATI_vertex_attrib_array_object" );
+      p_slExtensions.Add( "GL_ATI_vertex_blend" );
+      p_slExtensions.Add( "GL_ATI_vertex_shader" );
+      p_slExtensions.Add( "GL_ATI_vertex_streams" );
+      p_slExtensions.Add( "GL_ATIX_pn_triangles" );
+      p_slExtensions.Add( "GL_ATIX_texture_env_combine3" );
+      p_slExtensions.Add( "GL_ATIX_texture_env_route" );
+      p_slExtensions.Add( "GL_ATIX_vertex_shader_output_point_size" );
+   }
+   else
+   if( p_sExtensionCategory == "GLARB" )
+   {
+      p_slExtensions.Add( "GL_ARB_arrays_of_arrays" );
+      p_slExtensions.Add( "GL_ARB_base_instance" );
+      p_slExtensions.Add( "GL_ARB_blend_func_extended" );
+      p_slExtensions.Add( "GL_ARB_cl_event" );
+      p_slExtensions.Add( "GL_ARB_clear_buffer_object" );
+      p_slExtensions.Add( "GL_ARB_color_buffer_float" );
+      p_slExtensions.Add( "GL_ARB_compatibility" );
+      p_slExtensions.Add( "GL_ARB_compressed_texture_pixel_storage" );
+      p_slExtensions.Add( "GL_ARB_compute_shader" );
+      p_slExtensions.Add( "GL_ARB_conservative_depth" );
+      p_slExtensions.Add( "GL_ARB_copy_buffer" );
+      p_slExtensions.Add( "GL_ARB_copy_image" );
+      p_slExtensions.Add( "GL_ARB_debug_group" );
+      p_slExtensions.Add( "GL_ARB_debug_label" );
+      p_slExtensions.Add( "GL_ARB_debug_output" );
+      p_slExtensions.Add( "GL_ARB_debug_output2" );
+      p_slExtensions.Add( "GL_ARB_depth_buffer_float" );
+      p_slExtensions.Add( "GL_ARB_depth_clamp" );
+      p_slExtensions.Add( "GL_ARB_depth_texture" );
+      p_slExtensions.Add( "GL_ARB_draw_buffers" );
+      p_slExtensions.Add( "GL_ARB_draw_buffers_blend" );
+      p_slExtensions.Add( "GL_ARB_draw_elements_base_vertex" );
+      p_slExtensions.Add( "GL_ARB_draw_indirect" );
+      p_slExtensions.Add( "GL_ARB_draw_instanced" );
+      p_slExtensions.Add( "GL_ARB_ES2_compatibility" );
+      p_slExtensions.Add( "GL_ARB_ES3_compatibility" );
+      p_slExtensions.Add( "GL_ARB_explicit_attrib_location" );
+      p_slExtensions.Add( "GL_ARB_explicit_uniform_location" );
+      p_slExtensions.Add( "GL_ARB_fragment_coord_conventions" );
+      p_slExtensions.Add( "GL_ARB_fragment_layer_viewport" );
+      p_slExtensions.Add( "GL_ARB_fragment_program" );
+      p_slExtensions.Add( "GL_ARB_fragment_program_shadow" );
+      p_slExtensions.Add( "GL_ARB_fragment_shader" );
+      p_slExtensions.Add( "GL_ARB_framebuffer_no_attachments" );
+      p_slExtensions.Add( "GL_ARB_framebuffer_object" );
+      p_slExtensions.Add( "GL_ARB_framebuffer_sRGB" );
+      p_slExtensions.Add( "GL_ARB_geometry_shader4" );
+      p_slExtensions.Add( "GL_ARB_get_program_binary" );
+      p_slExtensions.Add( "GL_ARB_gpu_shader_fp64" );
+      p_slExtensions.Add( "GL_ARB_gpu_shader5" );
+      p_slExtensions.Add( "GL_ARB_half_float_pixel" );
+      p_slExtensions.Add( "GL_ARB_half_float_vertex" );
+      p_slExtensions.Add( "GL_ARB_imaging" );
+      p_slExtensions.Add( "GL_ARB_instanced_arrays" );
+      p_slExtensions.Add( "GL_ARB_internalformat_query" );
+      p_slExtensions.Add( "GL_ARB_internalformat_query2" );
+      p_slExtensions.Add( "GL_ARB_invalidate_subdata" );
+      p_slExtensions.Add( "GL_ARB_make_current_read" );
+      p_slExtensions.Add( "GL_ARB_map_buffer_alignment" );
+      p_slExtensions.Add( "GL_ARB_map_buffer_range" );
+      p_slExtensions.Add( "GL_ARB_matrix_palette" );
+      p_slExtensions.Add( "GL_ARB_multi_draw_indirect" );
+      p_slExtensions.Add( "GL_ARB_multisample" );
+      p_slExtensions.Add( "GL_ARB_multitexture" );
+      p_slExtensions.Add( "GL_ARB_occlusion_query" );
+      p_slExtensions.Add( "GL_ARB_occlusion_query2" );
+      p_slExtensions.Add( "GL_ARB_pixel_buffer_object" );
+      p_slExtensions.Add( "GL_ARB_point_parameters" );
+      p_slExtensions.Add( "GL_ARB_point_sprite" );
+      p_slExtensions.Add( "GL_ARB_program_interface_query" );
+      p_slExtensions.Add( "GL_ARB_provoking_vertex" );
+      p_slExtensions.Add( "GL_ARB_robustness" );
+      p_slExtensions.Add( "GL_ARB_sample_shading" );
+      p_slExtensions.Add( "GL_ARB_sampler_objects" );
+      p_slExtensions.Add( "GL_ARB_seamless_cube_map" );
+      p_slExtensions.Add( "GL_ARB_separate_shader_objects" );
+      p_slExtensions.Add( "GL_ARB_shader_atomic_counters" );
+      p_slExtensions.Add( "GL_ARB_shader_bit_encoding" );
+      p_slExtensions.Add( "GL_ARB_shader_image_load_store" );
+      p_slExtensions.Add( "GL_ARB_shader_objects" );
+      p_slExtensions.Add( "GL_ARB_shader_precision" );
+      p_slExtensions.Add( "GL_ARB_shader_stencil_export" );
+      p_slExtensions.Add( "GL_ARB_shader_storage_buffer_object" );
+      p_slExtensions.Add( "GL_ARB_shader_subroutine" );
+      p_slExtensions.Add( "GL_ARB_shader_texture_lod" );
+      p_slExtensions.Add( "GL_ARB_shading_language_100" );
+      p_slExtensions.Add( "GL_ARB_shading_language_120" );
+      p_slExtensions.Add( "GL_ARB_shading_language_420pack" );
+      p_slExtensions.Add( "GL_ARB_shading_language_include" );
+      p_slExtensions.Add( "GL_ARB_shading_language_packing" );
+      p_slExtensions.Add( "GL_ARB_shadow" );
+      p_slExtensions.Add( "GL_ARB_shadow_ambient" );
+      p_slExtensions.Add( "GL_ARB_stencil_texturing" );
+      p_slExtensions.Add( "GL_ARB_sync" );
+      p_slExtensions.Add( "GL_ARB_tessellation_shader" );
+      p_slExtensions.Add( "GL_ARB_texture_border_clamp" );
+      p_slExtensions.Add( "GL_ARB_texture_buffer_object" );
+      p_slExtensions.Add( "GL_ARB_texture_buffer_object_rgb32" );
+      p_slExtensions.Add( "GL_ARB_texture_buffer_range" );
+      p_slExtensions.Add( "GL_ARB_texture_compression" );
+      p_slExtensions.Add( "GL_ARB_texture_compression_bptc" );
+      p_slExtensions.Add( "GL_ARB_texture_compression_rgtc" );
+      p_slExtensions.Add( "GL_ARB_texture_cube_map" );
+      p_slExtensions.Add( "GL_ARB_texture_cube_map_array" );
+      p_slExtensions.Add( "GL_ARB_texture_env_add" );
+      p_slExtensions.Add( "GL_ARB_texture_env_combine" );
+      p_slExtensions.Add( "GL_ARB_texture_env_crossbar" );
+      p_slExtensions.Add( "GL_ARB_texture_env_dot3" );
+      p_slExtensions.Add( "GL_ARB_texture_float" );
+      p_slExtensions.Add( "GL_ARB_texture_gather" );
+      p_slExtensions.Add( "GL_ARB_texture_mirrored_repeat" );
+      p_slExtensions.Add( "GL_ARB_texture_multisample" );
+      p_slExtensions.Add( "GL_ARB_texture_non_power_of_two" );
+      p_slExtensions.Add( "GL_ARB_texture_query_lod" );
+      p_slExtensions.Add( "GL_ARB_texture_rectangle" );
+      p_slExtensions.Add( "GL_ARB_texture_rg" );
+      p_slExtensions.Add( "GL_ARB_texture_rgb10_a2ui" );
+      p_slExtensions.Add( "GL_ARB_texture_snorm" );
+      p_slExtensions.Add( "GL_ARB_texture_storage" );
+      p_slExtensions.Add( "GL_ARB_texture_storage_multisample" );
+      p_slExtensions.Add( "GL_ARB_texture_swizzle" );
+      p_slExtensions.Add( "GL_ARB_texture_view" );
+      p_slExtensions.Add( "GL_ARB_timer_query" );
+      p_slExtensions.Add( "GL_ARB_transform_feedback_instanced" );
+      p_slExtensions.Add( "GL_ARB_transform_feedback2" );
+      p_slExtensions.Add( "GL_ARB_transform_feedback3" );
+      p_slExtensions.Add( "GL_ARB_transpose_matrix" );
+      p_slExtensions.Add( "GL_ARB_uniform_buffer_object" );
+      p_slExtensions.Add( "GL_ARB_vertex_array_bgra" );
+      p_slExtensions.Add( "GL_ARB_vertex_array_object" );
+      p_slExtensions.Add( "GL_ARB_vertex_attrib_64bit" );
+      p_slExtensions.Add( "GL_ARB_vertex_attrib_binding" );
+      p_slExtensions.Add( "GL_ARB_vertex_blend" );
+      p_slExtensions.Add( "GL_ARB_vertex_buffer_object" );
+      p_slExtensions.Add( "GL_ARB_vertex_program" );
+      p_slExtensions.Add( "GL_ARB_vertex_shader" );
+      p_slExtensions.Add( "GL_ARB_vertex_type_2_10_10_10_rev" );
+      p_slExtensions.Add( "GL_ARB_viewport_array" );
+      p_slExtensions.Add( "GL_ARB_window_pos" );
+   }
+   else
+   if( p_sExtensionCategory == "GLEXT" )
+   {
+      p_slExtensions.Add( "GL_EXT_422_pixels" );
+      p_slExtensions.Add( "GL_EXT_abgr" );
+      p_slExtensions.Add( "GL_EXT_bgr" );
+      p_slExtensions.Add( "GL_EXT_bgra" );
+      p_slExtensions.Add( "GL_EXT_bindable_uniform" );
+      p_slExtensions.Add( "GL_EXT_blend_color" );
+      p_slExtensions.Add( "GL_EXT_blend_equation_separate" );
+      p_slExtensions.Add( "GL_EXT_blend_func_separate" );
+      p_slExtensions.Add( "GL_EXT_blend_logic_op" );
+      p_slExtensions.Add( "GL_EXT_blend_minmax" );
+      p_slExtensions.Add( "GL_EXT_blend_subtract" );
+      p_slExtensions.Add( "GL_EXT_Cg_shader" );
+      p_slExtensions.Add( "GL_EXT_clip_volume_hint" );
+      p_slExtensions.Add( "GL_EXT_cmyka" );
+      p_slExtensions.Add( "GL_EXT_color_matrix" );
+      p_slExtensions.Add( "GL_EXT_color_subtable" );
+      p_slExtensions.Add( "GL_EXT_color_table" );
+      p_slExtensions.Add( "GL_EXT_compiled_vertex_array" );
+      p_slExtensions.Add( "GL_EXT_convolution" );
+      p_slExtensions.Add( "GL_EXT_convolution_border_modes" );
+      p_slExtensions.Add( "GL_EXT_coordinate_frame" );
+      p_slExtensions.Add( "GL_EXT_copy_buffer" );
+      p_slExtensions.Add( "GL_EXT_copy_texture" );
+      p_slExtensions.Add( "GL_EXT_cull_vertex" );
+      p_slExtensions.Add( "GL_EXT_debug_marker" );
+      p_slExtensions.Add( "GL_EXT_depth_bounds_test" );
+      p_slExtensions.Add( "GL_EXT_depth_buffer_float" );
+      p_slExtensions.Add( "GL_EXT_direct_state_access" );
+      p_slExtensions.Add( "GL_EXT_discard_framebuffer" );
+      p_slExtensions.Add( "GL_EXT_draw_buffers2" );
+      p_slExtensions.Add( "GL_EXT_draw_instanced" );
+      p_slExtensions.Add( "GL_EXT_draw_range_elements" );
+      p_slExtensions.Add( "GL_EXT_fog_coord" );
+      p_slExtensions.Add( "GL_EXT_fog_function" );
+      p_slExtensions.Add( "GL_EXT_fog_offset" );
+      p_slExtensions.Add( "GL_EXT_fragment_lighting" );
+      p_slExtensions.Add( "GL_EXT_framebuffer_blit" );
+      p_slExtensions.Add( "GL_EXT_framebuffer_multisample" );
+      p_slExtensions.Add( "GL_EXT_framebuffer_object" );
+      p_slExtensions.Add( "GL_EXT_framebuffer_sRGB" );
+      p_slExtensions.Add( "GL_EXT_generate_mipmap" );
+      p_slExtensions.Add( "GL_EXT_geometry_shader4" );
+      p_slExtensions.Add( "GL_EXT_gpu_program_parameters" );
+      p_slExtensions.Add( "GL_EXT_gpu_shader4" );
+      p_slExtensions.Add( "GL_EXT_histogram" );
+      p_slExtensions.Add( "GL_EXT_import_sync_object" );
+      p_slExtensions.Add( "GL_EXT_index_func" );
+      p_slExtensions.Add( "GL_EXT_index_material" );
+      p_slExtensions.Add( "GL_EXT_interlace" );
+      p_slExtensions.Add( "GL_EXT_light_texture" );
+      p_slExtensions.Add( "GL_EXT_multi_draw_arrays" );
+      p_slExtensions.Add( "GL_EXT_multisample" );
+      p_slExtensions.Add( "GL_EXT_packed_depth_stencil" );
+      p_slExtensions.Add( "GL_EXT_packed_float" );
+      p_slExtensions.Add( "GL_EXT_packed_pixels" );
+      p_slExtensions.Add( "GL_EXT_packed_pixels_12" );
+      p_slExtensions.Add( "GL_EXT_paletted_texture" );
+      p_slExtensions.Add( "GL_EXT_pixel_buffer_object" );
+      p_slExtensions.Add( "GL_EXT_pixel_format" );
+      p_slExtensions.Add( "GL_EXT_pixel_texture" );
+      p_slExtensions.Add( "GL_EXT_pixel_transform" );
+      p_slExtensions.Add( "GL_EXT_point_parameters" );
+      p_slExtensions.Add( "GL_EXT_polygon_offset" );
+      p_slExtensions.Add( "GL_EXT_provoking_vertex" );
+      p_slExtensions.Add( "GL_EXT_read_format_bgra" );
+      p_slExtensions.Add( "GL_EXT_rescale_normal" );
+      p_slExtensions.Add( "GL_EXT_scene_marker" );
+      p_slExtensions.Add( "GL_EXT_secondary_color" );
+      p_slExtensions.Add( "GL_EXT_separate_shader_objects" );
+      p_slExtensions.Add( "GL_EXT_separate_specular_color" );
+      p_slExtensions.Add( "GL_EXT_shader_atomic_counters" );
+      p_slExtensions.Add( "GL_EXT_shader_image_load_store" );
+      p_slExtensions.Add( "GL_EXT_shader_subroutine" );
+      p_slExtensions.Add( "GL_EXT_shader_texture_lod" );
+      p_slExtensions.Add( "GL_EXT_shadow_funcs" );
+      p_slExtensions.Add( "GL_EXT_shared_texture_palette" );
+      p_slExtensions.Add( "GL_EXT_stencil_clear_tag" );
+      p_slExtensions.Add( "GL_EXT_stencil_two_side" );
+      p_slExtensions.Add( "GL_EXT_stencil_wrap" );
+      p_slExtensions.Add( "GL_EXT_subtexture" );
+      p_slExtensions.Add( "GL_EXT_swap_control" );
+      p_slExtensions.Add( "GL_EXT_texgen_reflection" );
+      p_slExtensions.Add( "GL_EXT_texture" );
+      p_slExtensions.Add( "GL_EXT_texture_array" );
+      p_slExtensions.Add( "GL_EXT_texture_border_clamp" );
+      p_slExtensions.Add( "GL_EXT_texture_buffer_object" );
+      p_slExtensions.Add( "GL_EXT_texture_buffer_object_rgb32" );
+      p_slExtensions.Add( "GL_EXT_texture_color_table" );
+      p_slExtensions.Add( "GL_EXT_texture_compression_bptc" );
+      p_slExtensions.Add( "GL_EXT_texture_compression_dxt1" );
+      p_slExtensions.Add( "GL_EXT_texture_compression_latc" );
+      p_slExtensions.Add( "GL_EXT_texture_compression_rgtc" );
+      p_slExtensions.Add( "GL_EXT_texture_compression_s3tc" );
+      p_slExtensions.Add( "GL_EXT_texture_cube_map" );
+      p_slExtensions.Add( "GL_EXT_texture_edge_clamp" );
+      p_slExtensions.Add( "GL_EXT_texture_env_add" );
+      p_slExtensions.Add( "GL_EXT_texture_env_combine" );
+      p_slExtensions.Add( "GL_EXT_texture_env_dot3" );
+      p_slExtensions.Add( "GL_EXT_texture_filter_anisotropic" );
+      p_slExtensions.Add( "GL_EXT_texture_format_BGRA8888" );
+      p_slExtensions.Add( "GL_EXT_texture_integer" );
+      p_slExtensions.Add( "GL_EXT_texture_lod" );
+      p_slExtensions.Add( "GL_EXT_texture_lod_bias" );
+      p_slExtensions.Add( "GL_EXT_texture_mirror_clamp" );
+      p_slExtensions.Add( "GL_EXT_texture_object" );
+      p_slExtensions.Add( "GL_EXT_texture_perturb_normal" );
+      p_slExtensions.Add( "GL_EXT_texture_rectangle" );
+      p_slExtensions.Add( "GL_EXT_texture_shared_exponent" );
+      p_slExtensions.Add( "GL_EXT_texture_snorm" );
+      p_slExtensions.Add( "GL_EXT_texture_sRGB" );
+      p_slExtensions.Add( "GL_EXT_texture_sRGB_decode" );
+      p_slExtensions.Add( "GL_EXT_texture_storage" );
+      p_slExtensions.Add( "GL_EXT_texture_swizzle" );
+      p_slExtensions.Add( "GL_EXT_texture_type_2_10_10_10_REV" );
+      p_slExtensions.Add( "GL_EXT_texture3D" );
+      p_slExtensions.Add( "GL_EXT_texture4D" );
+      p_slExtensions.Add( "GL_EXT_timer_query" );
+      p_slExtensions.Add( "GL_EXT_transform_feedback" );
+      p_slExtensions.Add( "GL_EXT_transform_feedback2" );
+      p_slExtensions.Add( "GL_EXT_unpack_subimage" );
+      p_slExtensions.Add( "GL_EXT_vertex_array" );
+      p_slExtensions.Add( "GL_EXT_vertex_array_bgra" );
+      p_slExtensions.Add( "GL_EXT_vertex_attrib_64bit" );
+      p_slExtensions.Add( "GL_EXT_vertex_shader" );
+      p_slExtensions.Add( "GL_EXT_vertex_weighting" );
+      p_slExtensions.Add( "GL_EXT_x11_sync_object" );
+      p_slExtensions.Add( "GL_EXTX_framebuffer_mixed_formats" );
+      p_slExtensions.Add( "GL_EXTX_packed_depth_stencil" );
+   }
+   else
+   if( p_sExtensionCategory == "GLNVX" )
+   {
+      p_slExtensions.Add( "GL_NV_alpha_test" );
+      p_slExtensions.Add( "GL_NV_bindless_texture" );
+      p_slExtensions.Add( "GL_NV_blend_minmax" );
+      p_slExtensions.Add( "GL_NV_blend_square" );
+      p_slExtensions.Add( "GL_NV_centroid_sample" );
+      p_slExtensions.Add( "GL_NV_complex_primitives" );
+      p_slExtensions.Add( "GL_NV_conditional_render" );
+      p_slExtensions.Add( "GL_NV_copy_depth_to_color" );
+      p_slExtensions.Add( "GL_NV_copy_image" );
+      p_slExtensions.Add( "GL_NV_coverage_sample" );
+      p_slExtensions.Add( "GL_NV_depth_buffer_float" );
+      p_slExtensions.Add( "GL_NV_depth_clamp" );
+      p_slExtensions.Add( "GL_NV_depth_nonlinear" );
+      p_slExtensions.Add( "GL_NV_draw_path" );
+      p_slExtensions.Add( "GL_NV_evaluators" );
+      p_slExtensions.Add( "GL_NV_explicit_multisample" );
+      p_slExtensions.Add( "GL_NV_fbo_color_attachments" );
+      p_slExtensions.Add( "GL_NV_fence" );
+      p_slExtensions.Add( "GL_NV_float_buffer" );
+      p_slExtensions.Add( "GL_NV_fog_distance" );
+      p_slExtensions.Add( "GL_NV_fragdepth" );
+      p_slExtensions.Add( "GL_NV_fragment_program" );
+      p_slExtensions.Add( "GL_NV_fragment_program_option" );
+      p_slExtensions.Add( "GL_NV_fragment_program2" );
+      p_slExtensions.Add( "GL_NV_framebuffer_multisample_coverage" );
+      p_slExtensions.Add( "GL_NV_framebuffer_multisample_ex" );
+      p_slExtensions.Add( "GL_NV_framebuffer_vertex_attrib_array" );
+      p_slExtensions.Add( "GL_NV_geometry_program4" );
+      p_slExtensions.Add( "GL_NV_geometry_shader4" );
+      p_slExtensions.Add( "GL_NV_get_tex_image" );
+      p_slExtensions.Add( "GL_NV_gpu_program_fp64" );
+      p_slExtensions.Add( "GL_NV_gpu_program4" );
+      p_slExtensions.Add( "GL_NV_gpu_program4_1" );
+      p_slExtensions.Add( "GL_NV_gpu_program5" );
+      p_slExtensions.Add( "GL_NV_gpu_shader5" );
+      p_slExtensions.Add( "GL_NV_half_float" );
+      p_slExtensions.Add( "GL_NV_light_max_exponent" );
+      p_slExtensions.Add( "GL_NV_multisample_coverage" );
+      p_slExtensions.Add( "GL_NV_multisample_filter_hint" );
+      p_slExtensions.Add( "GL_NV_occlusion_query" );
+      p_slExtensions.Add( "GL_NV_packed_depth_stencil" );
+      p_slExtensions.Add( "GL_NV_parameter_buffer_object" );
+      p_slExtensions.Add( "GL_NV_parameter_buffer_object2" );
+      p_slExtensions.Add( "GL_NV_path_rendering" );
+      p_slExtensions.Add( "GL_NV_pixel_buffer_object" );
+      p_slExtensions.Add( "GL_NV_pixel_data_range" );
+      p_slExtensions.Add( "GL_NV_platform_binary" );
+      p_slExtensions.Add( "GL_NV_point_sprite" );
+      p_slExtensions.Add( "GL_NV_present_video" );
+      p_slExtensions.Add( "GL_NV_primitive_restart" );
+      p_slExtensions.Add( "GL_NV_read_buffer" );
+      p_slExtensions.Add( "GL_NV_register_combiners" );
+      p_slExtensions.Add( "GL_NV_register_combiners2" );
+      p_slExtensions.Add( "GL_NV_shader_atomic_counters" );
+      p_slExtensions.Add( "GL_NV_shader_buffer_load" );
+      p_slExtensions.Add( "GL_NV_shader_framebuffer_fetch" );
+      p_slExtensions.Add( "GL_NV_texgen_emboss" );
+      p_slExtensions.Add( "GL_NV_texgen_reflection" );
+      p_slExtensions.Add( "GL_NV_texture_barrier" );
+      p_slExtensions.Add( "GL_NV_texture_compression_latc" );
+      p_slExtensions.Add( "GL_NV_texture_compression_vtc" );
+      p_slExtensions.Add( "GL_NV_texture_env_combine4" );
+      p_slExtensions.Add( "GL_NV_texture_expand_normal" );
+      p_slExtensions.Add( "GL_NV_texture_lod_clamp" );
+      p_slExtensions.Add( "GL_NV_texture_multisample" );
+      p_slExtensions.Add( "GL_NV_texture_rectangle" );
+      p_slExtensions.Add( "GL_NV_texture_shader" );
+      p_slExtensions.Add( "GL_NV_texture_shader2" );
+      p_slExtensions.Add( "GL_NV_texture_shader3" );
+      p_slExtensions.Add( "GL_NV_timer_query" );
+      p_slExtensions.Add( "GL_NV_transform_feedback" );
+      p_slExtensions.Add( "GL_NV_transform_feedback2" );
+      p_slExtensions.Add( "GL_NV_vdpau_interop" );
+      p_slExtensions.Add( "GL_NV_vertex_array_range" );
+      p_slExtensions.Add( "GL_NV_vertex_array_range2" );
+      p_slExtensions.Add( "GL_NV_vertex_attrib_integer_64bit" );
+      p_slExtensions.Add( "GL_NV_vertex_buffer_unified_memory" );
+      p_slExtensions.Add( "GL_NV_vertex_program" );
+      p_slExtensions.Add( "GL_NV_vertex_program1_1" );
+      p_slExtensions.Add( "GL_NV_vertex_program2" );
+      p_slExtensions.Add( "GL_NV_vertex_program2_option" );
+      p_slExtensions.Add( "GL_NV_vertex_program3" );
+      p_slExtensions.Add( "GL_NV_video_capture" );
+      p_slExtensions.Add( "GL_NVX_conditional_render" );
+      p_slExtensions.Add( "GL_NVX_flush_hold" );
+      p_slExtensions.Add( "GL_NVX_gpu_memory_info" );
+      p_slExtensions.Add( "GL_NVX_instanced_arrays" );
+      p_slExtensions.Add( "GL_NVX_ycrcb" );
+   }
+
+   if( p_slExtensions.GetCount() == 0 )
+   {
+      p_slExtensions.Add( "No supported extensions from this category." );
+   }
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateExtensionsList( StrList p_slSupportedExtensions, string p_sExtensionCategory, bool p_bEnumerate )
+{
+   Render3D render = Model.ActiveView.Render;
+   auto StrList a_slTotalExtensions;
+   PopulateExtensions( a_slTotalExtensions, p_sExtensionCategory );
+   
+   for( int i = 0; i < a_slTotalExtensions.GetCount(); ++i )
+   {
+      if( p_bEnumerate == false )
+      {
+         if( render.GetDeviceCapabilities().QueryExtension( a_slTotalExtensions.Get(i) ) )
+         {
+            p_slSupportedExtensions.Add( a_slTotalExtensions.Get(i) );
+         }
+      }
+      else
+      {
+         if( render.GetDeviceCapabilities().QueryExtension( a_slTotalExtensions.Get(i) ) )
+         {
+            p_slSupportedExtensions.Add( "<span u=\"0\" color=\"0,0,0\">" + a_slTotalExtensions.Get(i) + "</span><br/>" );
+         }
+         else
+         {
+            p_slSupportedExtensions.Add( "<span u=\"0\" color=\"255,0,0\">" + a_slTotalExtensions.Get(i) + "</span><br/>" );
+         }
+         
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetShaderCompilerVersion()
+{
+   Render3D render = Model.ActiveView.Render;
+   int a_iMajor = render.GetDeviceCapabilities().LanguageVersionMajor;
+   int a_iMinor = render.GetDeviceCapabilities().LanguageVersionMinor;
+
+   // Use the latest language version supported by the render device.
+   int a_iShaderCompiler = a_iMajor * 100 + a_iMinor;
+
+   return a_iShaderCompiler;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ValidateShadingLanguageVersion( int p_iGlShadingLanguageVersion,
+   CommandPresentationModuleInfo commandInfo )
+{
+   int a_nShaderVersion = GetShaderCompilerVersion();
+   if( !( a_nShaderVersion >= p_iGlShadingLanguageVersion ) )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "This feature requires OpenGL Shading Language version " +
+         p_iGlShadingLanguageVersion + " or higher. Your version is: " + a_nShaderVersion );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool TestShadingLanguageVersion( int p_iGlShadingLanguageVersion )
+{
+   int a_nShaderVersion = GetShaderCompilerVersion();
+   if( a_nShaderVersion >= p_iGlShadingLanguageVersion )
+   {
+      return true;
+   }
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void WriteConstants(
+
+   Render3D p_oRender,
+   IntArray p_aiConstantValues,
+   IntegerNode p_oConstant,
+   string p_sFunctionName
+
+   )
+{
+   auto VariantArray a_oParams;
+   auto Variant a_oReturnValue;
+
+   ScriptFunction a_oTarget = Script.FindFunction( p_sFunctionName );
+
+   if( a_oTarget )
+   {
+      // We're calling a function that has zero parameters.
+      a_oParams.Count = 0;
+
+      // Call the target function.
+      a_oTarget.Call( a_oReturnValue, a_oParams );
+      p_oRender.QueryDeviceParameterInt( a_oReturnValue.Int, p_aiConstantValues );
+      p_oConstant.Value = p_aiConstantValues.Objects[ 0 ];
+   }
+   else
+   {
+      p_oConstant.Value = 0;
+   }
+}

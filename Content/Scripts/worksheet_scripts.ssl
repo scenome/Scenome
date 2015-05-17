@@ -1,0 +1,2610 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// $file             WORKSHEET_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $description      This script implements commands for modifying the worksheet.
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+import library "graph_util.ssl";
+import library "math_util.ssl";
+import library "message_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+// Finds a parametric mesh and centres the mesh in the viewport.
+
+function void FindParametricMesh( ParametricMesh mesh )
+{
+   // Copy the group bounding box parameters into a matrix.
+   Matrix gTransform = mesh.GetTransform();
+
+   // Calculate the centroid of the group bounding box in WCS.
+   Vec min = new Vec;
+   Vec max = new Vec;
+   mesh.GetVertexMin( min );
+   mesh.GetVertexMax( max );
+
+   double width = max.X - min.X;
+   double height = max.Y - min.Y;
+   double minY = min.Y;
+   double minZ = min.Z;
+   double diagonal = Math.Sqrt( width * width + height * height );
+
+   min.Blend( max, 0.5 );
+
+   double center_x = min.X;
+   double center_y = min.Y;
+   double center_z = min.Z;
+
+   delete min;
+   delete max;
+
+   // Modify the worksheet projection, clip planes, zoom, and camera position.
+   ModelView a_oView = Model.ActiveView;
+
+   if( a_oView.GetProjection() != 0 )
+   {
+      a_oView.SetTop();
+      a_oView.NearClip = - diagonal;
+      a_oView.FarClip = diagonal;
+      a_oView.Zoom = diagonal / 2.0;
+      a_oView.Position.X =  center_x;
+      a_oView.Position.Y =  center_y;
+      a_oView.Orientation.X = 0.0;
+   }
+   else
+   {
+      a_oView.SetPerspective();
+      a_oView.Zoom = 1;
+      a_oView.Position.X =  center_x;
+      a_oView.Position.Y =  minY;
+
+      diagonal = diagonal * 3;
+      int power = 1;
+      for( int base = 0; base < 308 ; ++base )
+      {
+         power = power * 10;
+         //((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString ( power );
+         if( diagonal < power )
+         {
+            break;
+         }
+      }
+      if( power / 100000.0 < 1 )
+      {
+         a_oView.NearClip = 1;
+      }
+      else
+      {
+         a_oView.NearClip = power / 100000;
+      }
+
+      a_oView.FarClip = power;
+      a_oView.Orientation.X = -30;
+   }
+
+   a_oView.Position.Z =  center_z + ( diagonal / 2.0 );
+   a_oView.Orientation.Y = gTransform.Orientation[1];
+   a_oView.Orientation.Z = gTransform.Orientation[2];
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void GetViewportCenter( ModelView activeView, Vec center )
+{
+    Vec end = new Vec;
+    activeView.GetViewRay(
+        activeView.GetViewWidth() * 0.5,
+        activeView.GetViewHeight() * 0.5,
+        center,
+        end );
+    center.Blend( end, 64.0 / ( center.GetDistance( end ) ) );
+    delete end;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void PositionCameraAtFirstSelMeshOrModifierMesh()
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( Modifier ) )
+      {
+         Node parent = node.Parent();
+         if( parent.IsDerived( ParametricMesh ) )
+         {
+            FindParametricMesh( (ParametricMesh)parent );
+         }
+         break;
+      }
+      else
+      if( node.IsDerived( ParametricMesh ) )
+      {
+         FindParametricMesh( (ParametricMesh)node );
+         break;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// This function handles common OnUpdate functionality for worksheet
+// commands which require a rendered view being active to work properly.
+
+function void HandleRenderedWorksheetCommandOnUpdate( CommandPresentationModuleInfo commandInfo, string hint, int checkState )
+{
+   bool enabled = false;
+   if( Model.ActiveView.Render )
+   {
+      enabled = true;
+
+      // ifcheck state is not 0 or 1 it should be ignored.
+      // This way some commands can use common update functionality
+      // without having to set the check state.
+      if( checkState == 0 || checkState == 1 )
+      {
+         commandInfo.SetCheck( checkState );
+      }
+   }
+
+   commandInfo.SetEnabled( enabled );
+   commandInfo.Status.SetHint( hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, hint, 2 );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+// Handles common UI update functionality for Group commands.
+
+function void HandleOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group, hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+// Handles common UI update functionality for Light commands.
+
+function void HandleLightOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Light, hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+// Handles common UI update functionality for Mesh commands.
+
+function void HandleMeshOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ParametricMesh, hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetRenderWireframe_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Turn on wireframe rendering", Model.ActiveView.IsWireframe() );
+}
+
+macro WorksheetRenderWireframe()
+[Category="Worksheet Commands", Guid="{1F91F9CA-F612-46d4-A453-4B81096121A9}", Image=".\\icons\\render_wire.bmp"]
+{
+   Model.ActiveView.RenderWireframe();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetRenderFilled_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Turn on filled rendering", Model.ActiveView.IsFilled() );
+}
+
+macro WorksheetRenderFilled()
+[Category="Worksheet Commands", Guid="{1F91F9CB-F612-46d4-A453-4B81096121A9}", Image=".\\icons\\render_filled.bmp"]
+{
+   Model.ActiveView.RenderFilled();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetRenderSolid_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Turn on solid rendering", Model.ActiveView.IsSolid() );
+}
+
+macro WorksheetRenderSolid()
+[Category="Worksheet Commands", Guid="{1F91F9CC-F612-46d4-A453-4B81096121A9}", Image=".\\icons\\render_solid.bmp"]
+{
+   Model.ActiveView.RenderSolid();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetRenderTextured_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Turn on textured rendering", Model.ActiveView.IsTextured() );
+}
+
+macro WorksheetRenderTextured()
+[Category="Worksheet Commands", Guid="{1F91F9CD-F612-46d4-A453-4B81096121A9}", Image=".\\icons\\render_texture.bmp"]
+{
+   Model.ActiveView.RenderTextured();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetColorVellum_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the worksheet color scheme to Vellum." );
+}
+
+macro WorksheetColorVellum()
+[Category="Worksheet Commands", Guid="{1F91F913-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_worksheet_color_vellum.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.Lock();
+   a_oView.TopColor.SetRGB( 180, 180, 192 );
+   a_oView.MiddleColor.SetRGB( 180, 180, 192 );
+   a_oView.BottomColor.SetRGB( 180, 180, 192 );
+   a_oView.GridColor.SetRGB( 158, 158, 171 );
+   a_oView.GridQuadrantColor.SetRGB( 126, 126, 126 );
+   a_oView.Release( true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetColorBlack_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the worksheet color scheme to black." );
+}
+
+macro WorksheetColorBlack()
+[Category="Worksheet Commands", Guid="{919B5B96-A35D-45A9-A2EE-EAB35CD181E2}", Image=".\\icons\\set_worksheet_color_black.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.Lock();
+   a_oView.TopColor.SetRGB( 0, 0, 0 );
+   a_oView.MiddleColor.SetRGB( 0, 0, 0 );
+   a_oView.BottomColor.SetRGB( 0, 0, 0 );
+   a_oView.GridColor.SetRGB( 48, 48, 48 );
+   a_oView.GridQuadrantColor.SetRGB( 96, 96, 96 );
+   a_oView.Release( true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetColorWhite_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the worksheet color scheme to white." );
+}
+
+macro WorksheetColorWhite()
+[Category="Worksheet Commands", Guid="{350CC789-36E3-448B-9BC5-CD6E67AB2A40}", Image=".\\icons\\set_worksheet_color_white.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.Lock();
+   a_oView.TopColor.SetRGB( 255, 255, 255 );
+   a_oView.MiddleColor.SetRGB( 255, 255, 255 );
+   a_oView.BottomColor.SetRGB( 255, 255, 255 );
+   a_oView.GridColor.SetRGB( 192, 192, 192 );
+   a_oView.GridQuadrantColor.SetRGB( 128, 128, 128 );
+   a_oView.Release( true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetColorBlue_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the worksheet color scheme to blue." );
+}
+
+macro WorksheetColorBlue()
+[Category="Worksheet Commands", Guid="{8F1223ED-A5E3-423E-B34D-8F604002439C}", Image=".\\icons\\set_worksheet_color_blue.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.Lock();
+   a_oView.TopColor.SetRGB( 70, 89, 160 );
+   a_oView.MiddleColor.SetRGB( 70, 89, 160 );
+   a_oView.BottomColor.SetRGB( 70, 89, 160 );
+   a_oView.GridColor.SetRGB( 122, 142, 245 );
+   a_oView.GridQuadrantColor.SetRGB( 225, 225, 225 );
+   a_oView.Release( true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetColorDawn_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the worksheet color scheme to Dawn." );
+}
+
+macro WorksheetColorDawn()
+[Category="Worksheet Commands", Guid="{1F91F910-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_worksheet_color_dawn.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.Lock();
+   a_oView.TopColor.SetRGB( 66, 99, 132 );
+   a_oView.MiddleColor.SetRGB( 255, 173, 91 );
+   a_oView.BottomColor.SetRGB( 192, 180, 180 );
+   a_oView.GridColor.SetRGB( 170, 170, 182 );
+   a_oView.GridQuadrantColor.SetRGB( 136, 136, 136 );
+   a_oView.Release( true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetColorDay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the worksheet color scheme to Day." );
+}
+
+macro WorksheetColorDay()
+[Category="Worksheet Commands", Guid="{1F91F911-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_worksheet_color_day.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.Lock();
+   a_oView.TopColor.SetRGB( 128, 158, 192 );
+   a_oView.MiddleColor.SetRGB( 180, 180, 192 );
+   a_oView.BottomColor.SetRGB( 180, 180, 192 );
+   a_oView.GridColor.SetRGB( 170, 170, 182 );
+   a_oView.GridQuadrantColor.SetRGB( 136, 136, 136 );
+   a_oView.Release( true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetColorNight_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the worksheet color scheme to Night." );
+}
+
+macro WorksheetColorNight()
+[Category="Worksheet Commands", Guid="{1F91F912-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_worksheet_color_night.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.Lock();
+   a_oView.TopColor.SetRGB( 0, 0, 0 );
+   a_oView.MiddleColor.SetRGB( 0, 0, 55 );
+   a_oView.BottomColor.SetRGB( 180, 180, 192 );
+   a_oView.GridColor.SetRGB( 0, 64, 64 );
+   a_oView.GridQuadrantColor.SetRGB( 136, 136, 136 );
+   a_oView.Release( true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetColorGray_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the worksheet color scheme to Gray." );
+}
+
+macro WorksheetColorGray()
+[Category="Worksheet Commands", Guid="{1F91F914-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_worksheet_color_gray.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.Lock();
+   a_oView.TopColor.SetRGB( 128, 128, 128 );
+   a_oView.MiddleColor.SetRGB( 128, 128, 128 );
+   a_oView.BottomColor.SetRGB( 128, 128, 128 );
+   a_oView.GridColor.SetRGB( 114, 114, 114 );
+   a_oView.GridQuadrantColor.SetRGB( 96, 96, 96 );
+   a_oView.Release( true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetColorSilver_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the worksheet color scheme to Silver." );
+}
+
+macro WorksheetColorSilver()
+[Category="Worksheet Commands", Guid="{1F91F9C7-F612-46d4-A453-4B81096121A9}", Image=".\\icons\\set_worksheet_color_silver.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.Lock();
+   a_oView.TopColor.SetRGB( 240, 240, 240 );
+   a_oView.MiddleColor.SetRGB( 240, 240, 240 );
+   a_oView.BottomColor.SetRGB( 240, 240, 240 );
+   a_oView.GridColor.SetRGB( 225, 225, 225 );
+   a_oView.GridQuadrantColor.SetRGB( 190, 190, 190 );
+   a_oView.Release( true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void TranslateView( double p_dX, double p_dY, double p_dZ )
+{
+   ModelView a_oView = Model.ActiveView;
+
+   Vec newPos = new Vec;
+
+   newPos.X += p_dX;
+   newPos.Y += p_dY;
+   newPos.Z += p_dZ;
+
+   a_oView.InverseTransformVec( newPos );
+
+   a_oView.Position.X = newPos.X;
+   a_oView.Position.Y = newPos.Y;
+   a_oView.Position.Z = newPos.Z;
+
+   delete newPos;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+macro WorksheetCameraForward()
+[Category="Worksheet Commands", Guid="{2B845317-87CB-4D85-8CA3-E75285D00FF1}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   if( a_oView.GetProjection() == 0 )
+   {
+      TranslateView( 0.0, 0.0, ( Model.ActiveView.FarClip - Model.ActiveView.NearClip ) * -0.001 );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+macro WorksheetCameraBackward()
+[Category="Worksheet Commands", Guid="{1B15A3F3-077D-42C6-9664-F308AC4F1582}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   if( a_oView.GetProjection() == 0 )
+   {
+      TranslateView( 0.0, 0.0, ( Model.ActiveView.FarClip - Model.ActiveView.NearClip ) * 0.001 );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+macro WorksheetCameraLeft()
+[Category="Worksheet Commands", Guid="{54C65CCD-2EB8-49D7-B006-521A5496262C}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   TranslateView( ( Model.ActiveView.FarClip - Model.ActiveView.NearClip ) * -0.001, 0.0, 0.0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+macro WorksheetCameraRight()
+[Category="Worksheet Commands", Guid="{F4A27257-96D4-4E2E-830A-F454C969D22F}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   TranslateView( ( Model.ActiveView.FarClip - Model.ActiveView.NearClip ) * 0.001, 0.0, 0.0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+macro WorksheetCameraUp()
+[Category="Worksheet Commands", Guid="{40914712-06CD-4D2F-BE54-0E4F34FC3303}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   TranslateView( 0.0, ( Model.ActiveView.FarClip - Model.ActiveView.NearClip ) * 0.001, 0.0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+macro WorksheetCameraDown()
+[Category="Worksheet Commands", Guid="{D30E2D86-2295-424D-89EE-4BDFC095E2CE}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   TranslateView( 0.0, ( Model.ActiveView.FarClip - Model.ActiveView.NearClip ) * -0.001, 0.0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+macro WorksheetCameraRotateLeft()
+[Category="Worksheet Commands", Guid="{0E2FC838-5021-462E-8BEC-56939BC7C695}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.Orientation.Z -= 5.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+macro WorksheetCameraRotateRight()
+[Category="Worksheet Commands", Guid="{9D57C8D7-C204-45A9-BDC7-406C0A70CD20}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.Orientation.Z += 5.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+macro WorksheetCameraRotateUp()
+[Category="Worksheet Commands", Guid="{1F9220BC-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.Orientation.X -= 5.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+macro WorksheetCameraRotateDown()
+[Category="Worksheet Commands", Guid="{1F9220BB-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.Orientation.X += 5.0;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetCameraNormalize_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Reset camera orientation to 0,0,0." );
+}
+
+macro WorksheetCameraNormalize()
+[Category="Worksheet Commands", Guid="{1F91F94F-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_normalize_camera.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.Orientation.X = 0.0;
+   a_oView.Orientation.Y = 0.0;
+   a_oView.Orientation.Z = 0.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetGridFitToMesh_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleMeshOnUpdate( commandInfo, "Fit the grid to the selected mesh node on the X/Y plane." );
+}
+
+macro WorksheetGridFitToMesh()
+[Category="Worksheet Commands", Guid="{7AE70F70-A129-47A5-9005-719BAB22F8AF}", Image=".\\icons\\worksheet_grid_fit_to_mesh.bmp"]
+{
+   bool a_bSuccess = false;
+
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Mesh ) )
+      {
+         // Copy the group bounding box parameters into a matrix.
+
+         Mesh group = (Mesh)node;
+         Matrix gTransform = group.GetTransform();
+
+         // Calculate the centroid of the group bounding box in WCS.
+         Vec min = new Vec;
+         Vec max = new Vec;
+         group.GetVertexMin( min );
+         group.GetVertexMax( max );
+         double width = max.X - min.X;
+         double height = max.Y - min.Y;
+         min.Blend( max, 0.5 );
+
+         // Modify grid position and size.
+         Matrix editTransform = Model.Grid.GetTransform();
+
+         Model.ActiveView.QuadrantSpacing = 8.0;
+
+         /*
+         Model.Grid.Begin.X = -32.0;
+         Model.Grid.Begin.Y = -32.0;
+         Model.Grid.End.Y = 32.0;
+         Model.Grid.End.Y = 32.0;
+         */
+
+         double gridCountX = Model.Grid.End.X - Model.Grid.Begin.X;
+         double gridCountY = Model.Grid.End.Y - Model.Grid.Begin.Y;
+
+         editTransform.Scale[0] = Math.Sqrt( width * width + height * height) / gridCountX;
+         editTransform.Scale[1] = Math.Sqrt( width * width + height * height) / gridCountY;
+
+         editTransform.Position[0] = min.X;
+         editTransform.Position[1] = min.Y;
+         editTransform.Position[2] = min.Z;
+         
+         // Normalize the grid just in case its orientation and scale are skewed.
+         editTransform.Orientation[0] = 0.0;
+         editTransform.Orientation[1] = 0.0;
+         editTransform.Orientation[2] = 0.0;
+
+         Model.Grid.SetTransform( editTransform );
+
+         delete min;
+         delete max;
+
+         a_bSuccess = true;
+         break;
+      }
+   }
+
+   if( !a_bSuccess )
+   {
+      string a_sMessage = "Please select a mesh.";
+      Console.GenerateOutputMessage( a_sMessage, "ERROR" );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetGridReset_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Reset grid position and orientation to 0,0,0." );
+}
+
+macro WorksheetGridReset()
+[Category="Worksheet Commands", Guid="{1F91F8FE-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_reset_grid.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   Matrix editTransform = Model.Grid.GetTransform();
+
+   editTransform.Position[0] = 0;
+   editTransform.Position[1] = 0;
+   editTransform.Position[2] = 0;
+   editTransform.Orientation[0] = 0.0;
+   editTransform.Orientation[1] = 0.0;
+   editTransform.Orientation[2] = 0.0;
+   editTransform.Scale[0] = 1.0;
+   editTransform.Scale[1] = 1.0;
+
+   Model.Grid.SetTransform( editTransform );
+
+   a_oView.QuadrantSpacing = 8.0;
+
+   Model.Grid.Begin.X = -32.0;
+   Model.Grid.Begin.Y = -32.0;
+   Model.Grid.End.X = 32.0;
+   Model.Grid.End.Y = 32.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetGridNormalize_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Reset grid orientation to 0,0,0." );
+}
+
+macro WorksheetGridNormalize()
+[Category="Worksheet Commands", Guid="{1F91F8FF-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_grid_normalize.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   Matrix editTransform = Model.Grid.GetTransform();
+
+   editTransform.Orientation[0] = 0.0;
+   editTransform.Orientation[1] = 0.0;
+   editTransform.Orientation[2] = 0.0;
+
+   Model.Grid.SetTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetGridOverlay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Overlay the grid above the scene.", Model.ActiveView.GetGridDrawMode() == 2 );
+}
+
+macro WorksheetGridOverlay()
+[Category="Worksheet Commands", Guid="{1F91F900-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_grid_overlay.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.SetGridOverlay();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetGridUnderlay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Underlay the grid beneath the scene.", Model.ActiveView.GetGridDrawMode() == 0 );
+}
+
+macro WorksheetGridUnderlay()
+[Category="Worksheet Commands", Guid="{1F91F901-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_grid_underlay.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.SetGridUnderlay();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetGridZBuffer_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Render the grid z-buffered with the scene.", Model.ActiveView.GetGridDrawMode() == 1 );
+}
+
+macro WorksheetGridZBuffer()
+[Category="Worksheet Commands", Guid="{1F91F902-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_grid_zbuffer.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.SetGridZBuffer();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetGridEnlarge_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Increase grid size by 8 units." );
+}
+
+macro WorksheetGridEnlarge()
+[Category="Worksheet Commands", Guid="{1F91F905-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_grid_size_large.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   Model.Grid.Begin.X -= 8.0;
+   Model.Grid.Begin.Y -= 8.0;
+   Model.Grid.End.X += 8.0;
+   Model.Grid.End.Y += 8.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetGridShrink_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Reduce grid size by 8 units." );
+}
+
+macro WorksheetGridShrink()
+[Category="Worksheet Commands", Guid="{1F91F906-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_grid_size_small.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   Model.Grid.Begin.X += 8.0;
+   Model.Grid.Begin.Y += 8.0;
+   Model.Grid.End.X -= 8.0;
+   Model.Grid.End.Y -= 8.0;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetGridTop_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Align the grid with the X/Y plane." );
+}
+
+macro WorksheetGridTop()
+[Category="Worksheet Commands", Guid="{1F91F908-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_orientation_top.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   Matrix editTransform = Model.Grid.GetTransform();
+
+   editTransform.Orientation[0] = 0.0;
+   editTransform.Orientation[1] = 0.0;
+   editTransform.Orientation[2] = 0.0;
+
+   Model.Grid.SetTransform( editTransform );
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetGridFront_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Align the grid with the X/Z plane." );
+}
+
+macro WorksheetGridFront()
+[Category="Worksheet Commands", Guid="{1F91F909-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_orientation_front.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   Matrix editTransform = Model.Grid.GetTransform();
+
+   editTransform.Orientation[0] = -90.0;
+   editTransform.Orientation[1] = 0.0;
+   editTransform.Orientation[2] = 0.0;
+
+   Model.Grid.SetTransform( editTransform );
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetGridSide_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Align the grid with the Y/Z plane." );
+}
+
+macro WorksheetGridSide()
+[Category="Worksheet Commands", Guid="{1F91F90A-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_orientation_side.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   Matrix editTransform = Model.Grid.GetTransform();
+
+   editTransform.Orientation[0] = 0.0;
+   editTransform.Orientation[1] = -90.0;
+   editTransform.Orientation[2] = 0.0;
+
+   Model.Grid.SetTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetCameraReset_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Reset camera position to 0,0,32." );
+}
+
+macro WorksheetCameraReset()
+[Category="Worksheet Commands", Guid="{1F91F90B-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_reset_camera.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   
+   // 0 == Perspective
+   // 1 == General Isometric
+   // 2 == Top
+   // 3 == Front
+   // 4 == Side
+   int a_iPerspectiveProjection = 0;
+   int a_iGeneralIsometricProjection = 1;
+   int a_iTopProjection = 2;
+   int a_iFrontProjection = 3;
+   int a_iSideProjection = 4;
+   int projection = a_oView.GetProjection();
+
+   if( projection == a_iPerspectiveProjection )
+   {
+      a_oView.Orientation.X = -32.0;
+      a_oView.Orientation.Y = 0.0;
+      a_oView.Orientation.Z = 0.0;
+      a_oView.Position.X = 0.0;
+      a_oView.Position.Y = -32.0;
+      a_oView.Position.Z = 64.0;
+      a_oView.Zoom = 1.0;
+   }
+   else
+   if( projection == a_iTopProjection )
+   {
+      a_oView.Orientation.X = 0.0;
+      a_oView.Orientation.Y = 0.0;
+      a_oView.Orientation.Z = 0.0;
+      a_oView.Position.X = 0.0;
+      a_oView.Position.Y = 0.0;
+      a_oView.Position.Z = 128.0;
+      a_oView.Zoom = 50.0;
+   }
+   else
+   if( projection == a_iFrontProjection )
+   {
+      a_oView.Orientation.X = 0.0;
+      a_oView.Orientation.Y = 0.0;
+      a_oView.Orientation.Z = 0.0;
+      a_oView.Position.X = 0.0;
+      a_oView.Position.Y = 0.0;
+      a_oView.Position.Z = 0.0;
+      a_oView.Zoom = 50.0;
+   }
+   else
+   if( projection == a_iSideProjection )
+   {
+      a_oView.Orientation.X = -90.0;
+      a_oView.Orientation.Y = 0.0;
+      a_oView.Orientation.Z = -90.0;
+   }
+
+   Application.ExecuteCommand( "Worksheet Commands", "WorksheetRenderFilled" );
+   Application.ExecuteCommand( "Worksheet Commands", "WorksheetRenderTextured" );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetSetBoundingBoxColorRed_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Render bounding box wireframes with red-scale." );
+}
+
+macro WorksheetSetBoundingBoxColorRed()
+[Category="Worksheet Commands", Guid="{1F91F951-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_bounding_box_red.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.BoundingBoxColor.SetRGB( 0xFF, 0x40, 0x40 );
+   a_oView.Update();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetSetBoundingBoxColorGreen_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Render bounding box wireframes with green-scale." );
+}
+
+macro WorksheetSetBoundingBoxColorGreen()
+[Category="Worksheet Commands", Guid="{1F91F953-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_bounding_box_green.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.BoundingBoxColor.SetRGB( 0x92, 0xF7, 0x73 );
+   a_oView.Update();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetSetBoundingBoxColorBlue_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Render bounding box wireframes with blue-scale." );
+}
+
+macro WorksheetSetBoundingBoxColorBlue()
+[Category="Worksheet Commands", Guid="{1F91F952-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\set_bounding_box_blue.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.BoundingBoxColor.SetRGB( 0xD8, 0xD9, 0xFA );
+   a_oView.Update();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetCameraZoomIn_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Double the current zoom level and see less of the model." );
+}
+
+macro WorksheetCameraZoomIn()
+[Category="Worksheet Commands", Guid="{1F91F954-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_zoom_in.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.Zoom *= 2.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetCameraZoomOut_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Halve the current zoom level and see more of the model." );
+}
+
+macro WorksheetCameraZoomOut()
+[Category="Worksheet Commands", Guid="{1F91F955-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_zoom_in.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.Zoom /= 2.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetRenderFullBoundingBox_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Render complete bounding box wireframes." );
+}
+
+macro WorksheetRenderFullBoundingBox()
+[Category="Worksheet Commands", Guid="{1F91F91C-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\full_bounding_box.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.FullBoundingBox = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetRenderPartialBoundingBox_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Render bounding box wireframes at corners only." );
+}
+
+macro WorksheetRenderPartialBoundingBox()
+[Category="Worksheet Commands", Guid="{1F91F91D-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\partial_bounding_box.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.FullBoundingBox = false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetLayoutOnePanel_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Use a single view to display the scene." );
+}
+
+macro WorksheetLayoutOnePanel()
+[Category="Worksheet Commands", Guid="{1F91F9B4-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_layout_one.bmp"]
+{
+   Application.Window.Split( 1, 1, 100, 100 );
+   ModelView a_oTopView = Application.Window.GetView( 0, 0 );
+   a_oTopView.Lock();
+
+   a_oTopView.Orientation.X = -45.0;
+   a_oTopView.Orientation.Y = 0.0;
+   a_oTopView.Orientation.Z = 0.0;
+   a_oTopView.Position.X = 0.0;
+   a_oTopView.Position.Y = -50.0;
+   a_oTopView.Position.Z = 35.0;
+
+   // 0 == Perspective
+   // 1 == General Isometric
+   // 2 == Top
+   // 3 == Front
+   // 4 == Side
+
+   a_oTopView.Zoom = 1.0;
+   a_oTopView.Axes = false;
+   a_oTopView.Grid = true;
+   a_oTopView.TopColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oTopView.MiddleColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oTopView.BottomColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oTopView.GridColor.SetRGB( 0x64, 0x64, 0x64 );
+   a_oTopView.GridQuadrantColor.SetRGB( 0x40, 0x40, 0x40 );
+
+   a_oTopView.SetPerspective();
+   a_oTopView.RenderFilled();
+   a_oTopView.RenderSolid();
+   a_oTopView.Release( true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetLayoutTwoPanel_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Use two horizontal views to display the scene." );
+}
+
+macro WorksheetLayoutTwoPanel()
+[Category="Worksheet Commands", Guid="{1F91F9B5-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_layout_two.bmp"]
+{
+   Application.Window.Split( 2, 1, 50, 50 );
+
+   ModelView a_oTopView = Application.Window.GetView( 0, 0 );
+   ModelView a_oBottomView = Application.Window.GetView( 1, 0 );
+
+   a_oTopView.Lock();
+
+   a_oTopView.SetTop();
+   a_oTopView.Orientation.X = 0.0;
+   a_oTopView.Orientation.Y = 0.0;
+   a_oTopView.Orientation.Z = 0.0;
+   a_oTopView.Position.X = 0.0;
+   a_oTopView.Position.Y = 0.0;
+   a_oTopView.Position.Z = 0.0;
+   a_oTopView.Zoom = 1.0;
+   a_oTopView.NearClip = -10000.0;
+   a_oTopView.FarClip = 10000.0;
+   a_oTopView.TopColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oTopView.MiddleColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oTopView.BottomColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oTopView.GridColor.SetRGB( 0x64, 0x64, 0x64 );
+   a_oTopView.GridQuadrantColor.SetRGB( 0x40, 0x40, 0x40 );
+   a_oTopView.Backfacing = true;
+
+   a_oTopView.RenderWireframe();
+   a_oTopView.RenderSolid();
+
+   a_oTopView.Release( true );
+
+   a_oBottomView.Lock();
+
+   a_oBottomView.SetPerspective();
+   a_oBottomView.Orientation.X = -45.0;
+   a_oBottomView.Orientation.Y = 0.0;
+   a_oBottomView.Orientation.Z = 0.0;
+   a_oBottomView.Position.X = 0.0;
+   a_oBottomView.Position.Y = -50.0;
+   a_oBottomView.Position.Z = 35.0;
+   a_oBottomView.NearClip = 10.0;
+   a_oBottomView.FarClip = 10000000.0;
+   a_oBottomView.Axes = false;
+   a_oBottomView.Grid = true;
+   a_oBottomView.TopColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oBottomView.MiddleColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oBottomView.BottomColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oBottomView.GridColor.SetRGB( 0x64, 0x64, 0x64 );
+   a_oBottomView.GridQuadrantColor.SetRGB( 0x40, 0x40, 0x40 );
+
+   a_oBottomView.RenderFilled();
+   a_oBottomView.RenderSolid();
+
+   a_oBottomView.Release( true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetLayoutFourPanel_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Use four views to display the scene." );
+}
+
+macro WorksheetLayoutFourPanel()
+[Category="Worksheet Commands", Guid="{1F91F9B6-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_layout_four.bmp"]
+{
+   Application.Window.Split( 2, 2, 50, 50 );
+
+   ModelView a_oTopLeftView = Application.Window.GetView( 0, 0 );
+   ModelView a_oBottomLeftView = Application.Window.GetView( 1, 0 );
+   ModelView a_oTopRightView = Application.Window.GetView( 0, 1 );
+   ModelView a_oBottomRightView = Application.Window.GetView( 1, 1 );
+
+   Matrix editTransform = Model.Grid.GetTransform();
+
+   editTransform.Orientation[0] = 0.0;
+   editTransform.Orientation[1] = 0.0;
+   editTransform.Orientation[2] = 0.0;
+
+   Model.Grid.SetTransform( editTransform );
+
+   a_oTopLeftView.Lock();
+
+   a_oTopLeftView.Orientation.X = -45.0;
+   a_oTopLeftView.Orientation.Y = 0.0;
+   a_oTopLeftView.Orientation.Z = 0.0;
+   a_oTopLeftView.Position.X = 0.0;
+   a_oTopLeftView.Position.Y = -50.0;
+   a_oTopLeftView.Position.Z = 35.0;
+   a_oTopLeftView.NearClip = 10.0;
+   a_oTopLeftView.FarClip = 10000000.0;
+   a_oTopLeftView.Zoom = 1.0;
+   a_oTopLeftView.Axes = false;
+   a_oTopLeftView.Grid = true;
+   a_oTopLeftView.TopColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oTopLeftView.MiddleColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oTopLeftView.BottomColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oTopLeftView.GridColor.SetRGB( 0x64, 0x64, 0x64 );
+   a_oTopLeftView.GridQuadrantColor.SetRGB( 0x40, 0x40, 0x40 );
+
+   a_oTopLeftView.SetPerspective();
+   a_oTopLeftView.RenderFilled();
+   a_oTopLeftView.RenderSolid();
+
+   a_oTopLeftView.Release( true );
+
+   a_oBottomLeftView.Lock();
+
+   a_oBottomLeftView.SetTop();
+   a_oBottomLeftView.Backfacing = true;
+   a_oBottomLeftView.Orientation.X = 0.0;
+   a_oBottomLeftView.Orientation.Y = 0.0;
+   a_oBottomLeftView.Orientation.Z = 0.0;
+   a_oBottomLeftView.Position.X = 0.0;
+   a_oBottomLeftView.Position.Y = 0.0;
+   a_oBottomLeftView.Position.Z = 0.0;
+   a_oBottomLeftView.Zoom = 1.0;
+   a_oBottomLeftView.NearClip = -10000.0;
+   a_oBottomLeftView.FarClip = 10000.0;
+   a_oBottomLeftView.Axes = false;
+   a_oBottomLeftView.Grid = true;
+   a_oBottomLeftView.TopColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oBottomLeftView.MiddleColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oBottomLeftView.BottomColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oBottomLeftView.GridColor.SetRGB( 0x64, 0x64, 0x64 );
+   a_oBottomLeftView.GridQuadrantColor.SetRGB( 0x40, 0x40, 0x40 );
+
+   a_oBottomLeftView.RenderWireframe();
+   a_oBottomLeftView.RenderSolid();
+
+   a_oBottomLeftView.Release( true );
+
+   a_oTopRightView.Lock();
+
+   a_oTopRightView.SetSide();
+   a_oTopRightView.Backfacing = true;
+   a_oTopRightView.Orientation.X = 0.0;
+   a_oTopRightView.Orientation.Y = 0.0;
+   a_oTopRightView.Orientation.Z = 0.0;
+   a_oTopRightView.Position.X = 0.0;
+   a_oTopRightView.Position.Y = 0.0;
+   a_oTopRightView.Position.Z = 0.0;
+   a_oTopRightView.NearClip = -10000.0;
+   a_oTopRightView.FarClip = 10000.0;
+   a_oTopRightView.Axes = false;
+   a_oTopRightView.Grid = true;
+   a_oTopRightView.TopColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oTopRightView.MiddleColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oTopRightView.BottomColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oTopRightView.GridColor.SetRGB( 0x64, 0x64, 0x64 );
+   a_oTopRightView.GridQuadrantColor.SetRGB( 0x40, 0x40, 0x40 );
+
+   a_oTopRightView.RenderWireframe();
+   a_oTopRightView.RenderSolid();
+
+   a_oTopRightView.Release( true );
+
+   a_oBottomRightView.Lock();
+
+   a_oBottomRightView.SetFront();
+   a_oBottomRightView.Backfacing = true;
+   a_oBottomRightView.Orientation.X = 0.0;
+   a_oBottomRightView.Orientation.Y = 0.0;
+   a_oBottomRightView.Orientation.Z = 0.0;
+   a_oBottomRightView.Position.X = 0.0;
+   a_oBottomRightView.Position.Y = 0.0;
+   a_oBottomRightView.Position.Z = 0.0;
+   a_oBottomRightView.NearClip = -10000.0;
+   a_oBottomRightView.FarClip = 10000.0;
+   a_oBottomRightView.Axes = false;
+   a_oBottomRightView.Grid = true;
+   a_oBottomRightView.TopColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oBottomRightView.MiddleColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oBottomRightView.BottomColor.SetRGB( 0x80, 0x80, 0x80 );
+   a_oBottomRightView.GridColor.SetRGB( 0x64, 0x64, 0x64 );
+   a_oBottomRightView.GridQuadrantColor.SetRGB( 0x40, 0x40, 0x40 );
+
+   a_oBottomRightView.RenderWireframe();
+   a_oBottomRightView.RenderSolid();
+
+   a_oBottomRightView.Release( true );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetViewTop_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the camera to display a plan view of the scene." );
+}
+
+macro WorksheetViewTop()
+[Category="Worksheet Commands", Guid="{1F91F9B7-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_orientation_top.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.SetTop();
+
+   Matrix editTransform = Model.Grid.GetTransform();
+
+   editTransform.Orientation[0] = 0.0;
+   editTransform.Orientation[1] = 0.0;
+   editTransform.Orientation[2] = 0.0;
+
+   Model.Grid.SetTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetViewSide_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the camera to display a side elevation view of the scene." );
+}
+
+macro WorksheetViewSide()
+[Category="Worksheet Commands", Guid="{1F91F9B8-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_orientation_side.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.SetSide();
+
+   a_oView.Orientation.X = 0.0;
+   a_oView.Orientation.Y = 0.0;
+   a_oView.Orientation.Z = 0.0;
+
+   Matrix editTransform = Model.Grid.GetTransform();
+
+   editTransform.Orientation[0] = 0.0;
+   editTransform.Orientation[1] = -90.0;
+   editTransform.Orientation[2] = 0.0;
+
+   Model.Grid.SetTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetViewFront_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the camera to display a front elevation view of the scene." );
+}
+
+macro WorksheetViewFront()
+[Category="Worksheet Commands", Guid="{1F91F9B9-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_orientation_front.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.SetFront();
+
+   a_oView.Orientation.X = 0.0;
+   a_oView.Orientation.Y = 0.0;
+   a_oView.Orientation.Z = 0.0;
+
+   Matrix editTransform = Model.Grid.GetTransform();
+
+   editTransform.Orientation[0] = -90.0;
+   editTransform.Orientation[1] = 0.0;
+   editTransform.Orientation[2] = 0.0;
+
+   Model.Grid.SetTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetViewPerspective_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the camera to display a perspective view of the scene." );
+}
+
+macro WorksheetViewPerspective()
+[Category="Worksheet Commands", Guid="{1F91F9BA-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_orientation_perspective.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   int projection = a_oView.GetProjection();
+
+   if( projection == 0 )
+   {
+      a_oView.Orientation.X = -90.0;
+      a_oView.Orientation.Y = 0.0;
+      a_oView.Orientation.Z = 0.0;
+      a_oView.Zoom = 1.0;
+   }
+
+   a_oView.SetPerspective();
+   a_oView.Zoom = 1.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetViewBack_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the camera to display a rear elevation view of the scene." );
+}
+
+macro WorksheetViewBack()
+[Category="Worksheet Commands", Guid="{1F91F90C-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_orientation_back.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.SetFront();
+
+   a_oView.Orientation.X = 0.0;
+   a_oView.Orientation.Y = 0.0;
+   a_oView.Orientation.Z = 180.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetViewLeftSide_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Set the camera to display a left side elevation view of the scene." );
+}
+
+macro WorksheetViewLeftSide()
+[Category="Worksheet Commands", Guid="{1F91F90D-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_orientation_left_side.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   a_oView.SetSide();
+
+   a_oView.Orientation.X = 0.0;
+   a_oView.Orientation.Y = 0.0;
+   a_oView.Orientation.Z = 180.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetCameraAlignWithGroup_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Align the camera with the position and orientation of the selected group, level-of-detail, or mesh node." );
+}
+
+macro WorksheetCameraAlignWithGroup()
+[Category="Worksheet Commands", Guid="{1F91FB08-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_camera_align_with_group.bmp" ]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+        // Copy the group bounding box parameters into a matrix.
+
+        Group group = (Group)node;
+
+        Matrix gTransform = group.GetTransform();
+
+        // Modify the worksheet projection, clip planes, zoom, and camera position.
+        
+        ModelView a_oView = Model.ActiveView;
+        
+        a_oView.Position.X =  gTransform.Position[0];
+        a_oView.Position.Y =  gTransform.Position[1];
+        a_oView.Position.Z =  gTransform.Position[2];
+         
+        a_oView.Orientation.X = gTransform.Orientation[0];
+        a_oView.Orientation.Y = gTransform.Orientation[1];
+        a_oView.Orientation.Z = gTransform.Orientation[2];
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetCameraPositionAtCenter_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Align the camera with centroid of the selected group, level-of-detail, or mesh node." );
+}
+
+macro WorksheetCameraPositionAtCenter()
+[Category="Worksheet Commands", Guid="{1F91FA58-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\change_camera_position.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Group ) )
+      {
+         // Copy the group bounding box parameters into a matrix.
+         Group a_oGroup = (Group)node;
+
+         Matrix gTransform = a_oGroup.GetTransform();
+
+         double a_dExtentX = Math.FAbs( ( a_oGroup.BoundMin[0] - a_oGroup.BoundMax[0] ) );
+         double a_dExtentY = Math.FAbs( ( a_oGroup.BoundMin[1] - a_oGroup.BoundMax[1] ) );
+
+         // Calculate Extent Along X.
+         double a_dNewCameraPositionX = a_oGroup.BoundMin[0] + ( a_dExtentX / 2 );
+
+         // Calculate Extent Along Y.
+         double a_dNewCameraPositionY = a_oGroup.BoundMin[1] + ( a_dExtentY / 2 );
+
+         // Calculate the new camera position.
+
+         ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( a_dExtentX );
+         ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( a_dExtentY );
+         ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( a_dNewCameraPositionX );
+         ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( a_dNewCameraPositionY );
+
+         // Modify the worksheet projection, clip planes, zoom, and camera position.
+         ModelView a_oView = Model.ActiveView;
+
+         a_oView.Position.X =  a_dNewCameraPositionX;
+         a_oView.Position.Y =  a_dNewCameraPositionY;
+         a_oView.Position.Z =  a_oGroup.BoundMax[2];
+         break;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetCameraPositionAtLight_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleLightOnUpdate( commandInfo, "Align the camera with the position and directionality of the selected light." );
+}
+
+macro WorksheetCameraPositionAtLight()
+[Category="Worksheet Commands", Guid="{1F91FA6C-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\change_camera_position.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( Light ) )
+      {
+        // Copy the light position parameters into a matrix.
+        Light light = (Light)Model.EditNode( node );
+
+        Matrix editPosition = new Matrix;
+        editPosition.Position[0] = light.Position.X;
+        editPosition.Position[1] = light.Position.Y;
+        editPosition.Position[2] = light.Position.Z;
+
+        // Copy the light orientation parameters into a matrix.
+        Matrix editOrientation = new Matrix;
+        editOrientation.Orientation[0] = light.Direction.X;
+        editOrientation.Orientation[1] = light.Direction.Y;
+        editOrientation.Orientation[2] = light.Direction.Z;
+        
+        // Update the view
+        ModelView a_oView = Model.ActiveView;
+
+        a_oView.Position.X = editPosition.Position[0];
+        a_oView.Position.Y = editPosition.Position[1];
+        a_oView.Position.Z = editPosition.Position[2];
+
+        a_oView.Orientation.X = editOrientation.Orientation[0];
+        a_oView.Orientation.Y = editOrientation.Orientation[1];
+        a_oView.Orientation.Z = editOrientation.Orientation[2];
+
+        delete editPosition;
+        delete editOrientation;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetCameraFindMesh_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   bool enabled = false;
+   string hint = "Align the camera with the selected mesh and fit the mesh on-screen.";
+   Model3DSelectBuffer selBuf = Model.GetSelectBuffer();
+   if( selBuf.IsNodeTypeSelected( ParametricMesh ) || selBuf.IsNodeTypeSelected( Modifier ) )
+   {
+      enabled = true;
+   }
+   else
+   {
+      hint += ": to enable this command, select a ParametricMesh or a Modifier";
+   }
+   commandInfo.SetEnabled( enabled );
+   commandInfo.Status.SetHint( hint );
+}
+
+macro WorksheetCameraFindMesh()
+[Category="Worksheet Commands", Guid="{1F91FB05-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\camera_find_mesh.bmp"]
+{
+   PositionCameraAtFirstSelMeshOrModifierMesh();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This command flips the manipulator by inverting its scale values.
+
+function void WorksheetManipulatorFlip_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Flips the manipulator along its vertical axis." );
+}
+
+macro WorksheetManipulatorFlip()
+[Category="Worksheet Commands", Guid="{1F91FA7D-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\manipulator_flip.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   // Copy the manipulator parameters into a maxtrix.
+   Matrix editTransform = Model.Grid.GetManipulatorTransform();
+
+  // Flip the manipulator by inverting the matrix X/Y if necessary.
+  // If the manipulator has negative scale values, it has already been flipped. Reset.
+
+   if( editTransform.Scale[0] = 1 )
+   {
+     editTransform.Scale[0] = -1;
+     editTransform.Scale[1] = -1;
+     editTransform.Scale[2] = 1;
+   }
+   else
+   {
+     editTransform.Scale[0] = 1;
+     editTransform.Scale[1] = 1;
+     editTransform.Scale[2] = 1;
+   }
+
+   // Update the model.
+   Model.Grid.SetManipulatorTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This command aligns the manipulator with the position and orientation of the grid.
+
+function void WorksheetManipulatorAlignWithGrid_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Aligns the manipulator position and orientation with the grid." );
+}
+
+macro WorksheetManipulatorAlignWithGrid()
+[Category="Worksheet Commands", Guid="{1F91FA7E-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\manipulator_align_with_grid.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   // Copy the grid position and orienation into a matrix.
+   Matrix grid = Model.Grid.GetTransform();
+
+   // Initialize a matrix for the manipulator.
+   Matrix editTransform = Model.Grid.GetManipulatorTransform();
+
+   // Copy the matrix values from the grid initialized matrix to the manipulator matrix.
+   editTransform.Orientation[0] = grid.Orientation[0];
+   editTransform.Orientation[1] = grid.Orientation[1];
+   editTransform.Orientation[2] = grid.Orientation[2];
+   editTransform.Position[0]    = grid.Position[0];
+   editTransform.Position[1]    = grid.Position[1];
+   editTransform.Position[2]    = grid.Position[2];
+
+   // Push the values onto the manipulator.
+   Model.Grid.SetManipulatorTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This command aligns the manipulator with the position and orientation of the camera.
+
+function void WorksheetManipulatorAlignWithCamera_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Aligns the manipulator position with the camera." );
+}
+
+macro WorksheetManipulatorAlignWithCamera()
+[Category="Worksheet Commands", Guid="{455D6E71-46F2-4078-A85D-DDD4D9CE45B7}", Image=".\\icons\\manipulator_align_with_camera.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   // Copy the grid position and orienation into a matrix.
+   Matrix grid = Model.Grid.GetTransform();
+
+   // Initialize a matrix for the manipulator.
+   Matrix editTransform = Model.Grid.GetManipulatorTransform();
+
+   // Copy the matrix values from the grid initialized matrix to the manipulator matrix.
+
+   editTransform.Orientation[0] = a_oView.Position.X;
+   editTransform.Orientation[1] = a_oView.Position.Y;
+   editTransform.Orientation[2] = a_oView.Position.Z;
+
+   // Push the values onto the manipulator.
+   Model.Grid.SetManipulatorTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This command resets the manipulator orientation to 0 degrees along X, Y, and Z.
+
+function void WorksheetManipulatorResetPosition_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Resets the manipulator position to 0,0,0." );
+}
+
+macro WorksheetManipulatorResetPosition()
+[Category="Worksheet Commands", Guid="{7E0A953F-05CC-4FA4-B00E-3401BBC9C3BC}", Image=".\\icons\\reset_manipulator_position.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   Matrix editTransform = Model.Grid.GetManipulatorTransform();
+
+   // Zero the position parameters.
+   editTransform.Position[0] = 0.0;
+   editTransform.Position[1] = 0.0;
+   editTransform.Position[2] = 0.0;
+
+   // Push these values onto the manipulator.
+   Model.Grid.SetManipulatorTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This command resets the manipulator orientation to 0 degrees along X, Y, and Z.
+
+function void WorksheetManipulatorResetOrientation_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Resets the manipulator orientation to 0,0,0." );
+}
+
+macro WorksheetManipulatorResetOrientation()
+[Category="Worksheet Commands", Guid="{1F91FA66-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\reset_manipulator_orientation.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   Matrix editTransform = Model.Grid.GetManipulatorTransform();
+
+   // Zero the orientation parameters.
+   editTransform.Orientation[0] = 0.0;
+   editTransform.Orientation[1] = 0.0;
+   editTransform.Orientation[2] = 0.0;
+
+   // Push these values onto the manipulator.
+   Model.Grid.SetManipulatorTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This command resets the manipulator scale to 1 unit along X, Y, and Z.
+
+function void WorksheetManipulatorResetScale_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Resets the manipulator scale parameters to 1,1,1." );
+}
+
+macro WorksheetManipulatorResetScale()
+[Category="Worksheet Commands", Guid="{1F91FA74-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\reset_manipulator_size.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   Matrix editTransform = Model.Grid.GetManipulatorTransform();
+
+   // Reset the scale values.
+
+   editTransform.Scale[0] = 1.0;
+   editTransform.Scale[1] = 1.0;
+   editTransform.Scale[2] = 1.0;
+
+   // Push these values onto the manipulator.
+   Model.Grid.SetManipulatorTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This command resets the manipulator orientation to 0 degrees along X, Y, and Z.
+
+function void WorksheetManipulatorResetPOS_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Resets the manipulator orientation to 0,0,0." );
+}
+
+macro WorksheetManipulatorResetPOS()
+[Category="Worksheet Commands", Guid="{E5B0D299-78A8-4DC3-B0E6-809310C7F59A}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   Matrix editTransform = Model.Grid.GetManipulatorTransform();
+
+   // Zero the position, orientation, and scale parameters.
+   editTransform.Position[0] = 0.0;
+   editTransform.Position[1] = 0.0;
+   editTransform.Position[2] = 0.0;
+   editTransform.Orientation[0] = 0.0;
+   editTransform.Orientation[1] = 0.0;
+   editTransform.Orientation[2] = 0.0;
+   editTransform.Scale[0] = 1.0;
+   editTransform.Scale[1] = 1.0;
+   editTransform.Scale[2] = 1.0;
+
+   // Push these values onto the manipulator.
+   Model.Grid.SetManipulatorTransform( editTransform );
+
+   // Set the mode to translate.
+   Application.ExecuteCommand( "Transform Commands", "SetModeInteractiveTranslate" );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void AlignManipulatorWithCurvePoints( Path path, int firstPoint, int secondPoint )
+{
+   Vec first = path.GetPoint( firstPoint );
+   Vec second = path.GetPoint( secondPoint );
+   Vec aVec1 = new Vec;
+   Vec aVec2 = new Vec;
+   aVec1.X = first.X;
+   aVec1.Y = first.Y;
+   aVec1.Z = first.Z;
+   aVec2.X = second.X;
+   aVec2.Y = second.Y;
+   aVec2.Z = second.Z;
+
+   Matrix RootTransform = new Matrix;
+   path.Parent().GetTransformToGroup( Model, RootTransform );
+   path.Parent().TransformPointToGroup( Model, aVec1 );
+   path.Parent().TransformPointToGroup( Model, aVec2 );
+
+   RootTransform.Position[0] = aVec1.X;
+   RootTransform.Position[1] = aVec1.Y;
+   RootTransform.Position[2] = aVec1.Z;
+
+   aVec2.Subtract( aVec1 );
+   aVec2.Normalize();
+
+   // Place the manipulator x-axis along the ray from first -> second.
+   RootTransform.Orientation[0] = 0.0;
+   RootTransform.Orientation[1] = -SpaMathUtil.GetPitch( aVec2 );
+   RootTransform.Orientation[2] = (180 / Math.PI()) * Math.Atan2( aVec2.Y, aVec2.X );
+
+   Model.Grid.SetManipulatorTransform( RootTransform );
+
+   delete RootTransform;
+   delete aVec1;
+   delete aVec2;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This command aligns the manipulator with the transformation of the selection.
+// The selection needs to be a group node, level-of-detail node, or mesh node.
+// The selection can also be a mesh select.
+
+function void WorksheetManipulatorAlignWithSelection_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Node, "Aligns the manipulator position and orientation with the selection." );
+}
+
+macro WorksheetManipulatorAlignWithSelection()
+[Category="Worksheet Commands", Guid="{2EABCDEF-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\manipulator_center_on_selection.bmp"]
+{
+   if( !Model.GetSelectCount() )
+   {
+      return;
+   }
+   else
+   {
+      NodeSelect nodeSel = Model.GetSelectedNode( 0 );
+      if( nodeSel.IsDerived( PathVertexSelect ) || nodeSel.IsDerived( PathSegmentSelect ) )
+      {
+         // Special case to align with path sub-geometry selection.
+         Path path = (Path)nodeSel.GetNode();
+         int firstPoint = -1;
+         int secondPoint = -1;
+         if( nodeSel.IsDerived( PathVertexSelect ) )
+         {
+            PathVertexSelect pathVertexSel = (PathVertexSelect)nodeSel;
+
+            // Find the first two selected verts in the selection and
+            // align the manipulator to them.
+            for( int vert = 0; vert < path.PointCount; ++vert )
+            {
+               if( pathVertexSel.IsVertexSelected( vert ) )
+               {
+                  if( firstPoint == -1 )
+                  {
+                     firstPoint = vert;
+                  }
+                  else
+                  if( secondPoint == -1 )
+                  {
+                     secondPoint = vert;
+                     break;
+                  }
+               }
+            }
+         }
+         else
+         {
+            PathSegmentSelect pathSegmentSel = (PathSegmentSelect)nodeSel;
+
+            // Find the first selected segment in the selection and
+            // align the manipulator to it.
+            for( int seg = 0; seg < path.SegmentCount; ++seg )
+            {
+               if( pathSegmentSel.IsSegmentSelected( seg ) )
+               {
+                  firstPoint = path.GetSegmentStartIndex( seg );
+                  secondPoint = path.GetSegmentEndIndex( seg );
+                  break;
+               }
+            }
+         }
+         if( firstPoint != -1 && secondPoint != -1 )
+         {
+            AlignManipulatorWithCurvePoints( path, firstPoint, secondPoint );
+         }
+      }
+      else
+      {
+         Node node = nodeSel.GetNode();
+
+         // Align with selection bounds.
+         Vec aVec1 = new Vec;
+         Vec aVec2 = new Vec;
+         Matrix RootTransform = new Matrix;
+
+         if( !node.IsDerived( Model3D ) )
+         {
+            node.Parent().GetTransformToGroup( Model, RootTransform );
+            Model.GetSelectedNode( 0 ).GetSelectBounds( aVec1, aVec2 );
+            node.Parent().TransformPointToGroup( Model, aVec1);
+
+            RootTransform.Position[0] = aVec1.X;
+            RootTransform.Position[1] = aVec1.Y;
+            RootTransform.Position[2] = aVec1.Z;
+            Model.Grid.SetManipulatorTransform( RootTransform );
+
+            delete RootTransform;
+            delete aVec1;
+            delete aVec2;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This script positions the manipulator at the center of group-derived nodes.
+
+function void WorksheetManipulatorAlignWithBoundingBox_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Align the manipulator with the position and orientation of the selected group, level-of-detail, or mesh node." );
+}
+
+macro WorksheetManipulatorAlignWithBoundingBox()
+[Category="Worksheet Commands", Guid="{1F91FA5A-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\manipulator_align_with_bounding_box.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+         Matrix editManipulator = new Matrix;
+         Matrix getTransform = group.GetTransform();
+
+         editManipulator.Orientation[0] = getTransform.Orientation[0];
+         editManipulator.Orientation[1] = getTransform.Orientation[1];
+         editManipulator.Orientation[2] = getTransform.Orientation[2];
+         editManipulator.Position[0] = getTransform.Position[0];
+         editManipulator.Position[1] = getTransform.Position[1];
+         editManipulator.Position[2] = getTransform.Position[2];
+
+         Model.Grid.SetManipulatorTransform( editManipulator );
+         delete editManipulator;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This command aligns the manipulator with the centroid of a group, level-of-detail, mesh, or face-edge-vertex selection.
+
+function void WorksheetManipulatorAlignWithCentroid_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Align the manipulator with the centroid of the selected group, level-of-detail, or mesh node." );
+}
+
+macro WorksheetManipulatorAlignWithCentroid()
+[Category="Worksheet Commands", Guid="{1F91FA68-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\manipulator_align_with_centroid.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)Model.EditNode( node );
+
+         Vec a_vSelectBounds1 = new Vec;
+         Vec a_vSelectBounds2 = new Vec;
+
+         Matrix editManipulator = Model.Grid.GetManipulatorTransform();
+         Model.GetSelectBounds( a_vSelectBounds1, a_vSelectBounds2 );
+
+         editManipulator.Position[0] = ( a_vSelectBounds1.X / 2 ) + ( a_vSelectBounds2.X / 2 );
+         editManipulator.Position[1] = ( a_vSelectBounds1.Y / 2 ) + ( a_vSelectBounds2.Y / 2 );
+         editManipulator.Position[2] = ( a_vSelectBounds1.Z / 2 ) + ( a_vSelectBounds2.Z / 2 );
+
+         Model.Grid.SetManipulatorTransform( editManipulator );
+
+         delete a_vSelectBounds1;
+         delete a_vSelectBounds2;
+
+         break;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This command positions the manipulator near in the center of the view.
+
+function void WorksheetManipulatorCenterOnView_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Aligns the manipulator position with the center of the view volume." );
+}
+
+macro WorksheetManipulatorCenterOnView()
+[Category="Worksheet Commands", Guid="{1F91FA7F-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\manipulator_smart_position.bmp"]
+{
+    ModelView activeView = Model.ActiveView;
+
+    Vec center = new Vec;
+    GetViewportCenter( activeView, center );
+
+    Matrix editTransform = Model.Grid.GetManipulatorTransform();
+    editTransform.Position[0] = center.X;
+    editTransform.Position[1] = center.Y;
+    editTransform.Position[2] = center.Z;
+    Model.Grid.SetManipulatorTransform( editTransform );
+
+    delete center;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This command aligns the manipulator with the transformation of the selection.
+// The selection needs to be a group node, level-of-detail node, or mesh node.
+
+function void WorksheetManipulatorEnlarge_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Increases the size of the manipulator." );
+}
+
+macro WorksheetManipulatorEnlarge()
+[Category="Worksheet Commands", Guid="{1F91FA69-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\manipulator_enlarge.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   Matrix editTransform = Model.Grid.GetManipulatorTransform();
+
+   editTransform.Scale[0] += 0.01;
+   editTransform.Scale[1] += 0.01;
+   editTransform.Scale[2] += 0.01;
+
+   Model.Grid.SetManipulatorTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This command aligns the manipulator with the transformation of the selection.
+// The selection needs to be a group node, level-of-detail node, or mesh node.
+
+function void WorksheetManipulatorShrink_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Reduces the size of the manipulator." );
+}
+
+macro WorksheetManipulatorShrink()
+[Category="Worksheet Commands", Guid="{1F91FA6A-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\manipulator_shrink.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   Matrix editTransform = Model.Grid.GetManipulatorTransform();
+
+   if( editTransform.Scale[0] > 0.1 && editTransform.Scale[1] > 0.1 && editTransform.Scale[2] > 0.1 )
+   {
+      editTransform.Scale[0] -= 0.01;
+      editTransform.Scale[1] -= 0.01;
+      editTransform.Scale[2] -= 0.01;
+   }
+   else
+   {
+      editTransform.Scale[0] = 0.01;
+      editTransform.Scale[1] = 0.01;
+      editTransform.Scale[2] = 0.01;
+   }
+   Model.Grid.SetManipulatorTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This command rotates the manipulator 90 degrees on Z.
+
+function void WorksheetManipulatorRotate_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Rotates the manipulator around its central axis." );
+}
+
+macro WorksheetManipulatorRotate()
+[Category="Worksheet Commands", Guid="{1F91FA80-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\manipulator_rotate.bmp"]
+{
+   // Rotate the manipulator by ninety degrees on Z.
+   ModelView a_oView = Model.ActiveView;
+   Matrix editTransform = Model.Grid.GetManipulatorTransform();
+   editTransform.Orientation[2] += 90.0;
+   Model.Grid.SetManipulatorTransform( editTransform );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+// This script aligns the manipulator with the light position and orientation.
+
+function void WorksheetManipulatorAlignWithLight_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Light, "Align the manipulator with the position and orientation of the selected light." );
+}
+
+macro WorksheetManipulatorAlignWithLight()
+[Category="Worksheet Commands", Guid="{63BDAF31-C923-4D5F-BE43-53786EBB6693}", Image=".\\icons\\manipulator_align_with_light.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+
+      if( node.IsDerived( Light ) )
+      {
+         Light light = (Light)Model.EditNode( node );
+         Matrix editManipulator = new Matrix;
+         Matrix getTransform = light.GetTransform();
+
+         editManipulator.Orientation[0] = getTransform.Orientation[0];
+         editManipulator.Orientation[1] = getTransform.Orientation[1];
+         editManipulator.Orientation[2] = getTransform.Orientation[2];
+         editManipulator.Position[0] = getTransform.Position[0];
+         editManipulator.Position[1] = getTransform.Position[1];
+         editManipulator.Position[2] = getTransform.Position[2];
+
+         Model.Grid.SetManipulatorTransform( editManipulator );
+
+         delete editManipulator;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetConfigureForWideAreaScenery_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Sets the near clip plane to 10 units and the far clip plane to 1,000,000 units." );
+}
+
+macro WorksheetConfigureForWideAreaScenery()
+[Category="Worksheet Commands", Guid="{1F91FAC3-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_wide_area_scenery.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   // Configure the near clipping plane with a large value. This prevents z-buffer precision under/over flow.
+   // Configure the far clipping plane with a very, very large value.
+   a_oView.NearClip = 10.0;
+   a_oView.FarClip = 1000000.0;
+   a_oView.Zoom = 1.0;
+   a_oView.SetPerspective();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetConfigureForSmallAreaScenery_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Sets the near clip plane to 1 unit and the far clip plane to 10,000 units." );
+}
+
+macro WorksheetConfigureForSmallAreaScenery()
+[Category="Worksheet Commands", Guid="{1F91FAC4-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_small_area_scenery.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+
+   // Configure the near clipping plane with a normal value of 1.
+   // Configure the far clipping plane with a reasonably large value.
+   a_oView.NearClip = 1.0;
+   a_oView.FarClip = 1000.0;
+   a_oView.Zoom = 1.0;
+   a_oView.SetPerspective();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleGlobalVertexDisplay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle global vertex display.", Model.ActiveView.GlobalVertices );
+}
+
+macro WorksheetToggleGlobalVertexDisplay()
+[Category="Worksheet Commands", Guid="{9A6D5386-AF84-4EE2-B648-CD6694F93540}", Image=".\\icons\\mesh_vertex_display.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.GlobalVertices = !a_oView.GlobalVertices;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleGlobalVertexNormalDisplay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle global vertex normal display.", Model.ActiveView.GlobalVertexNormals );
+}
+
+macro WorksheetToggleGlobalVertexNormalDisplay()
+[Category="Worksheet Commands", Guid="{1F91FAE9-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\mesh_vertex_normal_display.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.GlobalVertexNormals = !a_oView.GlobalVertexNormals;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleGlobalEdgeDisplay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle global edge display.", Model.ActiveView.GlobalEdges );
+}
+
+macro WorksheetToggleGlobalEdgeDisplay()
+[Category="Worksheet Commands", Guid="{1F91FADF-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\mesh_edge_display.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.GlobalEdges = !a_oView.GlobalEdges;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleGlobalHiddenEdgeDisplay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle global hidden edge display.", Model.ActiveView.GlobalHiddenEdges );
+}
+
+macro WorksheetToggleGlobalHiddenEdgeDisplay()
+[Category="Worksheet Commands", Guid="{1F91FAE7-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\mesh_hidden_edge_display.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.GlobalHiddenEdges = !a_oView.GlobalHiddenEdges;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleGlobalFaceNormalDisplay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle global face normal display.", Model.ActiveView.GlobalFaceNormals );
+}
+
+macro WorksheetToggleGlobalFaceNormalDisplay()
+[Category="Worksheet Commands", Guid="{1F91FAE8-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\mesh_face_normal_display.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.GlobalFaceNormals = !a_oView.GlobalFaceNormals;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleGlobalHandleDisplay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle global handle display.", Model.ActiveView.Handles );
+}
+
+macro WorksheetToggleGlobalHandleDisplay()
+[Category="Worksheet Commands", Guid="{1F91FAEA-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\elements_handles.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.Handles = !a_oView.Handles;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleGlobalEdgesCurvesHandlesDisplay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle global edge, curve, and handle display.", Model.ActiveView.Handles );
+}
+
+macro WorksheetToggleGlobalEdgesCurvesHandlesDisplay()
+[Category="Worksheet Commands", Guid="{75961A80-7891-4298-828E-2A7AFA444BBE}", Image=".\\icons\\elements_handles.bmp"]
+{
+   Application.ExecuteCommand( "Worksheet Commands", "WorksheetToggleGlobalEdgeDisplay" );
+   Application.ExecuteCommand( "Worksheet Commands", "WorksheetToggleGlobalHandleDisplay" );
+   Application.ExecuteCommand( "Worksheet Commands", "WorksheetToggleGlobalCurveDisplay" );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleGlobalGridDisplay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle grid display.", Model.ActiveView.Grid );
+}
+
+macro WorksheetToggleGlobalGridDisplay()
+[Category="Worksheet Commands", Guid="{1F91FAEB-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\guides_grid.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.Grid = !a_oView.Grid;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleSnapToVertex_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle snap-to-vertex ( meshes ) and snap-to-point ( curves ).", Model.ActiveView.SnapToPoints );
+}
+
+macro WorksheetToggleSnapToVertex()
+[Category="Worksheet Commands", Guid="{1F91FAEC-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\snap_vertex.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.SnapToPoints = !a_oView.SnapToPoints;
+
+   // Enable mesh vertex feedback.
+   Application.ExecuteCommand( "Select Commands", "SetMeshVertexPick" );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleSnapToEdge_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle snap-to-edge ( meshes ) and snap-to-segment ( curves ).", Model.ActiveView.SnapToEdges );
+}
+
+macro WorksheetToggleSnapToEdge()
+[Category="Worksheet Commands", Guid="{1F91FAED-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\snap_edge.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.SnapToEdges = !a_oView.SnapToEdges;
+
+   // Enable mesh edge feedback.
+   Application.ExecuteCommand( "Select Commands", "SetMeshEdgePick" );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleSnapToFace_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle snap-to-face ( meshes ).", Model.ActiveView.SnapToFaces );
+}
+
+macro WorksheetToggleSnapToFace()
+[Category="Worksheet Commands", Guid="{1F91FAEE-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\snap_faces.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.SnapToFaces = !a_oView.SnapToFaces;
+
+   // Enable mesh face feedback.
+   Application.ExecuteCommand( "Select Commands", "SetMeshFacePick" );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleSnapToGrid_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle snap-to-grid.", Model.ActiveView.SnapToGrid );
+}
+
+macro WorksheetToggleSnapToGrid()
+[Category="Worksheet Commands", Guid="{1F91FAEF-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\snap_grid.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.SnapToGrid = !a_oView.SnapToGrid;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleGlobalWorldOriginDisplay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle world origin display.", Model.ActiveView.Axes );
+}
+
+macro WorksheetToggleGlobalWorldOriginDisplay()
+[Category="Worksheet Commands", Guid="{1F91FAF0-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\guidesaxes.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.Axes = !a_oView.Axes;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleGlobalPivotOriginDisplay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle local origin display.", Model.ActiveView.LocalAxes );
+}
+
+macro WorksheetToggleGlobalPivotOriginDisplay()
+[Category="Worksheet Commands", Guid="{1F91FAF1-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\guides_pivots.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.LocalAxes = !a_oView.LocalAxes;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleGlobalBackfacingDisplay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Toggle global backfacing display.", Model.ActiveView.Backfacing );
+}
+
+macro WorksheetToggleGlobalBackfacingDisplay()
+[Category="Worksheet Commands", Guid="{2B7E191A-C0CC-48FA-9DB9-736D313A6396}", Image=".\\icons\\guides_backfacing.bmp"]
+{
+   ModelView a_oView = Model.ActiveView;
+   a_oView.Backfacing = !a_oView.Backfacing;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetToggleGlobalGuideDisplay_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Toggles the current visibility of all guides: vertices, vertex normals, face normals, and backfacing." );
+}
+
+macro WorksheetToggleGlobalGuideDisplay()
+[Category="Worksheet Commands", Guid="{1F91FAE2-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\global_guides.bmp"]
+{
+
+   // Get the active view.
+   ModelView a_oView = Model.ActiveView;
+
+   // If any of the guides are off, turn them all on.
+   // Otherwise, turn all the guides off.
+   if( !a_oView.GlobalEdges ||
+        !a_oView.GlobalVertexNormals ||
+        !a_oView.GlobalFaceNormals ||
+        !a_oView.GlobalVertices ||
+        !a_oView.HiddenEdges ) 
+   {
+      a_oView.GlobalEdges = 1;
+      a_oView.HiddenEdges = 1;
+      a_oView.GlobalVertexNormals = 1;
+      a_oView.GlobalFaceNormals = 1;
+      a_oView.GlobalVertices = 1;
+   }
+   else
+   {
+      a_oView.GlobalEdges = 0; 
+      a_oView.HiddenEdges = 0;
+      a_oView.GlobalVertexNormals = 0;
+      a_oView.GlobalFaceNormals = 0;
+      a_oView.GlobalVertices = 0;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetClearRenderVisualizer_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdateIgnoreCheckState( commandInfo, "Completely disables the current render visualizer." );
+}
+
+macro WorksheetClearRenderVisualizer()
+[Category="Worksheet Commands", Guid="{1F9220CD-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\worksheet_clear_render_visualizer.bmp"]
+{
+   Model.ActiveView.SetRenderVisualizer( null );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void WorksheetRenderProgramsEnabled_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleRenderedWorksheetCommandOnUpdate( commandInfo, "Turn on shader programs", Model.ActiveView.AreProgramsEnabled() );
+}
+
+macro WorksheetRenderPrograms()
+[Category="Worksheet Commands", Guid="{1F91FF70-F612-46d4-A453-4B81096121A9}", Image=".\\icons\\render_shaders.bmp"]
+{
+   Model.ActiveView.RenderProgramsEnabled();
+}

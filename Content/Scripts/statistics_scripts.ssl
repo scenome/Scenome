@@ -1,0 +1,264 @@
+///////////////////////////////////////////////////////////////////////////////
+// $file             STATISTICS_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements functions and macros for statistics generation.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "file_util.ssl";
+import library "graph_util.ssl";
+import library "interface_util.ssl";
+import library "list_util.ssl";
+import library "message_util.ssl";
+import library "statistics_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CollectMaterials( List p_lNodes, Node p_oNode, ref string p_sOutputLeader )
+{
+   p_sOutputLeader = "\nDisplaying statistics for the selected material or materials.";
+   Material a_oMaterial = (Material)p_oNode;
+   SpaStatisticsUtil.GetResourcesFromDatabase( p_lNodes, a_oMaterial );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro HierarchyDisplaySceneStatistics()
+[Category="Hierarchy Commands", Guid="{EA1A0F18-0FCC-4C30-B77A-E3F6149AE0C2}"]
+{
+   // Crawl the database, including any remote connections.
+   // Add nodes of type  to the list.
+   auto List a_lNodes;
+   string a_sOutputLeader;
+   int a_iOutputMode;
+
+   if( Model.GetSelectCount() == 0 )
+   {
+      a_sOutputLeader = "\nDisplaying statistics for visible elements in the entire scene and any connected databases.";
+      a_iOutputMode = 0;
+      SpaStatisticsUtil.GetResourcesFromDatabase( a_lNodes, Model );
+   }
+   else
+   {
+      for( int i = 0; i < Model.GetSelectCount(); ++ i )
+      {
+         Node a_oNode = (Node)Model.GetSelectedNode( i ).GetNode();
+
+         if( a_oNode.IsDerived( NodeLink ) )
+         {
+            NodeLink a_oLink = (NodeLink)a_oNode;
+            a_oLink.Load( 1 );
+            a_oNode = (Node)a_oLink.Node;
+            if( a_oLink && a_oLink.IsExternal() && a_oLink.GetModel() )
+            {
+               if( a_oNode && a_oNode.IsDerived( Material ) )
+               {
+                  CollectMaterials( a_lNodes, a_oNode, a_sOutputLeader );
+               }
+               else
+               if( a_oNode && a_oNode.IsDerived( Program ) )
+               {
+                  a_sOutputLeader = "\nDisplaying statistics for the selected program or programs.";
+                  Program a_oProgram = (Program)a_oNode;
+                  SpaStatisticsUtil.GetResourcesFromDatabase( a_lNodes, a_oProgram );
+               }
+               else
+               if( a_oNode && a_oNode.IsDerived( Light ) )
+               {
+                  a_sOutputLeader = "\nDisplaying statistics for the selected light or lights.";
+                  Light a_oLight = (Light)a_oNode;
+                  SpaStatisticsUtil.GetResourcesFromDatabase( a_lNodes, a_oLight );
+               }
+               else
+               if( a_oNode && a_oNode.IsDerived( ParametricMesh ) )
+               {
+                  a_sOutputLeader = "\nDisplaying statistics for the selected mesh or meshes.";
+                  ParametricMesh a_oParametricMesh = (ParametricMesh)a_oNode;
+                  SpaStatisticsUtil.GetResourcesFromDatabase( a_lNodes, a_oParametricMesh );
+               }
+               else
+               {
+                  SpaStatisticsUtil.GetResourcesFromDatabase( a_lNodes, a_oLink.Node.GetModel() );
+               }
+            }
+            else
+            {
+               a_sOutputLeader = "\nUnable to load the selected link node. Please check that the file referenced by the link node exists.";
+            }
+         }
+         else
+         if( a_oNode.IsDerived( Material ) )
+         {
+            CollectMaterials( a_lNodes, a_oNode, a_sOutputLeader );
+         }
+         else
+         if( a_oNode.IsDerived( Light ) )
+         {
+            a_sOutputLeader = "\nDisplaying statistics for the selected light or lights.";
+            Light a_oLight = (Light)a_oNode;
+            SpaStatisticsUtil.GetResourcesFromDatabase( a_lNodes, a_oLight );
+         }
+         else
+         if( a_oNode.IsDerived( Program ) )
+         {
+            a_sOutputLeader = "\nDisplaying statistics for the selected program or programs.";
+            Program a_oProgram = (Program)a_oNode;
+            SpaStatisticsUtil.GetResourcesFromDatabase( a_lNodes, a_oProgram );
+         }
+         else
+         if( a_oNode.IsDerived( ParametricMesh ) )
+         {
+            a_sOutputLeader = "\nDisplaying statistics for the selected mesh or meshes.";
+            ParametricMesh a_oParametricMesh = (ParametricMesh)a_oNode;
+            SpaStatisticsUtil.GetResourcesFromDatabase( a_lNodes, a_oParametricMesh );
+         }
+         else
+         if( a_oNode.IsDerived( LOD ) )
+         {
+            a_sOutputLeader = "\nDisplaying statistics for the selected mesh or meshes.";
+            LOD a_oLOD = (LOD)a_oNode;
+            SpaStatisticsUtil.GetResourcesFromDatabase( a_lNodes, a_oLOD );
+         }
+         else
+         if( a_oNode.IsDerived( Group ) )
+         {
+            a_sOutputLeader = "\nDisplaying statistics for selected groups and all children.";
+            Group a_oGroup = (Group)a_oNode;
+            SpaStatisticsUtil.GetResourcesFromDatabase( a_lNodes, a_oGroup );
+         }
+         else
+         if( a_oNode.IsDerived( Texture ) )
+         {
+            a_sOutputLeader = "\nDisplaying statistics for the selected texture or textures.";
+            Texture a_oTexture = (Texture)a_oNode;
+            SpaStatisticsUtil.GetResourcesFromDatabase( a_lNodes, a_oTexture );
+         }
+         else
+         {
+            string a_sMessage = "Unable to display statistics for the selected node type. " +
+               "Please clear the selection entirely, or select a mesh, texture, group, or program.";
+            Console.Error( a_sMessage );
+            break;
+         }
+      }
+   }
+      
+   // To make sure we get everything, we have to overcrawl a bit.
+   // Remove duplicates from the list.
+   auto List a_lCleanedNodes = SpaListUtil.RemoveDuplicatesFromList( a_lNodes );
+
+   // Create lists for the node types in which we are interested.
+   // Many nodes aren't interesting from a statistical perspective.
+   auto List a_lMeshes;
+   auto List a_lTextures;
+   auto List a_lMaterials;
+   auto List a_lPrograms;
+   auto List a_lLights;
+   auto List a_lNodeLinks;
+
+   for( int links = 0; links < a_lCleanedNodes.GetCount(); ++links )
+   {
+      Node a_oNode = (Node)a_lCleanedNodes.Get( links );
+
+      if( a_oNode.IsDerived( ParametricMesh ) )
+      {
+         a_lMeshes.AddRef( a_oNode );
+      }
+      else
+      if( a_oNode.IsDerived( Texture ) )
+      {
+         a_lTextures.AddRef( a_oNode );
+      }
+      else
+      if( a_oNode.IsDerived( Material ) )
+      {
+         a_lMaterials.AddRef( a_oNode );
+      }
+      else
+      if( a_oNode.IsDerived( Program ) )
+      {
+         a_lPrograms.AddRef( a_oNode );
+      }
+      else
+      if( a_oNode.IsDerived( NodeLink ) )
+      {
+         a_lNodeLinks.AddRef( a_oNode );
+      }
+      else
+      if( a_oNode.IsDerived( Light ) )
+      {
+         a_lLights.AddRef( a_oNode );
+      }
+   }
+
+   // Display statistics.
+   Console.Message( a_sOutputLeader );
+
+   double a_dCumulativeMeshFootprint;
+   double a_dCumulativeTextureFootprint;
+
+   if( a_lMeshes.GetCount() > 0 )
+   {
+      a_dCumulativeMeshFootprint = SpaStatisticsUtil.DisplayStatisticsForParametricMeshList( a_lMeshes, "\n<Mesh Statistics>\n" );
+   }
+
+   if( a_lTextures.GetCount() > 0 )
+   {
+      a_dCumulativeTextureFootprint = SpaStatisticsUtil.DisplayStatisticsForTextureList( a_lTextures, "\n<Texture Statistics>\n" );
+   }
+
+   if( a_lPrograms.GetCount() > 0 )
+   {
+      SpaStatisticsUtil.DisplayStatisticsForProgramList( a_lPrograms, "\n<Program Statistics>\n" );
+   }
+
+   if( a_lMaterials.GetCount() > 0 )
+   {
+      SpaStatisticsUtil.DisplayStatisticsForMaterialList( a_lMaterials, "\n<Material Statistics>\n" );
+   }
+
+   if( a_lLights.GetCount() > 0 )
+   {
+      SpaStatisticsUtil.DisplayStatisticsForLightList( a_lLights, "\n<Light Statistics>\n" );
+   }
+
+   string a_sStorage;
+   double a_dReturnedCumulativeMem;
+   double a_dReturnedCumulativeMeshMem;
+   double a_dReturnedCumulativeTextMem;
+   string a_sReturnedCumulativeMeshStorage;
+   string a_sReturnedCumulativeTextStorage;
+   string a_sReturnedCumulativeStorage;
+   double a_dTotalMemoryUse = a_dCumulativeMeshFootprint + a_dCumulativeTextureFootprint;
+   SpaStatisticsUtil.SetPresentationFlags( a_dTotalMemoryUse, a_sStorage );
+
+   a_dReturnedCumulativeMeshMem = SpaStatisticsUtil.SetMemPresentationFlags( a_dCumulativeMeshFootprint, a_sStorage );
+   a_dReturnedCumulativeTextMem = SpaStatisticsUtil.SetMemPresentationFlags( a_dCumulativeTextureFootprint, a_sStorage );
+   a_sReturnedCumulativeMeshStorage = SpaStatisticsUtil.SetStoPresentationFlags( a_dCumulativeMeshFootprint, a_sStorage );
+   a_sReturnedCumulativeTextStorage = SpaStatisticsUtil.SetStoPresentationFlags( a_dCumulativeTextureFootprint, a_sStorage );
+   a_sReturnedCumulativeStorage = SpaStatisticsUtil.SetStoPresentationFlags( a_dTotalMemoryUse, a_sStorage );
+   a_dReturnedCumulativeMem = SpaStatisticsUtil.SetMemPresentationFlags( a_dTotalMemoryUse, a_sStorage );
+
+   if( a_dTotalMemoryUse > 0.0 )
+   {
+      if( a_lMeshes.GetCount() > 0 )
+      {
+         Console.Message( "\n<Total Mesh Memory Consumption>\n" + a_dReturnedCumulativeMeshMem + " " + a_sReturnedCumulativeMeshStorage );
+      }
+      if( a_lTextures.GetCount() > 0 )
+      {
+         Console.Message( "\n<Total Texture Memory Consumption>\n" + a_dReturnedCumulativeTextMem + " " + a_sReturnedCumulativeTextStorage );
+      }
+      if( a_dReturnedCumulativeMem > 0 )
+      {
+         Console.Message( "\n<Total Memory Consumption>\n" + a_dReturnedCumulativeMem + " " + a_sReturnedCumulativeStorage );
+      }
+   }
+}

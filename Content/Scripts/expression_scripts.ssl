@@ -1,0 +1,3231 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             EXPRESSION_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements commands for basic editing actions.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "application_util.ssl";
+import library "create_util.ssl";
+import library "dialog_util.ssl";
+import library "expression_util.ssl";
+import library "file_util.ssl";
+import library "list_util.ssl";
+import library "menu_util.ssl";
+import library "mesh_util.ssl";
+import library "message_util.ssl";
+import library "node_util.ssl";
+import library "glsl_util.ssl";
+import library "graph_util.ssl";
+import library "remote_database_util.ssl";
+import library "template_util.ssl";
+import library "type_util.ssl";
+import library "variable_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetExpressionRoot( Group p_oParent, ref Node p_oNode )
+{
+   Group a_oParent = (Group)p_oParent.Parent();
+
+   if(   a_oParent && !( a_oParent.IsDerived( BinaryOperatorNode ) ) &&
+         a_oParent && !( a_oParent.IsDerived( VariableExpressionNode ) ) )
+   {
+      p_oNode = (Node)a_oParent;
+   }
+   else
+   {
+      GetExpressionRoot( a_oParent, p_oNode );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void HandleOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Node, hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void HandleProgramOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Program, hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetBinaryOperator_OnUpdate( CommandPresentationModuleInfo commandInfo,
+   int p_eBinaryOperator, string p_sOperatorName )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, BinaryOperatorNode,
+      "Changes the binary operator to: " + p_sOperatorName );
+
+   SpaSelectUtil.ValidateOperatorChange( commandInfo, p_eBinaryOperator );
+}
+
+function int SetBinaryOperator( string p_sName, int p_eOperator )
+{
+   BinaryOperatorNode a_oSelNode =
+      (BinaryOperatorNode)Model.EditNode( Model.GetFirstSelectedNode().GetNode() );
+   return Expression.SetBinaryOperator( a_oSelNode, p_sName, p_eOperator );
+}
+
+function void SetBinaryOperatorAssign_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_Assign(), "assign" );
+}
+
+macro SetBinaryOperatorAssign()
+[Category="Create Commands", Guid="{182D189A-534C-40C6-BC81-D7D105A72B78}", Image=".\\icons\\set_binary_operator_assign.bmp"]
+{
+   SetBinaryOperator( "Assign", Enum.BinaryOperator_Assign() );
+}
+
+function void SetBinaryOperatorAdd_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_Add(), "add" );
+}
+
+macro SetBinaryOperatorAdd()
+[Category="Create Commands", Guid="{4E1E6250-E7D6-4099-95AA-22ACD8F42A01}", Image=".\\icons\\set_binary_operator_add.bmp"]
+{
+   SetBinaryOperator( "Add", Enum.BinaryOperator_Add() );
+}
+
+function void SetBinaryOperatorSubtract_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_Subtract(), "subtract" );
+}
+
+macro SetBinaryOperatorSubtract( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{4D112D03-C7F5-458C-B504-89AFBCE7E845}", Image=".\\icons\\set_binary_operator_subtract.bmp"]
+{
+   SetBinaryOperator( "Subtract", Enum.BinaryOperator_Subtract() );
+}
+
+function void SetBinaryOperatorMultiply_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_Multiply(), "multiply" );
+}
+
+macro SetBinaryOperatorMultiply( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{7E9DF634-3BB1-4A76-AF60-33F07EFD176C}", Image=".\\icons\\set_binary_operator_multiply.bmp"]
+{
+   SetBinaryOperator( "Multiply", Enum.BinaryOperator_Multiply() );
+}
+
+function void SetBinaryOperatorDivide_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_Divide(), "divide" );
+}
+
+macro SetBinaryOperatorDivide( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{76B27E5B-54C6-4677-B1C6-3D5B8CFAC328}", Image=".\\icons\\set_binary_operator_divide.bmp"]
+{
+   SetBinaryOperator( "Divide", Enum.BinaryOperator_Divide() );
+}
+
+function void SetBinaryOperatorAddAssign_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_AddAssign(), "add assign" );
+}
+
+macro SetBinaryOperatorAddAssign( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{9737DE30-BC88-4240-8D34-C2C870CBA03A}", Image=".\\icons\\set_binary_operator_add_assign.bmp"]
+{
+   SetBinaryOperator( "Add Assign", Enum.BinaryOperator_AddAssign() );
+}
+
+function void SetBinaryOperatorSubtractAssign_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_AddAssign(), "subtract assign" );
+}
+
+macro SetBinaryOperatorSubtractAssign( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{E7147688-17AB-423B-A08B-B9132087F4B8}", Image=".\\icons\\set_binary_operator_subtract_assign.bmp"]
+{
+   SetBinaryOperator( "Subtract Assign", Enum.BinaryOperator_AddAssign() );
+}
+
+function void SetBinaryOperatorMultiplyAssign_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_MultiplyAssign(), "multiply assign" );
+}
+
+macro SetBinaryOperatorMultiplyAssign( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{885EBF32-F8C6-4C98-BF5F-43CC6E7C37F8}", Image=".\\icons\\set_binary_operator_multiply_assign.bmp"]
+{
+   SetBinaryOperator( "Multiply Assign", Enum.BinaryOperator_MultiplyAssign() );
+}
+
+function void SetBinaryOperatorDivideAssign_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_DivideAssign(), "divide assign" );
+}
+
+macro SetBinaryOperatorDivideAssign( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{9AB62592-A73F-4FE0-9444-547413881BC3}", Image=".\\icons\\set_binary_operator_divide_assign.bmp"]
+{
+   SetBinaryOperator( "Divide Assign", Enum.BinaryOperator_DivideAssign() );
+}
+
+function void SetBinaryOperatorGreaterThan_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_GreaterThan(), "greater than" );
+}
+
+macro SetBinaryOperatorGreaterThan( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{5002AB84-4C7E-417B-A697-161FB1031052}", Image=".\\icons\\set_binary_operator_greater_than.bmp"]
+{
+   SetBinaryOperator( "Greater Than", Enum.BinaryOperator_GreaterThan() );
+}
+
+function void SetBinaryOperatorLessThan_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_LessThan(), "less than" );
+}
+
+macro SetBinaryOperatorLessThan( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{9E9FDAF1-6328-4634-8752-9241396707D7}", Image=".\\icons\\set_binary_operator_less_than.bmp"]
+{
+   SetBinaryOperator( "Less Than", Enum.BinaryOperator_LessThan() );
+}
+
+function void SetBinaryOperatorGreaterThanOrEqualTo_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_GreaterThanOrEqualTo(), "greater than or equal to" );
+}
+
+macro SetBinaryOperatorGreaterThanOrEqualTo( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{E10383C8-E320-4797-B0E8-246C90B68E5A}", Image=".\\icons\\set_binary_operator_greater_than_or_equal_to.bmp"]
+{
+   SetBinaryOperator( "Greater Than Or Equal To", Enum.BinaryOperator_GreaterThanOrEqualTo() );
+}
+
+function void SetBinaryOperatorLessThanOrEqualTo_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_LessThanOrEqualTo(), "less than or equal to" );
+}
+
+macro SetBinaryOperatorLessThanOrEqualTo( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{DB616A0E-187C-401D-A332-199DDC4C72B0}", Image=".\\icons\\set_binary_operator_less_than_or_equal_to.bmp"]
+{
+   SetBinaryOperator( "Less Than Or Equal To", Enum.BinaryOperator_LessThanOrEqualTo() );
+}
+
+function void SetBinaryOperatorIsEqualTo_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_IsEqualTo(), "is equal to" );
+}
+
+macro SetBinaryOperatorIsEqualTo( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{81EA1886-E765-4D3E-973F-E8645FF50DBD}", Image=".\\icons\\set_binary_operator_is_equal_to.bmp"]
+{
+   SetBinaryOperator( "Is Equal To", Enum.BinaryOperator_IsEqualTo() );
+}
+
+function void SetBinaryOperatorIsNotEqualTo_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_NotEqualTo(), "is not equal to" );
+}
+
+macro SetBinaryOperatorIsNotEqualTo( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{5F735051-04D8-400F-9B80-2EF281F647EC}", Image=".\\icons\\set_binary_operator_is_not_equal_to.bmp"]
+{
+   SetBinaryOperator( "Is Not Equal To", Enum.BinaryOperator_NotEqualTo() );
+}
+
+function void SetBinaryOperatorLogicalAnd_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_LogicalAnd(), "logical and" );
+}
+
+macro SetBinaryOperatorLogicalAnd( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{BDDB719C-1651-4BB2-91F7-197FBC4F8FCE}", Image=".\\icons\\set_binary_operator_logical_and.bmp"]
+{
+   SetBinaryOperator( "And", Enum.BinaryOperator_LogicalAnd() );
+}
+
+function void SetBinaryOperatorLogicalInclusiveOr_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_LogicalInclusiveOr(), "logical inclusive or" );
+}
+
+macro SetBinaryOperatorLogicalInclusiveOr( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{832C3F15-A858-4993-8897-519DFAD33486}", Image=".\\icons\\set_binary_operator_logical_inclusive_or.bmp"]
+{
+   SetBinaryOperator( "Logical Inclusive Or", Enum.BinaryOperator_LogicalInclusiveOr() );
+}
+
+function void SetBinaryOperatorLogicalExclusiveOr_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_LogicalExclusiveOr(), "logical exclusive or" );
+}
+
+macro SetBinaryOperatorLogicalExclusiveOr( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{BA03E848-0C84-40D9-BEFD-AC76ADA0818E}", Image=".\\icons\\set_binary_operator_logical_exclusive_or.bmp"]
+{
+   SetBinaryOperator( "Logical Exclusive Or", Enum.BinaryOperator_LogicalExclusiveOr() );
+}
+
+function void SetBinaryOperatorBitShiftLeft_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_BitShiftLeft(), "bit shift left" );
+}
+
+macro SetBinaryOperatorBitShiftLeft( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{8B939B75-E8A4-418A-9675-211027B7A606}", Image=".\\icons\\set_binary_operator_bit_shift_left.bmp"]
+{
+   SetBinaryOperator( "Bit Shift Left", Enum.BinaryOperator_BitShiftLeft() );
+}
+
+function void SetBinaryOperatorBitShiftRight_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_BitShiftRight(), "bit shift right" );
+}
+
+macro SetBinaryOperatorBitShiftRight( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{55E99EEA-DB1E-429E-9819-417C2C8EEE42}", Image=".\\icons\\set_binary_operator_bit_shift_right.bmp"]
+{
+   SetBinaryOperator( "Bit Shift Right", Enum.BinaryOperator_BitShiftRight() );
+}
+
+function void SetBinaryOperatorBitShiftLeftAssign_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_BitShiftLeftAssign(), "bit shift left assign" );
+}
+
+macro SetBinaryOperatorBitShiftLeftAssign( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{BF0D7AFA-6AA4-47D2-ADE8-1B8F1DC8F71A}", Image=".\\icons\\set_binary_operator_bit_shift_left_assign.bmp"]
+{
+   SetBinaryOperator( "Bit Shift Left Assign", Enum.BinaryOperator_BitShiftLeftAssign() );
+}
+
+function void SetBinaryOperatorBitShiftRightAssign_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_BitShiftRightAssign(), "bit shift right assign" );
+}
+
+macro SetBinaryOperatorBitShiftRightAssign( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{E0E70D0F-B0E6-4337-86D3-9A394644966C}", Image=".\\icons\\set_binary_operator_bit_shift_right_assign.bmp"]
+{
+   SetBinaryOperator( "Bit Shift Right Assign", Enum.BinaryOperator_BitShiftRightAssign() );
+}
+
+function void SetBinaryOperatorBitwiseExclusiveOr_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_BitwiseExclusiveOr(), "bit-wise exclusive or" );
+}
+
+macro SetBinaryOperatorBitwiseExclusiveOr( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{0FF67AA0-237C-4348-85B9-5F37F4BD327F}", Image=".\\icons\\set_binary_operator_bit_wise_exclusive_or.bmp"]
+{
+   SetBinaryOperator( "Bitwise Exclusive Or", Enum.BinaryOperator_BitwiseExclusiveOr() );
+}
+
+function void SetBinaryOperatorBitwiseExclusiveOrAssign_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_BitwiseExclusiveOrAssign(), "bit-wise exclusive or assign" );
+}
+
+macro SetBinaryOperatorBitwiseExclusiveOrAssign( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{74C171BA-2A35-448E-AC37-90B7B48240FD}", Image=".\\icons\\set_binary_operator_bit_wise_exclusive_or_assign.bmp"]
+{
+   SetBinaryOperator( "Bitwise Exclusive Or Assign", Enum.BinaryOperator_BitwiseExclusiveOrAssign() );
+}
+
+function void SetBinaryOperatorBitwiseAnd_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_BitwiseAnd(), "bit-wise and" );
+}
+
+macro SetBinaryOperatorBitwiseAnd( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{F3F2357D-2CBA-40E5-BB4B-EA18734B9F49}", Image=".\\icons\\set_binary_operator_bit_wise_and.bmp"]
+{
+   SetBinaryOperator( "Bitwise And", Enum.BinaryOperator_BitwiseAnd() );
+}
+
+function void SetBinaryOperatorBitwiseAndAssign_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_BitwiseAnd(), "bit-wise and assign" );
+}
+
+macro SetBinaryOperatorBitwiseAndAssign( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{4D1C1893-2A02-4867-BD6C-AED791934227}", Image=".\\icons\\set_binary_operator_bit_wise_and_assign.bmp"]
+{
+   SetBinaryOperator( "Bitwise And Assign", Enum.BinaryOperator_BitwiseAndAssign() );
+}
+
+function void SetBinaryOperatorBitwiseInclusiveOr_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_BitwiseInclusiveOr(), "bit-wise inclusive or" );
+}
+
+macro SetBinaryOperatorBitwiseInclusiveOr( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{802B8104-C7F9-4D97-9688-A21716D1A982}", Image=".\\icons\\set_binary_operator_bit_wise_inclusive_or.bmp"]
+{
+   SetBinaryOperator( "Bitwise Inclusive Or", Enum.BinaryOperator_BitwiseInclusiveOr() );
+}
+
+function void SetBinaryOperatorBitwiseInclusiveOrAssign_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_BitwiseInclusiveOrAssign(), "bit-wise inclusive or assign" );
+}
+
+macro SetBinaryOperatorBitwiseInclusiveOrAssign( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{EADA7BF0-3447-49BA-9976-16E5A07BB15E}", Image=".\\icons\\set_binary_operator_bit_wise_inclusive_or_assign.bmp"]
+{
+   SetBinaryOperator( "Bitwise Inclusive Or Assign", Enum.BinaryOperator_BitwiseInclusiveOrAssign() );
+}
+
+function void SetBinaryOperatorModulus_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_Modulus(), "modulus" );
+}
+
+macro SetBinaryOperatorModulus( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{2A7E1B34-1A43-490A-8BBF-CA150A733702}", Image=".\\icons\\set_binary_operator_modulus.bmp"]
+{
+   SetBinaryOperator( "Modulus", Enum.BinaryOperator_Modulus() );
+}
+
+function void SetBinaryOperatorModulusAssign_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SetBinaryOperator_OnUpdate( commandInfo, Enum.BinaryOperator_ModulusAssign(), "modulus assign" );
+}
+
+macro SetBinaryOperatorModulusAssign( CommandPresentationModuleInfo commandInfo )
+[Category="Create Commands", Guid="{EFC43901-C799-454B-B624-E64798B2AD6D}", Image=".\\icons\\set_binary_operator_modulus_assign.bmp"]
+{
+   SetBinaryOperator( "Modulus Assign", Enum.BinaryOperator_ModulusAssign() );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExpressionNodeSetLanguageSSL_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ExpressionNode, "Set expression language to SSL" );
+}
+
+macro ExpressionNodeSetLanguageSSL()
+[Category="Expression Commands", Guid="{BF3C4157-E35D-4409-BC34-C21A0A62F2E1}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = Model.GetSelectedNode( i ).GetNode();
+      if( a_oNode.IsDerived( ExpressionNode ) )
+      {
+         ExpressionNode a_oExpressionNode = (ExpressionNode)Model.EditNode( a_oNode );
+         a_oExpressionNode.Language = 1;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExpressionNodeSetLanguageGLSL_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ExpressionNode, "Set expression language to GLSL" );
+}
+
+macro ExpressionNodeSetLanguageGLSL()
+[Category="Expression Commands", Guid="{80F1C8DE-9144-4D5E-B6FF-20698BE3C94D}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = Model.GetSelectedNode( i ).GetNode();
+      if( a_oNode.IsDerived( ExpressionNode ) )
+      {
+         ExpressionNode a_oExpressionNode = (ExpressionNode)Model.EditNode( a_oNode );
+         a_oExpressionNode.Language = 2;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExpressionNodeToggleEnable_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ExpressionNode, "Toggles expression evaluation on/off" );
+}
+
+macro ExpressionNodeToggleEnable()
+[Category="Expression Commands", Guid="{385A4FA8-67DA-4822-A9A0-95DB605D288C}", Image=".\\icons\\expression_node_toggle_enable.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = Model.GetSelectedNode( i ).GetNode();
+      if( a_oNode.IsDerived( ExpressionNode ) )
+      {
+         ExpressionNode a_oExpressionNode = (ExpressionNode)Model.EditNode( a_oNode );
+         a_oExpressionNode.Enabled = !a_oExpressionNode.Enabled;
+         if( a_oExpressionNode.Enabled )
+         {
+            a_oExpressionNode.Language = 1;
+            a_oExpressionNode.Type = "int";
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void HierarchyUpdateAllVariables_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   commandInfo.Status.SetHint( "Updates the 'name' parameter of all nodes of type 'variable'." );
+}
+
+macro HierarchyUpdateAllVariables()
+[Category="Hierarchy Commands", Guid="{EB590786-A88B-4D26-913A-8E65990ADEBE}", Image=".\\icons\\hierarchy_update_all_variables.bmp"]
+{
+   SpaVariableUtil.UpdateAllVariables( Model );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ProgramNodeSaveShaderSourceCodeWithDifferentFileName_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleProgramOnUpdate( commandInfo, "Saves the shader source code with a different file name." );
+}
+
+macro ProgramNodeSaveShaderSourceCodeWithDifferentFileName()
+[Category="Program Commands", Guid="{48E8926C-819D-43F2-A14E-60E29FC49AFE}", Image=".\\icons\\file_save.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = Model.GetSelectedNode( i ).GetNode();
+      if( a_oNode.IsDerived( Program ) ) 
+      {
+         Program a_oProgram = (Program)Model.EditNode( a_oNode );
+         Expression.SaveProgramShadersAs( a_oProgram );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScreenAlignedGeometrySetScalingModeNone_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Sets the scaling mode to 'none' ( which scales the mesh relative to its size in world space )." );
+}
+
+macro ScreenAlignedGeometrySetScalingModeNone()
+[Category="Expression Commands", Guid="{52F9233E-3938-4DC4-9269-AA8BF008512E}", Image=".\\icons\\screen_aligned_geometry_scaling_mode_none.bmp"]
+{
+   Graph.ConfigureScreenAlignedGeometryNode( 0, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScreenAlignedGeometrySetScalingModePixels_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Sets the scaling mode to 'pixels' ( which scales the mesh relative to screen space pixels )." );
+}
+
+macro ScreenAlignedGeometrySetScalingModePixels()
+[Category="Expression Commands", Guid="{A0DFDBC0-D4F4-4CBB-BA93-F39AEA591742}", Image=".\\icons\\screen_aligned_geometry_scaling_mode_pixels.bmp"]
+{
+   Graph.ConfigureScreenAlignedGeometryNode( 0, 1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScreenAlignedGeometrySetScalingModePercent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Sets the scaling mode to 'percent' ( which scales the mesh relative to total screen space occupancy )." );
+}
+
+macro ScreenAlignedGeometrySetScalingModePercent()
+[Category="Expression Commands", Guid="{96C7118A-9C57-4B66-9D00-93D468E7FF68}", Image=".\\icons\\screen_aligned_geometry_scaling_mode_percent.bmp"]
+{
+   Graph.ConfigureScreenAlignedGeometryNode( 0, 2 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScreenAlignedGeometrySetVerticalAlignmentTop_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Sets the vertical alignment to 'top'." );
+}
+
+macro ScreenAlignedGeometrySetVerticalAlignmentTop()
+[Category="Expression Commands", Guid="{173A6178-6A6B-4E2B-93A1-144FA868300F}", Image=".\\icons\\screen_aligned_geometry_vertical_align_top.bmp"]
+{
+   Graph.ConfigureScreenAlignedGeometryNode( 1, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScreenAlignedGeometrySetVerticalAlignmentCenter_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Sets the vertical alignment to 'center'." );
+}
+
+macro ScreenAlignedGeometrySetVerticalAlignmentCenter()
+[Category="Expression Commands", Guid="{9B4A479F-522D-4F80-A737-F9728A397688}", Image=".\\icons\\screen_aligned_geometry_vertical_align_center.bmp"]
+{
+   Graph.ConfigureScreenAlignedGeometryNode( 1, 1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScreenAlignedGeometrySetVerticalAlignmentBottom_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Sets the vertical alignment to 'bottom'." );
+}
+
+macro ScreenAlignedGeometrySetVerticalAlignmentBottom()
+[Category="Expression Commands", Guid="{E13C9F6A-25E6-4A31-AB93-ED30D65F6239}", Image=".\\icons\\screen_aligned_geometry_vertical_align_bottom.bmp"]
+{
+   Graph.ConfigureScreenAlignedGeometryNode( 1, 2 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScreenAlignedGeometrySetHorizontalAlignmentLeft_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Sets the horizontal alignment to 'left'." );
+}
+
+macro ScreenAlignedGeometrySetHorizontalAlignmentLeft()
+[Category="Expression Commands", Guid="{5EC7D09C-831F-4A37-A9C8-A3C3C4004124}", Image=".\\icons\\screen_aligned_geometry_horizontal_align_left.bmp"]
+{
+   Graph.ConfigureScreenAlignedGeometryNode( 2, 0 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScreenAlignedGeometrySetHorizontalAlignmentCenter_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Sets the horizontal alignment to 'center'." );
+}
+
+macro ScreenAlignedGeometrySetHorizontalAlignmentCenter()
+[Category="Expression Commands", Guid="{7882B973-4B62-40C2-A213-5CF9B4221A3F}", Image=".\\icons\\screen_aligned_geometry_horizontal_align_center.bmp"]
+{
+   Graph.ConfigureScreenAlignedGeometryNode( 2, 1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ScreenAlignedGeometrySetHorizontalAlignmentBottom_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "Sets the horizontal alignment to 'right'." );
+}
+
+macro ScreenAlignedGeometrySetHorizontalAlignmentRight()
+[Category="Expression Commands", Guid="{E0DAEE3D-5234-4117-B392-A0BAAC623AC0}", Image=".\\icons\\screen_aligned_geometry_horizontal_align_right.bmp"]
+{
+   Graph.ConfigureScreenAlignedGeometryNode( 2, 2 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateBuffersGroup_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate( commandInfo, "This command creates a new surfaces group." );
+}
+
+macro CreateBuffersGroup( CommandPresentationModuleInfo commandInfo )
+[Category="Expression Commands", Guid="{E119D1CF-52B1-41A5-BA48-E402F1AC15D7}", Image=".\\icons\\create_buffers_group.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = (Node)Model.GetSelectedNode( i ).GetNode();
+      if( a_oNode.IsDerived( Group ) )
+      {
+         Group a_oParent = (Group)a_oNode;
+
+         Group a_oSurfaceGroup = new Group;
+         a_oSurfaceGroup.Name = "FrameBuffers";
+         a_oSurfaceGroup.Visible = true;
+         
+         FrameBuffer a_oFrameBufferNode = new FrameBuffer;
+         a_oFrameBufferNode.Name = "NewFrameBuffer";
+
+         FrameBuffer a_oScreenFrameBufferNode = new FrameBuffer;
+         a_oScreenFrameBufferNode.Name = "ScreenBuffer";
+
+         a_oSurfaceGroup.AddChild( a_oFrameBufferNode );
+         a_oSurfaceGroup.AddChild( a_oScreenFrameBufferNode );
+
+         Model.AddNode( a_oSurfaceGroup, a_oParent, -1 );
+         Model.Select( a_oFrameBufferNode );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateMenuOnCall(
+
+   CommandBarEvent event,
+   string p_sTransformedCallback,
+   TypeInformation nodeType,
+   string p_sClass
+
+   )
+{
+   string a_sCommandGuid = "{FF33E49C-5973-49DC-AD42-744D2DB2B007}";
+   bool a_bIncludeTypename;
+   SpaMenuUtil.BuildMenuFromNodeSet(
+      event.Bar,
+      a_sCommandGuid,
+      Script,
+      p_sTransformedCallback,
+      Model,
+      nodeType,
+      p_sClass,
+      a_bIncludeTypename );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateUniformBufferBindNodeMenuOnCall(
+
+   CommandBarEvent event,
+   string p_sTransformedCallback,
+   TypeInformation nodeType,
+   string p_sClass
+
+   )
+{
+   Node a_oSelNode = (Node)Model.GetSelectedNode(0).GetNode();
+   if( a_oSelNode && a_oSelNode.IsDerived( UniformBufferBindNode ) )
+   {
+      UniformBufferBindNode a_oUniformBufferBindNode =
+         (UniformBufferBindNode)a_oSelNode;
+      string a_sCommandGuid = "{FF33E49C-5973-49DC-AD42-744D2DB2B007}";
+      auto List a_lUniformBufferNodes;
+      auto List a_lMatchingUniformBufferNodes;
+      Graph.GetNodesFromDatabase( Model, a_lUniformBufferNodes, UniformBufferNode );
+      Graph.GetLinkNodesFromDatabase( Model, a_lUniformBufferNodes, UniformBufferNode );
+      Node a_oTarget;
+
+      for( int nodes = 0; nodes < a_lUniformBufferNodes.GetCount(); ++nodes )
+      {
+         a_oTarget = (Node)a_lUniformBufferNodes.Get( nodes );
+         if( a_oUniformBufferBindNode.Name == a_oTarget.Name )
+         {
+            break;
+         }
+      }
+      bool a_bIncludeTypename;
+      SpaMenuUtil.BuildMenuFromNodeSet(
+         event.Bar,
+         a_sCommandGuid,
+         Script,
+         p_sTransformedCallback,
+         a_oTarget,
+         nodeType,
+         p_sClass,
+         a_bIncludeTypename );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateMenuOnCallSpecial(
+
+   CommandBarEvent event,
+   string p_sTransformedCallback,
+   Node p_oNode,
+   TypeInformation nodeType,
+   string p_sClass
+
+   )
+{
+
+   string a_sCommandGuid = "{FF33E49C-5973-49DC-AD42-744D2DB2B007}";
+   bool a_bIncludeTypename;
+   SpaMenuUtil.BuildMenuFromNodeSet(
+      event.Bar,
+      a_sCommandGuid,
+      Script,
+      p_sTransformedCallback,
+      p_oNode,
+      nodeType,
+      p_sClass,
+      a_bIncludeTypename );
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// function
+///////////////////////////////////////////////////////////////////////////////
+
+function void ConfigurePopupItem( CommandItem p_oCommandItem, string p_sCommandItemName )
+{
+   p_oCommandItem.Text = p_sCommandItemName;
+   p_oCommandItem.IsPopup = true;
+   p_oCommandItem.ShowImage = false;
+   p_oCommandItem.ImageIndex = -1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateLinksAndSetDataSources_OnShowPopupMenu( CommandBarEvent event )
+[HandleEvent="SPA.ShellUIEvents.ShowPopupMenu"]
+{
+   // Special inputs.
+   Node a_oGrandParent;
+   Node a_oSelectedNode;
+
+   if( Model.GetSelectCount() )
+   {
+      a_oSelectedNode = (Node)Model.GetSelectedNode(0).GetNode();
+
+      if( a_oSelectedNode.Parent() )
+      {
+         a_oGrandParent = (Node)a_oSelectedNode.Parent();
+
+         if( a_oGrandParent )
+         {
+            a_oGrandParent = (Node)a_oSelectedNode.Parent().Parent();
+         }
+      }
+   }
+   else
+   {
+      a_oGrandParent = Model;
+   }
+
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oSamplerDataSourcePopup
+      = event.Bar.GetItemByText( 0, "SamplerDataSources" );
+   string a_sSamplerDataSourcePopupName = "Sampler Data Sources";
+
+   if( a_oSamplerDataSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oSamplerDataSourcePopup,
+         a_sSamplerDataSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sSamplerDataSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCallSpecial(
+         event,
+         "SetSamplerDataSourceCallback",
+         a_oGrandParent,
+         SamplerNode,
+         "" );
+   }
+   
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oLightDataSourcePopup
+      = event.Bar.GetItemByText( 0, "LightDataSources" );
+   string a_sLightDataSourcePopupName = "Sampler Data Sources";
+
+   if( a_oLightDataSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oLightDataSourcePopup,
+         a_sLightDataSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sLightDataSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall( event, "SetLightDataSourceCallback", Light, "" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oMaterialDataSourcePopup
+      = event.Bar.GetItemByText( 0, "MaterialDataSources" );
+   string a_sMaterialDataSourcePopupName = "Material Data Sources";
+
+   if( a_oMaterialDataSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oMaterialDataSourcePopup,
+         a_sMaterialDataSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sMaterialDataSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall( event, "SetMaterialDataSourceCallback", Material, "" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oModifierDataSourcePopup
+      = event.Bar.GetItemByText( 0, "ModifierDataSources" );
+   string a_sModifierDataSourcePopupName = "Modifier Data Sources";
+
+   if( a_oModifierDataSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oModifierDataSourcePopup,
+         a_sModifierDataSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sModifierDataSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetAddChannelModifierDataSourceCallback",
+         AddChannelModifier,
+         "" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oTextureDataSourcePopup
+      = event.Bar.GetItemByText( 0, "TextureDataSources" );
+   string a_sTextureDataSourcePopupName = "Texture Data Sources";
+
+   if( a_oTextureDataSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oTextureDataSourcePopup,
+         a_sTextureDataSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sTextureDataSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetTextureDataSourceCallback",
+         Texture,
+         "" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oCameraDataSourcePopup
+      = event.Bar.GetItemByText( 0, "CameraDataSources" );
+   string a_sCameraDataSourcePopupName = "Texture Data Sources";
+
+   if( a_oCameraDataSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oCameraDataSourcePopup,
+         a_sCameraDataSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sCameraDataSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetCameraDataSourceCallback",
+         Camera,
+         "" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oLightCameraStateDataSourcePopup
+      = event.Bar.GetItemByText( 0, "LightCameraStateDataSources" );
+   string a_sLightCameraStateDataSourcePopupName = "LightCameraState Data Sources";
+
+   if( a_oLightCameraStateDataSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oLightCameraStateDataSourcePopup,
+         a_sCameraDataSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sLightCameraStateDataSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetLightCameraStateNodeDataSourceCallback",
+         LightCameraStateNode,
+         "" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oMeshDataSourcePopup
+      = event.Bar.GetItemByText( 0, "ParametricMeshDataSources" );
+   string a_sMeshDataSourcePopupName = "Mesh Data Sources";
+
+   if( a_oMeshDataSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oMeshDataSourcePopup,
+         a_sMeshDataSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sMeshDataSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetParametricMeshDataSourceCallback",
+         ParametricMesh,
+         "" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oRailClassGroupSourcePopup
+      = event.Bar.GetItemByText( 0, "RailClassGroupDataSources" );
+   string a_sRailClassGroupSourcePopupName = "Rails Group";
+
+   if( a_oRailClassGroupSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oRailClassGroupSourcePopup,
+         a_sRailClassGroupSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sRailClassGroupSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetRailsGroupDataSourceCallback",
+         Group,
+         "RailPaletteGroup" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oCrossClassGroupSourcePopup
+      = event.Bar.GetItemByText( 0, "CrossClassGroupDataSources" );
+   string a_sCrossClassGroupSourcePopupName = "Cross-Sections Group";
+
+   if( a_oCrossClassGroupSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oCrossClassGroupSourcePopup,
+         a_sCrossClassGroupSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sCrossClassGroupSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetCrossSectionsGroupDataSourceCallback",
+         Group,
+         "CrossSectionPaletteGroup" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oProgramSourcePopup
+      = event.Bar.GetItemByText( 0, "ProgramDataSources" );
+   string a_sProgramSourcePopupName = "Programs";
+
+   if( a_oProgramSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oProgramSourcePopup,
+         a_sProgramSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sProgramSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetProgramDataSourceCallback",
+         Program,
+         "" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oScriptNodeSourcePopup
+      = event.Bar.GetItemByText( 0, "ScriptNodeDataSources" );
+   string a_sScriptNodeSourcePopupName = "ScriptNode Data Sources";
+
+   if( a_oScriptNodeSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oScriptNodeSourcePopup,
+         a_sScriptNodeSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sScriptNodeSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetScriptNodeDataSourceCallback",
+         ScriptNode,
+         "" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oUniformBufferSourcePopup
+      = event.Bar.GetItemByText( 0, "UniformBufferDataSources" );
+   string a_sUniformBufferSourcePopupName = "Uniform Buffer Data Sources";
+
+   if( a_oUniformBufferSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oUniformBufferSourcePopup,
+         a_sUniformBufferSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sUniformBufferSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateUniformBufferBindNodeMenuOnCall(
+         event,
+         "SetUniformBufferDataSourceCallback",
+         UniformBufferNode,
+         "" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oMatrixNodeSourcePopup
+      = event.Bar.GetItemByText( 0, "MatrixDataSources" );
+   string a_sMatrixNodeSourcePopupName = "Matrix Data Sources";
+
+   if( a_oMatrixNodeSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oMatrixNodeSourcePopup,
+         a_sMatrixNodeSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sMatrixNodeSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetMatrixNodeDataSourceCallback",
+         MatrixNode,
+         "" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oTexturePaletteGroupClassSourcePopup
+      = event.Bar.GetItemByText( 0, "TexturePaletteGroupClassDataSources" );
+   string a_sTexturePaletteGroupClassSourcePopupName = "Textures";
+
+   if( a_oTexturePaletteGroupClassSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oTexturePaletteGroupClassSourcePopup,
+         a_sTexturePaletteGroupClassSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sTexturePaletteGroupClassSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetTexturePaletteDataSourceCallback",
+         Group,
+         "TexturePaletteNode" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oUniformPaletteGroupClassSourcePopup
+      = event.Bar.GetItemByText( 0, "UniformPaletteGroupClassDataSources" );
+   string a_sUniformPaletteGroupClassSourcePopupName = "Uniforms";
+
+   if( a_oUniformPaletteGroupClassSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oUniformPaletteGroupClassSourcePopup,
+         a_sUniformPaletteGroupClassSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sUniformPaletteGroupClassSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetUniformPaletteDataSourceCallback",
+         Group,
+         "UniformPaletteNode" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oMaterialPaletteGroupClassSourcePopup
+      = event.Bar.GetItemByText( 0, "MaterialPaletteGroupClassDataSources" );
+   string a_sMaterialPaletteGroupClassSourcePopupName = "Materials";
+
+   if( a_oMaterialPaletteGroupClassSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oMaterialPaletteGroupClassSourcePopup,
+         a_sMaterialPaletteGroupClassSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sMaterialPaletteGroupClassSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetMaterialPaletteDataSourceCallback",
+         Group,
+         "MaterialPaletteNode" );
+   }
+
+   ////////////////////////////////////////////////////////////////////////////
+   ////////////////////////////////////////////////////////////////////////////
+
+   CommandItem a_oRectangleGeometryNodeSourcePopup
+      = event.Bar.GetItemByText( 0, "RectangleGeometryModifierDataSources" );
+   string a_sa_oRectangleGeometryNodeSourcePopupName = "RectangleGeometryModifier Data Sources";;
+
+   if( a_oRectangleGeometryNodeSourcePopup )
+   {
+      ConfigurePopupItem(
+         a_oRectangleGeometryNodeSourcePopup,
+         a_sa_oRectangleGeometryNodeSourcePopupName );
+   }
+
+   if( event.Bar.Title == a_sa_oRectangleGeometryNodeSourcePopupName )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall(
+         event,
+         "SetRectangleGeometryModifierDataSourceCallback",
+         RectangleGeometryModifier, "" );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetSamplerDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetSamplerDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Node,
+      "Displays a list of sampler data sources" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetLightDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetLightDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Node,
+      "Displays a list of light data sources" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetMaterialDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetMaterialDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Node,
+      "Displays a list of material data sources" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetAddChannelModifierDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetAddChannelModifierDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Node,
+      "Displays a list of AddChannelModifier data sources" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetTextureDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetTextureDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Node,
+      "Displays a list of Texture data sources" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetCameraDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetCameraDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Node,
+      "Displays a list of Camera data sources" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetLightCameraStateNodeDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetLightCameraStateNodeDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Node,
+      "Displays a list of LightCameraStateNode data sources" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetParametricMeshDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetParametricMeshDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Node,
+      "Displays a list of ParametricMesh data sources" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetRailsGroupDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetRailsGroupDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Modifier,
+      "Displays a list of Group data sources of .Class 'RailsGroup'." );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetCrossSectionsGroupDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetCrossSectionsGroupDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Modifier,
+      "Displays a list of Group data sources of .Class 'CrossSectionsGroup'." );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetProgramDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetProgramDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Node,
+      "Displays a list of Program data sources." );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetScriptNodeDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetScriptNodeDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Node,
+      "Displays a list of ScriptNode data sources." );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetUniformBufferDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetUniformBufferDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, UniformBufferBindNode,
+      "Displays a list of UniformBuffer data sources." );
+
+   if( Model.GetSelectCount() > 1 )
+   {
+      event.Info.SetEnabled( false );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetMatrixNodeDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetMatrixNodeDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Node,
+   "Displays a list of MatrixNode data sources." );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetTexturePaletteDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetTexturePaletteDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Material,
+      "Displays a list of data sources type <TexturePaletteNode>." );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetUniformPaletteDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetUniformPaletteDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Material,
+      "Displays a list of data sources type <UniformPaletteNode>." );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetMaterialPaletteDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string p_sPathToNode )
+{
+   Expression.SetDataSource( p_sPathToNode );
+}
+
+function void SetMaterialPaletteDataSourceCallback_OnUpdate( ApplicationEventSource sender,
+   CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Node,
+      "Displays a list of data sources type <MaterialPaletteNode>." );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+   if( a_oRectangleGeometryNodeSourcePopup )
+   {
+      a_oRectangleGeometryNodeSourcePopup.Text = "RectangleGeometryModifier Data Sources";
+      a_oRectangleGeometryNodeSourcePopup.IsPopup = true;
+      a_oRectangleGeometryNodeSourcePopup.ShowImage = false;
+      a_oRectangleGeometryNodeSourcePopup.ImageIndex = -1;
+   }
+
+   if( event.Bar.Title == "RectangleGeometryModifier Data Sources" )
+   {
+      event.Bar.RemoveAllItems();
+      GenerateMenuOnCall( event, "SetRectangleGeometryModifierDataSourceCallback", MatrixNode, "" );
+   }
+
+function void SetRectangleGeometryModifierDataSourceCallback( ApplicationEventSource sender,
+   CommandExecutionEvent event, string VariableName )
+{
+   Expression.SetDataSource( VariableName );
+}
+
+function void SetRectangleGeometryModifierDataSourceCallback_OnUpdate( ApplicationEventSource
+   sender, CommandUpdateEvent event, string VariableName )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, Node,
+      "Displays a list of RectangleGeometryModifier data sources." );
+}
+*/
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro CreateLinksAndSetDataSources( CommandPresentationModuleInfo commandInfo )
+[Category="Expression Commands", Guid="{FF33E49C-5973-49DC-AD42-744D2DB2B007}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   // Stub to reserve the GUID and associate the image.
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void ExpressionToggleCodeGeneration_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Program,
+      "Toggles any code generation ScriptNode to which the Program is connected." );
+}
+ 
+macro ExpressionToggleCodeGeneration()
+[Category="Expression Commands", Guid="{5DBEAFA3-F954-4F1C-8F22-4D5056668F41}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Program a_oProgram = (Program)Model.GetSelectedNode(i).GetNode();
+      Node a_oIsExpression = (Node)a_oProgram.PreRenderHook;
+
+      if( a_oIsExpression && a_oIsExpression.IsDerived( ScriptNode ) )
+      {
+         ScriptNode a_oShaderGenerator = (ScriptNode)Model.EditNode( a_oIsExpression );
+         a_oShaderGenerator.Enabled = !a_oShaderGenerator.Enabled;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+ 
+function void UniformBufferBindNodeRenumberSlots_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, UniformBufferBindNode,
+      "Renumbers the binding slot index values ( starting at 0 ) for all the UniformBufferBindNodes that are children of the parent Program." );
+}
+
+macro UniformBufferBindNodeRenumberSlots()
+[Category="Expression Commands", Guid="{5A67F518-9603-46B0-A912-F7157D823ED9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oSelectedNode = (Node)Model.GetSelectedNode(i).GetNode();
+
+      if( a_oSelectedNode.IsDerived( UniformBufferBindNode ) )
+      {
+         UniformBufferBindNode a_oUniformBufferBindNode = (UniformBufferBindNode)a_oSelectedNode;
+         Node a_oParent = (Node)a_oUniformBufferBindNode.Parent();
+         if( a_oParent && a_oParent.IsDerived( Group ) )
+         {
+            Group a_oParentGroup = (Group)a_oParent;
+            auto List a_lUniformBufferBindNodes;
+            Graph.GetNodesFromDatabase( a_oParentGroup, a_lUniformBufferBindNodes, UniformBufferBindNode );
+            
+            for( int j = 0; j < a_lUniformBufferBindNodes.GetCount(); ++j )
+            {
+               UniformBufferBindNode a_oRenumberUniformBufferBind = (UniformBufferBindNode)a_lUniformBufferBindNodes.Get( j );
+               a_oRenumberUniformBufferBind.SlotIndex = j;
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void LightStackNodeAutomaticallySetName_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, LightStackNode,
+      "Automatically sets the name of the LightStackNode to lights[%i] to enable automatic name indexing." );
+}
+ 
+macro LightStackNodeAutomaticallySetName()
+[Category="Expression Commands", Guid="{11378AB5-9B31-4E04-BF6D-85508229FA28}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oSelectedNode = (Node)Model.GetSelectedNode(i).GetNode();
+
+      if( a_oSelectedNode.IsDerived( LightStackNode ) )
+      {
+         LightStackNode a_oLightStackNode = (LightStackNode)Model.EditNode( a_oSelectedNode );
+         a_oLightStackNode.NamePrefix = "";
+         a_oLightStackNode.Variable = "lights[%i]";
+         a_oLightStackNode.NameSuffix = "";
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void ExpressionConvertToDeclaration_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ExpressionNode,
+      "Converts an assignment expression to a declaration expression." );
+}
+
+macro ExpressionConvertToDeclaration()
+[Category="Expression Commands", Guid="{6636ED75-B87E-42E9-B15F-D1D8A2EF01BE}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int a_nSelIndex = 0; a_nSelIndex < Model.GetSelectCount(); ++a_nSelIndex )
+   {
+      ExpressionNode a_oExpressionNode = (ExpressionNode)Model.GetSelectedNode( a_nSelIndex ).GetNode();
+      Node a_oIsExpression = (Node)a_oExpressionNode.Children[ 0 ];
+      Node a_oIsBinaryOperator = (Node)a_oExpressionNode.Children[ 1 ];
+
+      if( a_oIsExpression && a_oIsExpression.IsDerived( VariableExpressionNode ) &&
+         a_oIsBinaryOperator && a_oIsBinaryOperator.IsDerived( BinaryOperatorNode ) )
+      {
+         // Unwire the left side of the expression.
+         VariableExpressionNode a_oVariableExpressionNode = (VariableExpressionNode)a_oIsExpression;
+         a_oVariableExpressionNode.OperatorDataSource = null;
+         a_oVariableExpressionNode.DataSource = null;
+         BinaryOperatorNode a_oBinaryOperatorNode = (BinaryOperatorNode)a_oIsBinaryOperator;
+         a_oBinaryOperatorNode.LeftDataSource = null;
+
+         /*
+         if( a_oIsExpression.IsDerived( BooleanExpressionNode ) )
+         {
+            BooleanNode a_oBooleanNode = new BooleanNode;
+            a_oBooleanNode.Name = "bool myBool";
+            a_oBooleanNode.Variable = "myBool";
+            a_oBinaryOperatorNode.LeftDataSource = a_oBooleanNode;
+            Model.AddNode( a_oBooleanNode, a_oExpressionNode, 0 );
+            Model.DeleteNode( a_oVariableExpressionNode );
+         }
+         else
+         if( a_oIsExpression.IsDerived( IntegerExpressionNode ) )
+         {
+            IntegerNode a_oIntegerNode = new IntegerNode;
+            a_oIntegerNode.Name = "int myInt";
+            a_oIntegerNode.Variable = "myInt";
+            a_oBinaryOperatorNode.LeftDataSource = a_oIntegerNode;
+            Model.AddNode( a_oIntegerNode, a_oExpressionNode, 0 );
+            Model.DeleteNode( a_oVariableExpressionNode );
+         }
+         else
+         if( a_oIsExpression.IsDerived( IntegerArrayExpressionNode ) )
+         {
+            IntegerArrayNode a_oIntegerArrayNode = new IntegerArrayNode;
+            a_oIntegerArrayNode.Name = "int myInt[1]";
+            a_oIntegerArrayNode.Variable = "myInt";
+            a_oIntegerArrayNode.Count = 1;
+            a_oBinaryOperatorNode.LeftDataSource = a_oIntegerArrayNode;
+            Model.AddNode( a_oIntegerArrayNode, a_oExpressionNode, 0 );
+            Model.DeleteNode( a_oVariableExpressionNode );
+         }
+         else
+         */
+         if( a_oIsExpression.IsDerived( FloatExpressionNode ) )
+         {
+            FloatNode a_oFloatNode = new FloatNode;
+            a_oFloatNode.Name = "float myFloat";
+            a_oFloatNode.Variable = "myFloat";
+            a_oBinaryOperatorNode.LeftDataSource = a_oFloatNode;
+            Model.AddNode( a_oFloatNode, a_oExpressionNode, 0 );
+            Model.DeleteNode( a_oVariableExpressionNode );
+         }
+         else
+         /*
+         if( a_oIsExpression.IsDerived( FloatArrayExpressionNode ) )
+         {
+            FloatArrayNode a_oFloatArrayNode = new FloatArrayNode;
+            a_oFloatArrayNode.Name = "float myFloat[1]";
+            a_oFloatArrayNode.Variable = "myFloat";
+            a_oIntegerArrayNode.Count = 1;
+            a_oBinaryOperatorNode.LeftDataSource = a_oFloatArrayNode;
+            Model.AddNode( a_oFloatArrayNode, a_oExpressionNode, 0 );
+            Model.DeleteNode( a_oVariableExpressionNode );
+         }
+         else
+         */
+         if( a_oIsExpression.IsDerived( VectorExpressionNode ) )
+         {
+            VectorExpressionNode a_oVectorExpressionNode = (VectorExpressionNode)a_oIsExpression;
+            VectorNode a_oVectorNode = new VectorNode;
+            int a_nDim = a_oVectorExpressionNode.Dimension;
+            string a_sName = "myVec" + a_nDim;
+            a_oVectorNode.Name = "vec" + a_nDim + " " + a_sName;
+            a_oVectorNode.Variable = a_sName;
+            a_oVectorNode.Dimension = a_nDim;
+            a_oBinaryOperatorNode.LeftDataSource = a_oVectorNode;
+            Model.AddNode( a_oVectorNode, a_oExpressionNode, 0 );
+            Model.DeleteNode( a_oVariableExpressionNode );
+         }
+         /*
+         else
+         if( a_oIsExpression.IsDerived( VectorArrayExpressionNode ) )
+         {
+         }
+         */
+         else
+         if( a_oIsExpression.IsDerived( MatrixExpressionNode ) )
+         {
+            MatrixExpressionNode a_oMatrixExpressionNode = (MatrixExpressionNode)a_oIsExpression;
+            MatrixNode a_oMatrixNode = new MatrixNode;
+            a_oMatrixNode.Rows = a_oMatrixExpressionNode.Rows;
+            a_oMatrixNode.Cols = a_oMatrixExpressionNode.Cols;
+            string a_sName = a_oMatrixNode.GetTypeString();
+            a_oMatrixNode.Name = a_sName + " " + "my" + a_sName;
+            a_oMatrixNode.Variable = "my" + a_sName;
+            a_oBinaryOperatorNode.LeftDataSource = a_oMatrixNode;
+            Model.AddNode( a_oMatrixNode, a_oExpressionNode, 0 );
+            Model.DeleteNode( a_oVariableExpressionNode );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void ShaderIncludeNodeSetIncludeFile_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, NodeLink,
+      "Sets the .GLSL file referenced by a NodeLink." );
+}
+
+macro ShaderIncludeNodeSetIncludeFile()
+[Category="Expression Commands", Guid="{7989812D-DD80-44AA-AA26-5E6DD57538B5}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int a_nSelIndex = 0; a_nSelIndex < Model.GetSelectCount(); ++a_nSelIndex )
+   {
+      NodeLink a_oSelNode = (NodeLink)Model.GetSelectedNode( a_nSelIndex ).GetNode();
+      Graph.SetIncludeFile( a_oSelNode );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void UpdateSamplers_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   auto TypeInfoArray a_aoTypeInfoArray;
+   a_aoTypeInfoArray.Add( VertexDeclarationNode );
+   a_aoTypeInfoArray.Add( ControlDeclarationNode );
+   a_aoTypeInfoArray.Add( EvaluationDeclarationNode );
+   a_aoTypeInfoArray.Add( GeometryDeclarationNode );
+   a_aoTypeInfoArray.Add( FragmentDeclarationNode );
+   bool a_bEnabled = SpaSelectUtil.ValidateSelectionArray( a_aoTypeInfoArray );
+   commandInfo.SetEnabled( a_bEnabled );
+   if( a_bEnabled )
+   {
+      commandInfo.Status.SetHint( "This command creates SamplerNodes and generated expressions that sample all textures." );
+   }
+   else
+   {
+      string a_sTypeList;
+      for( int a_nIndex = 0; a_nIndex < a_aoTypeInfoArray.Count; ++a_nIndex )
+      {
+         a_sTypeList += a_aoTypeInfoArray.Objects[ a_nIndex ].GetTypeName();
+         if( a_nIndex < a_aoTypeInfoArray.Count - 1 )
+         {
+            a_sTypeList += ", ";
+         }
+      }
+      commandInfo.Status.SetHint( "Select a node of type " + a_sTypeList );
+   }
+}
+ 
+macro UpdateSamplers()
+[Category="Expression Commands", Guid="{323FA00D-2AC7-472F-9E29-B2CB8C2E8347}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   ShaderDeclarationNode a_oSelNode = (ShaderDeclarationNode)Model.GetFirstSelectedNode().GetNode();
+   Group a_oParent = (Group)a_oSelNode.Parent();
+   Node a_oIsMain = (Node)a_oParent.Children[1];
+   if( !a_oIsMain || !( a_oIsMain.IsDerived( MainFunctionNode) ) )
+   {
+      string a_sMessage = "Unable to find a MainFunctionNode";
+      Console.Error( a_sMessage );
+      return;
+   }
+
+   MainFunctionNode a_oMain = (MainFunctionNode)a_oIsMain;
+
+   // Get all the textures from the model.
+   auto List a_lTextures;
+   Graph.GetNodesFromDatabase( Model, a_lTextures, Texture );
+
+   // Get all the SamplerNodes stored in the declaration node.
+   auto List a_lSamplers;
+   Graph.GetNodesFromDatabase( a_oSelNode, a_lSamplers, DynamicSamplerNode );
+
+   // Compare samplers to textures.
+   auto List a_lUnsampledTextures;
+   if( a_lSamplers.GetCount() )
+   {
+      for( int a_nSamplers = 0; a_nSamplers < a_lSamplers.GetCount(); ++a_nSamplers )
+      {
+         DynamicSamplerNode a_oSamplerNode = (DynamicSamplerNode)a_lSamplers.Get( a_nSamplers );
+         Texture a_oTexture = (Texture)a_oSamplerNode.DataSource;
+         if( a_lTextures.In( a_oTexture ) )
+         {
+            a_lTextures.Remove( a_oTexture );
+         }
+      }
+   }
+
+   if( !( a_lTextures.GetCount() ) )
+   {
+      string a_sMessage = "All samplers are up to date. Nothing was added.";
+      Console.Info( a_sMessage );
+      return;
+   }
+
+   // Iterate the textures, creating samplers and declarations.
+   auto List a_lNewSamplers;
+   auto List a_lNewDeclarations;
+   for( int a_nIndex = 0; a_nIndex < a_lTextures.GetCount(); ++a_nIndex )
+   {
+      Texture a_oTexture = (Texture)a_lTextures.Get( a_nIndex );
+      int a_nChildIndex = a_oTexture.ChildIndex();
+      if( a_oTexture && a_oTexture.TextureType == Enum.TextureType_2D() )
+      {
+         if( a_oTexture.ArraySize == 1 )
+         {
+            ExpressionNode a_oDeclarationNode = new ExpressionNode;
+            a_oDeclarationNode.Name = "Sample " + a_oTexture.Name;
+            DynamicSamplerNode a_oNewSampler =
+               Create.CreateDynamicSamplerNode( Enum.Binding_Uniform(),
+                  "SPA_Texture" + a_nChildIndex, Enum.Sampler2D(), a_oTexture );
+            a_lNewSamplers.AddRef( a_oNewSampler );
+         }
+         else
+         {
+            DynamicSamplerNode a_oNewSampler =
+               Create.CreateDynamicSamplerNode( Enum.Binding_Uniform(),
+                  "SPA_Texture" + a_nChildIndex, Enum.Sampler2DArray(), a_oTexture );
+            a_lNewSamplers.AddRef( a_oNewSampler );
+         }
+      }
+      else
+      if( a_oTexture && a_oTexture.TextureType == Enum.TextureType_Cube() )
+      {
+            DynamicSamplerNode a_oNewSampler =
+               Create.CreateDynamicSamplerNode( Enum.Binding_Uniform(),
+                  "SPA_Texture" + a_nChildIndex, Enum.SamplerCube(), a_oTexture );
+            a_lNewSamplers.AddRef( a_oNewSampler );
+      }
+      else
+      if( a_oTexture && a_oTexture.TextureType == Enum.TextureType_3D() )
+      {
+            DynamicSamplerNode a_oNewSampler =
+               Create.CreateDynamicSamplerNode( Enum.Binding_Uniform(),
+                  "SPA_Texture" + a_nChildIndex, Enum.Sampler3D(), a_oTexture );
+            a_lNewSamplers.AddRef( a_oNewSampler );
+      }
+   }
+
+   // Iterate the samplers and add them to the model.
+   for( int a_nSamplers = 0; a_nSamplers < a_lNewSamplers.GetCount(); ++a_nSamplers )
+   {
+      Model.AddNode( (Node)a_lNewSamplers.Get( a_nSamplers ), a_oSelNode, -1 );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void VariableExpressionNodeReset_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, VariableExpressionNode,
+      "Reverts the VariableExpressionNode to its default state." );
+   
+   if( Model.GetSelectCount() > 1 )
+   {
+      commandInfo.Status.SetHint( "Please select a single VariableExpressionNode" );
+      commandInfo.SetEnabled( false );
+   }
+
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+   if( a_oSelNode && a_oSelNode.IsDerived( VariableExpressionNode ) )
+   {
+      VariableExpressionNode a_oVariableExpressionNode =
+         (VariableExpressionNode)a_oSelNode;
+      if(   a_oVariableExpressionNode.IsFunctionDeclaration() ||
+            a_oVariableExpressionNode.IsFunctionPrototype() )
+      {
+         commandInfo.Status.SetHint( "You cannot apply this command to a function declaration or function prototype" );
+         commandInfo.SetEnabled( false );
+      }
+   }
+}
+
+macro VariableExpressionNodeReset()
+[Category="Expression Commands", Guid="{EB007AB5-B08F-4B36-8B5A-70B531BB023E}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int a_nSelIndex = 0; a_nSelIndex < Model.GetSelectCount(); ++a_nSelIndex )
+   {
+      VariableExpressionNode a_oVariableExpressionNode =
+         (VariableExpressionNode)Model.GetSelectedNode( a_nSelIndex ).GetNode();
+      Graph.ResetVariableExpressionNode( a_oVariableExpressionNode );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void CreateStructConstructor_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, StructExpressionNode,
+      "Creates an explicit constructor for the selected struct expression." );
+   if( Model.GetSelectCount() != 1 )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "Please select a single StructExpressionNode" );
+      return;
+   }
+
+   Node a_oNode = (Node)Model.GetFirstSelectedNode().GetNode();
+   if( a_oNode && a_oNode.IsDerived( StructExpressionNode ) )
+   {
+      StructExpressionNode a_oStructExpression =
+         (StructExpressionNode)a_oNode;
+      
+      if(   a_oStructExpression.MustBeWriteable()        ||
+            a_oStructExpression.IsFunctionDeclaration()  ||
+            a_oStructExpression.IsFunctionPrototype()    ||
+            a_oStructExpression.IsFunction()             ||
+            a_oStructExpression.IsConstructor() )
+      {
+         commandInfo.SetEnabled( false );
+         commandInfo.Status.SetHint( "You cannot create a constructor in this context" );
+      }
+      else
+      if( a_oStructExpression.ChildCount )
+      {
+         commandInfo.SetEnabled( false );
+         commandInfo.Status.SetHint( "This expression has sub-expressions or is already initialized" );
+      }
+   }
+}
+
+function void CreateStructConstructorRecursive(
+
+   Node p_oNode,
+   List p_lConstructorNodes,
+   Group p_oRoot,
+   Group p_oParent
+
+   )
+{
+   if( p_oNode && p_oNode.IsDerived( StructInstanceNode ) )
+   {
+      StructInstanceNode a_oStructInstanceNode =
+         (StructInstanceNode)p_oNode;
+      Node a_oIsStruct = (Node)a_oStructInstanceNode.FindStructDeclaration();
+      if( a_oIsStruct && a_oIsStruct.IsDerived( StructNode ) )
+      {
+         StructNode a_oStructNode = (StructNode)a_oIsStruct;
+         p_oNode = a_oIsStruct;
+         StructExpressionNode a_oStructExpressionNode = new StructExpressionNode;
+         a_oStructExpressionNode.Name = a_oStructNode.Block.BlockName;
+         a_oStructExpressionNode.Clear();
+         a_oStructExpressionNode.MakeConstructor();
+         a_oStructExpressionNode.StructTypeName = a_oStructNode.Block.BlockName;
+         Model.AddNode( a_oStructExpressionNode, p_oParent, -1 );
+         p_oParent = (Group)a_oStructExpressionNode;
+      }
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( VariableNode ) )
+   {
+      Node a_oNew = Expression.MakeConstructorExpressionFromVariable( p_oNode );
+
+      if( !a_oNew )
+      {
+         VariableExpressionNode a_oVariableExpressionNode =
+            new VariableExpressionNode;
+         a_oVariableExpressionNode.Name = p_oNode.Name;
+         a_oNew = a_oVariableExpressionNode;
+      }
+
+      Model.AddNode( a_oNew, p_oParent, -1 );
+   }
+
+   if( p_oNode && p_oNode.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)p_oNode;
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         Node a_oChild = (Node)a_oGroup.Children[ i ];
+
+         CreateStructConstructorRecursive(
+            a_oChild,
+            p_lConstructorNodes,
+            (Group)p_oRoot,
+            (Group)p_oParent );
+      }
+   }
+}
+
+macro CreateStructConstructor( CommandPresentationModuleInfo commandInfo )
+[Category="Expression Commands", Guid="{47EA0773-E960-4644-8434-4AE377EDF7C3}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+   StructExpressionNode a_oStructExpression = (StructExpressionNode)a_oSelNode;
+   a_oStructExpression.NodeSelector.Clear();
+   int a_nStructInstanceArrayDim = 0;
+   Node a_oIsStruct;
+   auto List a_lConstructorExpressionNodes;
+
+   if( !( a_oStructExpression.DataSource ) )
+   {
+      Node a_oIsOpposite = (Node)a_oStructExpression.GetOppositeExpression();
+      if( !( a_oIsOpposite ) )
+      {
+         return;
+      }
+
+      if( a_oIsOpposite.IsDerived( StructExpressionNode ) )
+      {
+         StructExpressionNode a_oOpposite = (StructExpressionNode)a_oIsOpposite;
+         Node a_oExpressionDataSource = (Node)a_oOpposite.DataSource;
+
+         if( !( a_oExpressionDataSource ) || !( a_oExpressionDataSource.IsDerived( StructInstanceNode ) ) )
+         {
+            return;
+         }
+
+         StructInstanceNode a_oStructInstanceNode = (StructInstanceNode)a_oExpressionDataSource;
+         a_nStructInstanceArrayDim = a_oStructInstanceNode.ArrayDimension;
+         Node a_oIsStructDeclaration = (Node)a_oStructInstanceNode.FindStructDeclaration();
+         if( !( a_oIsStructDeclaration ) || !( a_oIsStructDeclaration.IsDerived( StructNode ) ) )
+         {
+            return;
+         }
+
+         a_oIsStruct = a_oIsStructDeclaration;
+      }
+      else
+      if( a_oIsOpposite.IsDerived( StructInstanceNode ) )
+      {
+         StructInstanceNode a_oOpposite = (StructInstanceNode)a_oIsOpposite;
+         a_nStructInstanceArrayDim = a_oOpposite.ArrayDimension;
+         Node a_oIsStructDeclaration = (Node)a_oOpposite.FindStructDeclaration();
+         if( !( a_oIsStructDeclaration ) || !( a_oIsStructDeclaration.IsDerived( StructNode ) ) )
+         {
+            return;
+         }
+
+         a_oIsStruct = (Node)a_oIsStructDeclaration;
+      }
+   }
+   else
+   {
+      Node a_oDataSource = (Node)a_oStructExpression.DataSource;
+
+      if( a_oDataSource.IsDerived( StructInstanceNode ) )
+      {
+         StructInstanceNode a_oStructInstanceNode = (StructInstanceNode)a_oDataSource;
+         if( !( a_oStructInstanceNode.IsDeclared() ) )
+         {
+            return;
+         }
+
+         a_oIsStruct = (Node)a_oStructInstanceNode.StructDeclaration;
+      }
+      else
+      {
+         return;
+      }
+   }
+
+   if( !( a_oIsStruct ) || !( a_oIsStruct.IsDerived( StructNode ) ) )
+   {
+      return;
+   }
+
+   StructExpressionNode a_oSelectedExpression;
+   StructExpressionNode a_oArrayInitializer;
+   Group a_oSelGroup;
+   a_oSelectedExpression = a_oStructExpression;
+   // Make sure we initialize implicitly sized
+   // arrays with at least one struct initializer.
+   bool a_bClearArrayState;
+   if( a_oStructExpression.IsArray && a_nStructInstanceArrayDim == 0 )
+   {
+      a_nStructInstanceArrayDim = 1;
+   }
+
+   if( a_nStructInstanceArrayDim > 0 )
+   {
+      for( int clone = 0; clone < a_nStructInstanceArrayDim; ++clone )
+      {
+         a_oArrayInitializer = (StructExpressionNode)a_oStructExpression.Clone();
+         a_oArrayInitializer.IsArray = false;
+         a_oArrayInitializer.ArrayDimension = 0;
+         a_oArrayInitializer.MakeConstructor();
+         CreateStructConstructorRecursive( a_oIsStruct, a_lConstructorExpressionNodes,
+            (Group)a_oArrayInitializer, (Group)a_oArrayInitializer );
+         Model.AddNode( a_oArrayInitializer, a_oSelectedExpression, -1 );
+      }
+   }
+   else
+   {
+      CreateStructConstructorRecursive( a_oIsStruct, a_lConstructorExpressionNodes,
+         (Group)a_oStructExpression, (Group)a_oStructExpression );
+   }
+
+   a_oSelectedExpression.Clear();
+   a_oSelectedExpression.MakeConstructor();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void StructInstanceNodeToggleImplicitlySizedArray_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, StructInstanceNode,
+      "Toggles the StructInstanceNode's explicit array size." );
+}
+
+macro StructInstanceNodeToggleImplicitlySizedArray()
+[Category="Expression Commands", Guid="{7E3E0DF1-C588-4485-8646-D688E1293DA4}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode( i ).GetNode();
+      if( a_oSelNode && a_oSelNode.IsDerived( StructInstanceNode ) )
+      {
+         StructInstanceNode a_oStructInstanceNode = (StructInstanceNode)Model.EditNode( a_oSelNode );
+         if( a_oStructInstanceNode.ArrayDimension >= 0 )
+         {
+            a_oStructInstanceNode.IsArray = 1;
+            a_oStructInstanceNode.ArrayDimension = -1;
+         }
+         else
+         if( a_oStructInstanceNode.ArrayDimension < 0 )
+         {
+            a_oStructInstanceNode.IsArray = 0;
+            a_oStructInstanceNode.ArrayDimension = 0;
+         }
+         a_oStructInstanceNode.Name = a_oStructInstanceNode.UpdateName();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void BuildExpressionUnitTests_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() > 1 )
+   {
+      commandInfo.Status.SetHint( "Please select a single MainFunctionNode" );
+      commandInfo.SetEnabled( false );
+      return;
+   }
+
+   ValidateNodeCommandContext.TestContext( commandInfo, MainFunctionNode,
+      "Populates the selected main function node with nodes that implement unit test expressions" );
+}
+
+macro BuildExpressionUnitTests( CommandPresentationModuleInfo commandInfo )
+[Category="Expression Commands", Guid="{F119BE1D-D859-4CCD-A36F-8AE9C18A2CCE}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   MainFunctionNode a_oMainFunctionNode;
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = (Node)Model.GetFirstSelectedNode().GetNode();
+      if( a_oNode && a_oNode.IsDerived( MainFunctionNode ) )
+      {
+         a_oMainFunctionNode = (MainFunctionNode)a_oNode;
+      }
+   }
+
+   if( !a_oMainFunctionNode )
+   {
+      return;
+   }
+
+   auto BinaryOperatorNode a_oBinaryOperatorNode;
+   int a_nMax = 16;
+   a_nMax = a_oBinaryOperatorNode.GetExpressionTableCount();
+   Group a_oGroup = new Group;
+   a_oGroup.Name = "Container";
+
+   auto List a_lVariableNodes;
+   Graph.GetNodesFromDatabase( a_oMainFunctionNode, a_lVariableNodes, VariableNode );
+
+   for( int u = 0; u < a_nMax; ++u )
+   {
+      commandInfo.Status.SetHint( u );
+      //Console.Out( u );
+      //Console.Out( a_oBinaryOperatorNode.GetExpressionTableLeftExpressionType( u ).GetTypeName() );
+
+      ExpressionNode a_oExpressionNode = new ExpressionNode;
+      a_oExpressionNode.Name = a_oBinaryOperatorNode.GetExpressionTableExpressionResultTypeString( u );
+
+      if( a_oBinaryOperatorNode.GetExpressionTableLeftExpressionType( u ).IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oLeft =
+            (VariableExpressionNode)a_oBinaryOperatorNode.GetExpressionTableLeftExpressionType( u ).CreateObject();
+         a_oLeft.Name = "Input A";
+         a_oLeft.Cols = a_oBinaryOperatorNode.GetExpressionTableLeftOperandCols( u );
+         a_oLeft.Rows = a_oBinaryOperatorNode.GetExpressionTableLeftOperandRows( u );
+         a_oLeft.Dimension = a_oBinaryOperatorNode.GetExpressionTableLeftOperandRows( u );
+         a_oLeft.ExpressionSide = Enum.ExpressionSide_Left();
+         a_oLeft.NodeSelector.SetContainer( Model );
+
+         VariableExpressionNode a_oRight =
+            (VariableExpressionNode)a_oBinaryOperatorNode.GetExpressionTableRightExpressionType( u ).CreateObject();
+         a_oRight.Name = "Input B";
+         a_oRight.Cols = a_oBinaryOperatorNode.GetExpressionTableRightOperandCols( u );
+         a_oRight.Rows = a_oBinaryOperatorNode.GetExpressionTableRightOperandRows( u );
+         a_oRight.Dimension = a_oBinaryOperatorNode.GetExpressionTableRightOperandRows( u );
+         a_oRight.ExpressionSide = Enum.ExpressionSide_Right();
+         a_oRight.NodeSelector.SetContainer( Model );
+
+         BinaryOperatorNode a_oNewBinaryOperatorNode = new BinaryOperatorNode;
+         a_oNewBinaryOperatorNode.Operator = a_oBinaryOperatorNode.GetExpressionTableBinaryOperator( u );
+         a_oNewBinaryOperatorNode.LeftDataSource = a_oLeft;
+         a_oNewBinaryOperatorNode.RightDataSource = a_oRight;
+         a_oNewBinaryOperatorNode.Name = a_oNewBinaryOperatorNode.GetOperatorString();
+
+         a_oExpressionNode.AddChild( a_oLeft );
+         a_oExpressionNode.AddChild( a_oNewBinaryOperatorNode );
+         a_oExpressionNode.AddChild( a_oRight );
+         a_oGroup.AddChild( a_oExpressionNode );
+
+         if( a_oLeft.IsAnyArrayExpressionType() && a_oRight.IsAnyArrayExpressionType() )
+         {
+            a_oLeft.MakeCount( 4 );
+            a_oRight.MakeCount( 4 );
+         }
+
+         auto Str a_oGeneratorType = new Str( a_oLeft.GetType().GetTypeName() );
+         a_oGeneratorType.Value = a_oGeneratorType.Replace( "Node", "" );
+         a_oGeneratorType.Value += "Generator";
+
+         auto Type a_oType;
+         auto TypeInformation a_oGeneratorTypeInfo = a_oType.GetType().FindClassType( a_oGeneratorType.Value );
+
+         a_oLeft.OperatorDataSource = a_oNewBinaryOperatorNode;
+         a_oRight.OperatorDataSource = a_oNewBinaryOperatorNode;
+         a_oLeft.GenerateExpression( a_oGeneratorTypeInfo );
+         a_oRight.GenerateExpression( a_oGeneratorTypeInfo );
+      }
+   }
+
+   Model.AddNode( a_oGroup, a_oMainFunctionNode, -1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void FindVariablesForAssignmentExpressions_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() > 1 )
+   {
+      commandInfo.Status.SetHint( "Please select a single MainFunctionNode" );
+      commandInfo.SetEnabled( false );
+      return;
+   }
+
+   ValidateNodeCommandContext.TestContext( commandInfo, MainFunctionNode,
+      "Connects all VariableExpressionNodes with assignment operators to VariableNodes of the correct type" );
+}
+
+function void FindVariable(
+
+   List p_lLocalVariables,
+   VariableExpressionNode
+   p_oVariableExpressionNode,
+   TypeInformation p_oVariableType,
+   ExpressionInfo p_oExpressionInfo
+
+   )
+{
+   VariableNode a_oTarget;
+   string a_sVariableName;
+   int a_nArrayDimension;
+   
+   for( int i = 0; i < p_lLocalVariables.GetCount(); ++i )
+   {
+      VariableNode a_oVariableNode = (VariableNode)p_lLocalVariables.Get( i );
+      auto ExpressionInfo a_oExpressionInfo;
+      a_oVariableNode.GetParams( a_oExpressionInfo );
+      if( a_oVariableNode.IsDerived( IntegerNode ) )
+      {
+         //Console.Out( a_oExpressionInfo.Cols + "x" + a_oExpressionInfo.Rows + " " + a_oExpressionInfo.ArrayCount );
+      }
+      if( a_oVariableNode.IsDerived( p_oVariableType ) )
+      {
+         if(   a_oExpressionInfo.Rows == p_oExpressionInfo.Rows &&
+               a_oExpressionInfo.Cols == p_oExpressionInfo.Cols &&
+               a_oExpressionInfo.ArrayCount == p_oExpressionInfo.ArrayCount )
+         {
+            a_oTarget = a_oVariableNode;
+            break;
+         }
+      }
+   }
+
+   if( !a_oTarget )
+   {
+      return;
+   }
+
+   a_sVariableName += a_oTarget.NamePrefix;
+   a_sVariableName += a_oTarget.Variable;
+   a_sVariableName += a_oTarget.NameSuffix;
+
+   auto FilePath a_oDataSourceDocumentPath = new FilePath( a_oTarget.GetModel().Filename );
+
+   p_oVariableExpressionNode.AddCodeObject(
+      a_sVariableName,
+      a_oTarget.GetPathToNode(),
+      a_oDataSourceDocumentPath.GetPath(),
+      a_nArrayDimension,
+      0,
+      false );
+
+   auto List a_lVariableAddressNodes;
+   a_lVariableAddressNodes.AddRef( a_oTarget );
+
+   auto StrList a_slMemberNames;
+   a_slMemberNames.Add( a_sVariableName );
+
+   auto IntArray a_aiArrayDimensions;
+   a_aiArrayDimensions.Add( a_nArrayDimension );
+
+   p_oVariableExpressionNode.NodeSelector.AddInfo( p_oVariableExpressionNode,
+      a_lVariableAddressNodes, a_slMemberNames, a_aiArrayDimensions );
+
+   auto TypeInfoArray a_oVariableExpressionNodeTypes;
+   SpaTypeUtil.GetVariableExpressionNodeTypes( a_oVariableExpressionNodeTypes );
+
+   auto TypeInfoArray a_oVariableExpressionGeneratorTypes;
+   SpaTypeUtil.GetVariableExpressionNodeGeneratorTypes( a_oVariableExpressionGeneratorTypes );
+
+   if( a_oVariableExpressionNodeTypes.Count != a_oVariableExpressionGeneratorTypes.Count )
+   {
+      string a_sMessage = "a_oVariableExpressionNodeTypes.Count != " +
+         "a_oVariableExpressionGeneratorTypes.Count in EXPRESSION_SCRIPTS::FindVariable()";
+      Console.Assert( a_sMessage );
+   }
+   
+   TypeInformation a_oGeneratorType;
+   for( int j = 0; j < a_oVariableExpressionNodeTypes.Count; ++j )
+   {
+      TypeInformation a_oTypeInfo = (TypeInformation)a_oVariableExpressionNodeTypes.Objects[ j ];
+      if( p_oVariableExpressionNode.IsDerived( a_oTypeInfo ) )
+      {
+         a_oGeneratorType = a_oVariableExpressionGeneratorTypes.Objects[ j ];
+         break;
+      }
+   }
+
+   p_oVariableExpressionNode.GenerateExpression( a_oGeneratorType );
+}
+
+macro FindVariablesForAssignmentExpressions( CommandPresentationModuleInfo commandInfo )
+[Category="Expression Commands", Guid="{05CEEC49-CFFF-4AB6-ADF8-CA5ED33E1984}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   MainFunctionNode a_oMainFunctionNode;
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = (Node)Model.GetFirstSelectedNode().GetNode();
+      if( a_oNode && a_oNode.IsDerived( MainFunctionNode ) )
+      {
+         a_oMainFunctionNode = (MainFunctionNode)a_oNode;
+      }
+   }
+
+   if( !a_oMainFunctionNode )
+   {
+      return;
+   }
+
+   // Get all the BinaryOperatorNodes that are children of
+   // the MainFunctionNode.
+
+   auto List a_lBinaryOperatorNodes;
+   auto List a_lAssignmentLeft;
+
+   Graph.GetNodesFromDatabase( a_oMainFunctionNode, a_lBinaryOperatorNodes, BinaryOperatorNode );
+
+   // Sort them by assignment operator.
+   for( int b = 0; b < a_lBinaryOperatorNodes.GetCount(); ++b )
+   {
+      BinaryOperatorNode a_oBinaryOperatorNode = (BinaryOperatorNode)a_lBinaryOperatorNodes.Get( b );
+      a_lAssignmentLeft.AddRef( a_oBinaryOperatorNode.LeftDataSource );
+      a_lAssignmentLeft.AddRef( a_oBinaryOperatorNode.RightDataSource );
+
+      /*
+      // Do this if you want to sort by assignment only.
+      if( a_oBinaryOperatorNode.IsAnyAssignment() )
+      {
+         // Get the left VariableExpressionNode. This
+         // VariableExpressionNode requires a writeable data source
+         // because it is the left side of an assignment.
+         a_lAssignmentLeft.AddRef( a_oBinaryOperatorNode.LeftDataSource );
+
+         // Do this if you want to test the left and RIGHT side expressions.
+         //a_lAssignmentLeft.AddRef( a_oBinaryOperatorNode.RightDataSource );
+      }
+      */
+   }
+
+   // Get all the local VariableNodes.
+   auto List a_lLocalVariables;
+   auto List a_lWriteableLocalVariables;
+   Graph.GetLocalVariables( a_oMainFunctionNode, a_lLocalVariables );
+
+   auto TypeInfoArray a_oExpressionTypes;
+   SpaTypeUtil.GetVariableExpressionNodeTypes( a_oExpressionTypes );
+
+   auto TypeInfoArray a_oVariableTypes;
+   SpaTypeUtil.GetVariableExpressionNodeVariableTypes( a_oVariableTypes );
+
+   // Now find VariableNodes that match the expression.
+   for( int v = 0; v < a_lAssignmentLeft.GetCount(); ++v )
+   {
+      VariableExpressionNode a_oVariableExpressionNode =
+         (VariableExpressionNode)a_lAssignmentLeft.Get( v );
+      a_oVariableExpressionNode.ClearExpression();
+
+      auto ExpressionInfo a_oExpressionInfo;
+      a_oVariableExpressionNode.GetParams( a_oExpressionInfo );
+
+      for( int t = 0; t < a_oExpressionTypes.Count; ++t )
+      {
+         if( a_oVariableExpressionNode.IsDerived( a_oExpressionTypes.Objects[ t ] ) )
+         {
+            FindVariable( a_lLocalVariables, a_oVariableExpressionNode,
+               a_oVariableTypes.Objects[ t ], a_oExpressionInfo );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateLiteralExpression( BinaryOperatorNode p_oBinaryOperatorNode )
+{
+   string a_sVariableValueString;
+   // Get the root of the expression, which
+   // is the first parent up the tree that is
+   // not derived from VariableExpressionNode
+   // or BinaryOperatorNode. ( It will be some
+   // type of group. )
+   Node p_oRoot;
+   Group a_oExpressionRoot;
+   GetExpressionRoot( p_oBinaryOperatorNode, p_oRoot );
+   if( p_oRoot && p_oRoot.IsDerived( Group ) )
+   {
+      a_oExpressionRoot = (Group)p_oRoot;
+      // Get all the nodes that are children of the expression root.
+      auto List a_lExpressionNodes;
+      Graph.GetNodesFromDatabase( a_oExpressionRoot, a_lExpressionNodes, Node );
+
+      // Iterate the expression nodes and generate
+      // a version of the expression where all the
+      // terms use literal values. We want something
+      // we can evaluate such as '8 > 1 && 32.0 == 8.0'.
+      for( int i = 0; i < a_lExpressionNodes.GetCount(); ++i )
+      {
+         Node a_oNode = (Node)a_lExpressionNodes.Get( i );
+         if( a_oNode && a_oNode.IsDerived( VariableExpressionNode ) )
+         {
+            VariableExpressionNode a_oVariableExpressionNode =
+               (VariableExpressionNode)a_oNode;
+            if( !( a_oVariableExpressionNode.IsExpression() ) )
+            {
+               continue;
+            }
+
+            Node a_oDataSource = (Node)a_oVariableExpressionNode.DataSource;
+            if( !a_oDataSource )
+            {
+               Expression.GenerateExpression( a_oVariableExpressionNode );
+               a_sVariableValueString += a_oVariableExpressionNode.Expression;
+            }
+            else
+            if( a_oDataSource && a_oDataSource.IsDerived( VariableNode ) )
+            {
+               VariableNode a_oVariableNode = (VariableNode)a_oDataSource;
+               a_sVariableValueString += a_oVariableNode.GetValueString();
+            }
+         }
+         else
+         if( a_oNode && a_oNode.IsDerived( BinaryOperatorNode ) )
+         {
+            BinaryOperatorNode a_oBinaryOperatorNode =
+               (BinaryOperatorNode)a_oNode;
+            a_sVariableValueString += " " + a_oBinaryOperatorNode.GetOperatorString() + " ";
+         }
+      }
+   }
+
+   if( a_oExpressionRoot && a_oExpressionRoot.IsDerived( ExpressionNode ) )
+   {
+      ExpressionNode a_oExpressionNode = (ExpressionNode)a_oExpressionRoot;
+      a_oExpressionNode.Enabled = true;
+      a_oExpressionNode.Language = 1;
+      a_oExpressionNode.Type = "int";
+      a_oExpressionNode.Code = a_sVariableValueString;
+
+      auto Variant a_oReturnValue;
+      a_oExpressionNode.GetLastResult( a_oReturnValue );
+      Console.Out( "-> " + a_oReturnValue.Int );
+   }
+
+   return a_sVariableValueString;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateGuardFunction_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, BinaryOperatorNode,
+      "Generates an SSL guard function for the operator's expression" );
+}
+
+macro GenerateGuardFunction( CommandPresentationModuleInfo commandInfo )
+[Category="Node Commands", Guid="{FBA736CE-F0E4-438A-99DD-8CDD0F434C08}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode( i ).GetNode();
+      if( a_oSelNode && a_oSelNode.IsDerived( BinaryOperatorNode ) )
+      {
+         BinaryOperatorNode a_oBinaryOperatorNode =
+            (BinaryOperatorNode)a_oSelNode;
+
+         if(   !( a_oBinaryOperatorNode.IsRelationalOperator() ) &&
+               !( a_oBinaryOperatorNode.IsLogicalOperator() ) )
+         {
+            continue;
+         }
+         Console.Out( GenerateLiteralExpression( a_oBinaryOperatorNode ) );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateInitializer_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() > 1 )
+   {
+      commandInfo.Status.SetHint( "Please select a single VariableNode" );
+      commandInfo.SetEnabled( false );
+      return;
+   }
+
+   if( ValidateNodeCommandContext.TestContext( commandInfo, VariableNode,
+      "Creates an initialization expression for the VariableNode" ) )
+   {
+      VariableNode a_oVariableNode = (VariableNode)Model.GetFirstSelectedNode().GetNode();
+      if( a_oVariableNode.OperatorDataSource )
+      {
+         commandInfo.Status.SetHint( "This VariableNode is already initialized." );
+         commandInfo.SetEnabled( false );
+         return;
+      }
+
+      auto TypeInfoArray types;
+      types.Add( ShaderSourceNode );
+      types.Add( ShaderDeclarationNode );
+      types.Add( MainFunctionNode );
+      types.Add( StatementBlockNode );
+      bool a_bCorrectParentType = SpaSelectUtil.ValidateParentType( types );
+      commandInfo.SetEnabled( a_bCorrectParentType );
+   
+      if( !a_bCorrectParentType )
+      {
+         commandInfo.Status.SetHint( "The node must be parented by a ShaderSourceNode, ShaderDeclarationNode, " +
+            "MainFunctionNode, or StatementBlockNode." );
+         return;
+      }
+   }
+}
+
+macro CreateInitializer( CommandPresentationModuleInfo commandInfo )
+[Category="Node Commands", Guid="{63621152-F2AB-4609-8682-5C3EC27A9950}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode( i ).GetNode();
+      if( a_oSelNode && a_oSelNode.IsDerived( VariableNode ) )
+      {
+         VariableNode a_oVariableNode = (VariableNode)a_oSelNode;
+         Expression.CreateVariableInitializer( a_oVariableNode );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExpressionNodeAddSubroutineQualifier_OnUpdate(
+   CommandPresentationModuleInfo commandInfo
+   )
+{
+   if( Model.GetSelectCount() != 1 )
+   {
+      SpaSelectUtil.SelectSingletonByType(
+         commandInfo,
+         VariableExpressionNode );
+      return;
+   }
+
+   VariableExpressionNode a_oSelNode =
+      (VariableExpressionNode)Model.GetFirstSelectedNode().GetNode();
+
+   auto List a_lQualifiers;
+   auto GlslQualifierManager a_oGlslQualifierManager;
+   bool a_bIsSubroutine = a_oGlslQualifierManager.FindQualifier(
+      a_oSelNode.QualifierList,
+      Enum.GLSL_Qualifier_Subroutine() );
+
+   if( a_bIsSubroutine )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "Already has 'subroutine' qualifier" );
+   }
+   else
+   if( a_oSelNode && a_oSelNode.IsFunctionPrototype() )
+   {
+      commandInfo.SetEnabled( true );
+      commandInfo.Status.SetHint( "Adds the 'subroutine' qualifier to the function prototype" );
+   }
+   else
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "This command can only be invoked for function prototypes" );
+   }
+}
+
+macro ExpressionNodeAddSubroutineQualifier()
+[Category="Node Commands", Guid="{0DBD707F-BCC9-4797-B90E-1E63EAD0C09D}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode( i ).GetNode();
+
+      if( a_oSelNode && a_oSelNode.IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oFunctionPrototype =
+            (VariableExpressionNode)Model.EditNode( a_oSelNode );
+
+         auto GlslQualifierManager a_oGlslQualifierManager;
+         a_oGlslQualifierManager.ModifyQualifier(
+            a_oFunctionPrototype.QualifierList,
+            true,
+            Enum.GLSL_Qualifier_Subroutine() );
+         Expression.GenerateFunctionName( a_oFunctionPrototype );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void EnumerateExpressionFunctions_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.GetSelectCount() != 1 )
+   {
+      SpaSelectUtil.SelectSingletonByType(
+         commandInfo,
+         VariableExpressionNode );
+      return;
+   }
+
+   VariableExpressionNode a_oSelNode =
+      (VariableExpressionNode)Model.GetFirstSelectedNode().GetNode();
+   if( a_oSelNode && a_oSelNode.MustBeWriteable() )
+   {
+      commandInfo.Status.SetHint( "Functions cannot be called from the left side of an assignment expression" );
+      commandInfo.SetEnabled( false );
+      return;
+   }
+   
+   ValidateNodeCommandContext.TestContext( commandInfo, VariableExpressionNode,
+      "Enumerates functions that can be called at the current selection" );
+}
+
+macro EnumerateExpressionFunctions( CommandPresentationModuleInfo commandInfo )
+[Category="Node Commands", Guid="{B50B5037-7D12-4B8E-A283-EE5E31615758}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+
+   // Return if there isn't a selection or if it's the wrong type.
+   if( !a_oSelNode || !( a_oSelNode.IsDerived( VariableExpressionNode ) ) )
+   {
+      return;
+   }
+
+   // Get local functions, which are user-defined
+   // functions that are in scope for the current
+   // call site.
+   auto List a_lSourceExpressions;
+   Expression.GetLocalFunctions( a_lSourceExpressions, a_oSelNode );
+
+   // Get built-in functions, which are defined
+   // by OpenGL in the global scope.
+   auto Model3D a_oFunctionDatabase;
+   auto FilePath a_oFunctionDatabasePath =
+      new FilePath( Main.GetFunctionLibraryPath() );
+   if( a_oFunctionDatabase.OpenFile( a_oFunctionDatabasePath.GetPath() ) )
+   {
+      Expression.GetGlobalFunctions(
+         a_oFunctionDatabase,
+         (VariableExpressionNode)a_oSelNode,
+         a_lSourceExpressions );
+   }
+
+   // Return if we can't find any functions to call.
+   // This may or may not be an error depending on
+   // what functions are available.
+   if( !( a_lSourceExpressions.GetCount() ) )
+   {
+      string a_sMessage = "Unable to find any function declarations! See EXPRESSION_SCRIPTS::EnumerateExpressionFunctions()";
+      Console.Error( a_sMessage );
+      return;
+   }
+
+   // Store the selected function in this list.
+   auto List a_lDestinationExpressions;
+   // Prompt the user to select a function from the list of functions.
+   Dialog.SelectFunctionDataSource( a_lSourceExpressions, a_lDestinationExpressions );
+
+   // Make sure the user actually selected something.
+   // Otherwise, they might have hit ESC/CANCEL.
+   // We can return without warning since the user
+   // wants to return without doing anything.
+   Node a_oFunctionCallSourceNode = (Node)a_lDestinationExpressions.Get( 0 );
+   if( !a_oFunctionCallSourceNode )
+   {
+      return;
+   }
+
+   auto ExpressionInfo a_oFunctionInfo;
+   VariableExpressionNode a_oFunction = (VariableExpressionNode)a_oFunctionCallSourceNode;
+   a_oFunction.GetParams( a_oFunctionInfo );
+
+   auto ExpressionInfo a_oExpressionInfo;
+   VariableExpressionNode a_oSelExpression =
+      (VariableExpressionNode)Model.GetFirstSelectedNode().GetNode();
+   a_oSelExpression.GetParams( a_oExpressionInfo );
+
+   int a_nSelExpressionDimension = a_oExpressionInfo.Cols * a_oExpressionInfo.Rows;
+
+   auto FilePath a_oFunctionLibraryPath =
+      new FilePath( Main.GetFunctionLibraryPath() );
+   string a_sFunctionName;
+   bool a_bFunctionIsExactMatch = true;
+
+   int a_nFunctionDimension = a_oFunctionInfo.Cols * a_oFunctionInfo.Rows;
+
+   a_sFunctionName = a_oFunction.FunctionName;
+
+   // If the selected node has children, delete them.
+   if( a_oSelExpression.ChildCount )
+   {
+      for( int a_nDelete = 0; a_nDelete < a_oSelExpression.ChildCount; ++a_nDelete )
+      {
+         Node a_oDelete = (Node)a_oSelExpression.Children[ a_nDelete ];
+         Model.DeleteNode( a_oDelete );
+      }
+   }
+
+   if(   a_nFunctionDimension < a_nSelExpressionDimension &&
+         !( a_oSelExpression.IsMatrixExpressionType() ) )
+   {
+      // This case is invalid and means that our
+      // expression selection code is bad.
+
+      // Example
+      // vec2 mix( vec2, vec2, float ) from a vec4 call site:
+      // vec2 mix does not have enough floats to fully initialize a vec4 expression.
+      // In this case, the user should convert the vec4 expression to a vec4 constructor
+      // containing 4 x float expressions, 2 x vec2 expressions, etc.
+
+      string a_sMessage = "Function dimension is less than expression dimension.";
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   // There are two cases: either the function being called exactly matches
+   // the selected expression, or it does not match. If the function 
+   // exactly matches, we will convert the selected expression to a function
+   // call and add the function parameters as its child nodes. If the function
+   // does not match, we will convert the selected expression to a constructor
+   // and then create a complete function call as a child of the constructor.
+   
+   // Example 1
+   // vec4 mix( vec4, vec4, float ) from a vec4 call site:
+   // mix( selected expression converted to function call expression )
+   //   vec4
+   //   vec4
+   //   float
+
+   // Example 2
+   // vec4 mix( vec4, vec4, float ) from a vec2 call site:
+   // vec2 constructor ( selected vec2 expression converted to vec2 constructor expression )
+   //   vec4 mix ( complete function parented as child of vec2 constructor expression )
+   //     vec4
+   //     vec4
+   //     float
+
+   // Example 3
+   // vec4 mix( vec4, vec4, float ) from a uvec4 call site. Dimensions are same, but type doesn't match.
+   // uvec4 constructor ( selected uvec4 expression converted to uvec4 constructor expression )
+   //   vec4 mix ( complete function parented as child of vec2 constructor expression )
+   //     vec4
+   //     vec4
+   //     float
+
+   auto ExpressionInfo a_oCachedExpressionParams;
+   VariableExpressionNode a_oEditExpression =
+      (VariableExpressionNode)Model.EditNode( a_oSelExpression );
+   a_oSelExpression.GetParams( a_oCachedExpressionParams );
+
+   bool a_bFunctionPrototype = false;
+   if( a_oFunction.IsFunctionPrototype() )
+   {
+      a_bFunctionPrototype = true;
+   }
+   if( !( a_oSelExpression.Match( a_oSelExpression, a_oFunction ) ) )
+   {
+      a_bFunctionIsExactMatch = false;
+   }
+
+   auto List a_lFunctionParameters;
+   Expression.ConvertParametersToExpressions(
+      a_bFunctionPrototype,
+      a_oFunction,
+      a_lFunctionParameters );
+
+   if( a_bFunctionIsExactMatch )
+   {
+      for( int i = 0; i < a_lFunctionParameters.GetCount(); ++i )
+      {
+         Node a_oFunctionParam = (Node)a_lFunctionParameters.Get( i );
+         Model.AddNode( a_oFunctionParam, a_oSelExpression, - 1 );
+      }
+   }
+   else
+   {
+      a_oFunction.GetParams( a_oExpressionInfo );
+      TypeInformation a_oExpressionType =
+         (TypeInformation)a_oFunction.GetType();
+      VariableExpressionNode a_oNewFunctionCall =
+         (VariableExpressionNode)a_oExpressionType.CreateObject();
+      a_oNewFunctionCall.SetParams( a_oCachedExpressionParams );
+      a_oNewFunctionCall.Name = a_sFunctionName;
+      a_oNewFunctionCall.FunctionName = a_sFunctionName;
+      a_oNewFunctionCall.MakeFunction();
+      a_oNewFunctionCall.NodeSelector.SetContainer( Model );
+
+      for( int i = 0; i < a_lFunctionParameters.GetCount(); ++i )
+      {
+         Node a_oFunctionParam = (Node)a_lFunctionParameters.Get( i );
+         a_oNewFunctionCall.AddChild( a_oFunctionParam );
+      }
+
+      Model.AddNode( a_oNewFunctionCall, a_oSelExpression, - 1 );
+   }
+
+   if( a_bFunctionIsExactMatch )
+   {
+      a_oEditExpression.MakeFunction();
+      a_oEditExpression.Name = a_sFunctionName;
+      a_oEditExpression.FunctionName = a_sFunctionName;
+   }
+   else
+   {
+      a_oEditExpression.MakeConstructor();
+   }
+
+   a_oEditExpression.Expression = "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void EnumerateFunctions_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   auto TypeInfoArray types;
+   types.Add( MainFunctionNode );
+   types.Add( StatementBlockNode );
+   bool a_bEnabled = SpaSelectUtil.ValidateSelectionArray( types );
+   commandInfo.SetEnabled( a_bEnabled );
+   if( a_bEnabled )
+   {
+      string a_sHint = "Enumerates functions that can be invoked at the current selection";
+      commandInfo.Status.SetHint( a_sHint );
+   }
+   else
+   {
+      string a_sHint = "To enable this commmand, select a node of type MainFunctionNode or StatementBlockNode";
+      commandInfo.Status.SetHint( a_sHint );
+   }
+}
+
+macro EnumerateFunctions( CommandPresentationModuleInfo commandInfo )
+[Category="Node Commands", Guid="{AE9BC5FC-BAA1-4AE8-B15E-3EFC4E663E5E}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+   if( !a_oSelNode || !( a_oSelNode.IsDerived( Group ) ) )
+   {
+      return;
+   }
+   Group a_oSelGroup = (Group)a_oSelNode;
+
+   auto List a_lSourceExpressions;
+   Expression.GetLocalFunctions( a_lSourceExpressions, a_oSelNode );
+
+   auto Model3D a_oFunctionDatabase;
+   auto FilePath a_oFunctionDatabasePath =
+      new FilePath( Main.GetFunctionLibraryPath() );
+   if( a_oFunctionDatabase.OpenFile( a_oFunctionDatabasePath.GetPath() ) )
+   {
+      Expression.GetAllFunctions(
+         a_oFunctionDatabase,
+         a_lSourceExpressions );
+   }
+   else
+   {
+      return;
+   }
+
+   // Return if we can't find any functions to call.
+   if( !( a_lSourceExpressions.GetCount() ) )
+   {
+      string a_sMessage = "Unable to find any function declarations!";
+      Console.Error( a_sMessage );
+      return;
+   }
+
+   auto List a_lDestinationExpressions;
+   Dialog.SelectFunctionDataSource( a_lSourceExpressions, a_lDestinationExpressions );
+
+   // Create the node.
+   Node a_oFunctionCallSourceNode = (Node)a_lDestinationExpressions.Get( 0 );
+   if( !a_oFunctionCallSourceNode )
+   {
+      return;
+   }
+
+   VariableExpressionNode a_oFunction = (VariableExpressionNode)a_oFunctionCallSourceNode;
+   string a_sFunctionName = a_oFunction.FunctionName;
+
+   bool a_bFunctionPrototype = false;
+   if( a_oFunction.IsFunctionPrototype() )
+   {
+      a_bFunctionPrototype = true;
+   }
+
+   auto List a_lFunctionParameters;
+   Expression.ConvertParametersToExpressions(
+      a_bFunctionPrototype,
+      a_oFunction,
+      a_lFunctionParameters );
+
+   auto ExpressionInfo a_oExpressionInfo;
+   a_oFunction.GetParams( a_oExpressionInfo );
+   TypeInformation a_oExpressionType =
+      (TypeInformation)a_oFunction.GetType();
+   VariableExpressionNode a_oNewFunctionCall =
+      (VariableExpressionNode)a_oExpressionType.CreateObject();
+   a_oNewFunctionCall.SetParams( a_oExpressionInfo );
+   a_oNewFunctionCall.Name = a_sFunctionName;
+   a_oNewFunctionCall.FunctionName = a_sFunctionName;
+   a_oNewFunctionCall.MakeFunction();
+   a_oNewFunctionCall.NodeSelector.SetContainer( Model );
+
+   for( int i = 0; i < a_lFunctionParameters.GetCount(); ++i )
+   {
+      Node a_oFunctionParam = (Node)a_lFunctionParameters.Get( i );
+      a_oNewFunctionCall.AddChild( a_oFunctionParam );
+   }
+
+   Model.AddNode( a_oNewFunctionCall, a_oSelGroup, - 1 );
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro EnumerateNodeSelectorInfo( CommandPresentationModuleInfo commandInfo )
+[Category="Node Commands", Guid="{26339ED8-C82E-47C8-BAE4-D3B2F22B66D7}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   auto Model3D a_oDocument;
+   string a_sFilePath = "Absolute Path Goes Here!";
+   a_oDocument.OpenFile( a_sFilePath );
+   auto List a_lNodes;
+   Graph.GetNodesFromDatabase( a_oDocument, a_lNodes, Node );
+
+   for( int i = 0; i < a_lNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)a_lNodes.Get( i );
+      if( a_oNode && a_oNode.IsDerived( UniformBufferBindNode ) )
+      {
+         UniformBufferBindNode a_oUniformBufferBindNode = (UniformBufferBindNode)a_oNode;
+         for( int u = 0; u < a_oUniformBufferBindNode.NodeSelector.NamespaceLinks.GetCount(); ++u )
+         {
+            NodeLink a_oLink = (NodeLink)a_oUniformBufferBindNode.NodeSelector.NamespaceLinks.Get( u );
+            Node a_oLinkTarget = (Node)a_oLink.Node;
+            if( a_oLinkTarget )
+            {
+               Console.Out( "+> " + a_oLinkTarget.GetPathToNode() + " -->" );
+            }
+            else
+            {
+               Console.Out( "+> " + a_oLink.PathToNode );
+            }
+         }
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( StructInstanceNode ) )
+      {
+         StructInstanceNode a_oStructInstanceNode = (StructInstanceNode)a_oNode;
+         for( int u = 0; u < a_oStructInstanceNode.NodeSelector.NamespaceLinks.GetCount(); ++u )
+         {
+            NodeLink a_oLink = (NodeLink)a_oStructInstanceNode.NodeSelector.NamespaceLinks.Get( u );
+            Node a_oLinkTarget = (Node)a_oLink.Node;
+            if( a_oLinkTarget )
+            {
+               Console.Out( "-> " + a_oLinkTarget.GetPathToNode() + " -->" );
+            }
+            else
+            {
+               Console.Out( "-> " + a_oLink.PathToNode );
+            }
+         }
+      }
+      else
+      if( a_oNode && a_oNode.IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oVariableExpressionNode = (VariableExpressionNode)a_oNode;
+         for( int u = 0; u < a_oVariableExpressionNode.NodeSelector.NamespaceLinks.GetCount(); ++u )
+         {
+            NodeLink a_oLink = (NodeLink)a_oVariableExpressionNode.NodeSelector.NamespaceLinks.Get( u );
+            Node a_oLinkTarget = (Node)a_oLink.Node;
+            if( a_oLinkTarget )
+            {
+               Console.Out( "=> " + a_oLinkTarget.GetPathToNode() + " -->" );
+            }
+            else
+            {
+               Console.Out( "=> " + a_oLink.PathToNode );
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateSubroutineTypeSignature_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+}
+
+macro CreateSubroutineTypeSignature()
+[Category="Node Commands", Guid="{407A4B0C-6DAE-4A55-AA77-4E6DAEC253CC}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode( i ).GetNode();
+
+      if( a_oSelNode && a_oSelNode.IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oVariableExpressionNode =
+            (VariableExpressionNode)a_oSelNode;
+
+         int a_nChildIndex = a_oSelNode.ChildIndex();
+         SubroutineNode a_oSubroutineNode = new SubroutineNode;
+         auto GlslQualifierManager a_oGlslQualifierManager;
+
+         a_oGlslQualifierManager.ModifyQualifier(
+            a_oSubroutineNode.QualifierList,
+            true,
+            Enum.GLSL_Qualifier_Subroutine() );
+
+         a_oGlslQualifierManager.ModifyQualifier(
+            a_oSubroutineNode.QualifierList,
+            true,
+            Enum.GLSL_Qualifier_Uniform() );
+
+         a_oSubroutineNode.SubroutineDataSource =
+            a_oVariableExpressionNode;
+         auto Str a_oSignature =
+            new Str( a_oVariableExpressionNode.FunctionName );
+
+         int a_nFirstChar = a_oSignature.Objects[0];
+         if( Str.IsUpper( a_nFirstChar ) )
+         {
+            a_oSignature.Objects[0] = Str.ToLower( a_nFirstChar );
+         }
+
+         a_oSubroutineNode.Signature = a_oSignature.Value;
+         a_oSubroutineNode.UpdateName();
+
+         Model.AddNode(
+            a_oSubroutineNode,
+            a_oVariableExpressionNode.Parent(),
+            a_nChildIndex + 1 );
+      }
+   }
+}

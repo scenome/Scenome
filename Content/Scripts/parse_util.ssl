@@ -1,0 +1,2226 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// $file             PARSE_UTIL.SSL
+// $author           Scenomics LLC
+// $description      This script implements language processing features.
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+import library "class_util.ssl";
+import library "enumeration_util.ssl";
+import library "graph_util.ssl";
+import library "message_util.ssl";
+import library "module_util.ssl";
+
+library Parse;
+
+int SPACE = 32;
+
+// DEFINE CONSTANTS
+
+string CLASS = "CLASS";
+string CLASSNAME = "CLASSNAME";
+string MEMBER_VARIABLE = "MEMBER_VARIABLE";
+string MEMBER_INITIALIZATION = "MEMBER_INITIALIZATION";
+string TYPENAME = "TYPENAME";
+string FUNCTION_RETURN_TYPE = "FUNCTION_RETURN_TYPE";
+string FUNCTION_NAME = "FUNCTION_NAME";
+string FUNCTION_PARAMETER_QUALIFIER = "FUNCTION_PARAMETER_QUALIFIER";
+string FUNCTION_PARAMETER_TYPE = "FUNCTION_PARAMETER_TYPE";
+string FUNCTION_PARAMETER_NAME = "FUNCTION_PARAMETER_NAME";
+string KEYWORD = "KEYWORD";
+string STRING_LITERAL = "STRING_LITERAL";
+string INTEGER_LITERAL = "INTEGER_LITERAL";
+string ASSIGNMENT = "ASSIGNMENT";
+string VARIABLE = "VARIABLE";
+string QUOTE = "QUOTE";
+string L_BRACE = "L_BRACE";
+string R_BRACE = "R_BRACE";
+string L_PAREN = "L_PAREN";
+string R_PAREN = "R_PAREN";
+string L_BRACKET = "L_BRACKET";
+string R_BRACKET = "R_BRACKET";
+string COMMA = "COMMA";
+string SEMICOLON = "SEMICOLON";
+string COLON = "COLON";
+string UNKNOWN = "UNKNOWN";
+string TOKENS = "Tokens";
+string TOKEN_INFO = "TokenInfo";
+string OVERLOAD_SPECIFIERS = "OverloadSpecifiers";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddQualifiers( StrList p_slParameterQualifiers, VariableNode p_oVariableNode )
+{
+   for( int i = 0; i < p_slParameterQualifiers.GetCount(); ++i )
+   {
+      string a_sQualifier = p_slParameterQualifiers.GetAt( i );
+      GlslQualifierNode a_oGlslQualifierNode = new GlslQualifierNode;
+      int a_nQualifier = a_oGlslQualifierNode.GetQualifierIndexByName( a_sQualifier );
+      // DEBUG
+      //Console.Out( a_sQualifier + " " + a_nQualifier );
+      a_oGlslQualifierNode.Qualifier = a_nQualifier;
+      a_oGlslQualifierNode.Name = a_sQualifier;
+      auto GlslQualifierManager a_oGlslQualifierManager;
+      a_oGlslQualifierManager.AddQualifier( p_oVariableNode.QualifierList, a_nQualifier );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetSignature( VariableExpressionNode p_oVariableExpressionNode )
+{
+   string a_sSignature;
+   a_sSignature = Graph.GenerateConstructorName( p_oVariableExpressionNode );
+   a_sSignature += " " + p_oVariableExpressionNode.FunctionName;
+
+   a_sSignature += "(";
+   Node a_oIsParams = (Node)p_oVariableExpressionNode.Children[ 0 ];
+
+   if( a_oIsParams && a_oIsParams.IsDerived( ParameterListNode ) )
+   {
+      ParameterListNode a_oParameterListNode = (ParameterListNode)a_oIsParams;
+      if( a_oParameterListNode.ChildCount )
+      {
+         a_sSignature += " ";
+      }
+
+      for( int a_nChild = 0; a_nChild < a_oParameterListNode.ChildCount; ++a_nChild )
+      {
+         Node a_oChild = (Node)a_oParameterListNode.Children[ a_nChild ];
+         if( a_oChild && a_oChild.IsDerived( VariableNode ) )
+         {
+            VariableNode a_oFunctionParam = (VariableNode)a_oChild;
+            a_sSignature += Graph.GenerateVariableName( a_oFunctionParam ) + " " + a_oFunctionParam.Name;
+            if( a_oFunctionParam.IsLastChild() == false )
+            {
+               a_sSignature += ", ";
+            }
+         }
+      }
+
+      if( a_oParameterListNode.ChildCount )
+      {
+         a_sSignature += " ";
+      }
+   }
+
+   a_sSignature += ")";
+
+   return a_sSignature;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetFunctionSignatures( ShaderVersionNode p_oContainer )
+{
+   for( int i = 0; i < p_oContainer.ChildCount; ++i )
+   {
+      Node a_oNode = (Node)p_oContainer.Children[ i ];
+      if( a_oNode && a_oNode.IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oVariableExpressionNode =
+            (VariableExpressionNode)a_oNode;
+         string a_sSignature = GetSignature( a_oVariableExpressionNode );
+         a_oVariableExpressionNode.Name = a_sSignature;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddTokensToObject(
+
+   TypeAggregatorNode p_oShaderTokens,
+   Str p_oToken,
+   int p_nLineIndex,
+   FilePath p_oSourceFile
+
+   )
+{
+   p_oShaderTokens.StrList( TOKENS ).Objects.Add( p_oToken.Value );
+   p_oShaderTokens.IntArray( "LineNumbers" ).Add( p_nLineIndex );
+   p_oShaderTokens.StrList( "Filenames" ).Objects.Add( p_oSourceFile.GetPath() );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExtractTokens(
+
+   TypeAggregatorNode p_oShaderTokens,
+   TypeAggregatorNode p_oTypeAliases,
+   FilePath p_oSourceFile,
+   Str p_oCode,
+   int p_nLineIndex
+
+   )
+{
+   auto Str a_oToken;
+   int a_nLen = p_oCode.Length();
+
+   // Iterate the characters, accumulating each string
+   // according to its separation by either space or
+   // character identifier such as !, (, {, [, etc.
+   // This will do a pretty good job for any C-like language.
+   for( int c = 0; c < p_oCode.Length(); ++c )
+   {
+      int a_nChar = p_oCode.Objects[ c ];
+
+      if( p_oTypeAliases.IntArray( "Delimiters" ).Find( 0, a_nChar ) != -1 ) 
+      {
+         if( a_nChar != SPACE )
+         {
+            a_oToken.AppendChar( a_nChar );
+            AddTokensToObject( p_oShaderTokens, a_oToken, p_nLineIndex, p_oSourceFile );
+            a_oToken.Value = "";
+         }
+      }
+      else
+      {
+         a_oToken.AppendChar( a_nChar );
+         if( c < p_oCode.Length() - 1 )
+         {
+            int a_nNextChar = p_oCode.Objects[ c + 1 ];
+            if( p_oTypeAliases.IntArray( "Delimiters" ).Find( 0, a_nNextChar ) != -1 )
+            {
+               AddTokensToObject( p_oShaderTokens, a_oToken, p_nLineIndex, p_oSourceFile );
+               a_oToken.Value = "";
+            }
+         }
+         else
+         {
+            AddTokensToObject( p_oShaderTokens, a_oToken, p_nLineIndex, p_oSourceFile );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void TokenizeSource(
+
+   TypeAggregatorNode p_oShaderTokens,
+   TypeAggregatorNode p_oTypeAliases,
+   FilePath p_oSourceFile
+
+   )
+{
+   // Iterate the source files and process.
+   auto TextFile a_oSourceCodeDocument;
+   auto Str a_oCode;
+
+   if( !( a_oSourceCodeDocument.Open( p_oSourceFile.GetPath(), true ) ) )
+   {
+      return;
+   }
+
+   auto Str a_oLeading;
+   int a_nGuard;
+   int a_nLineIndex;
+   while( !a_oSourceCodeDocument.IsEndOfFile() /*&& a_nGuard < 16*/ )
+   {
+      a_oLeading.Value = a_oSourceCodeDocument.ReadLine();
+      ++a_nLineIndex;
+
+      if( a_oLeading.Length() == 0 )
+      {
+         continue;
+      }
+
+      // Find the first non-whitespace character.
+      int a_nFirstCharIndex = 0;
+      bool a_bFoundCharacter;
+      for( int c = 0; c < a_oLeading.Length(); ++c )
+      {
+         if( a_oLeading.Objects[ c ] != SPACE ) 
+         {
+            a_nFirstCharIndex = c;
+            a_bFoundCharacter = true;
+            break;
+         }
+      }
+
+      if( !a_bFoundCharacter )
+      {
+         continue;
+      }
+
+      auto Str a_oLine = new Str( a_oLeading.Right( a_nFirstCharIndex ) );
+
+      // Replace tabs with nothing.
+      while( a_oLine.Find( "\t", 0 ) != -1 )
+      {
+         a_oLine.Value = a_oLine.Replace( "\t", "" );
+      }
+
+      // Replace multiple spaces with a single space.
+      while( a_oLine.Find( "  ", 0 ) != -1 )
+      {
+         a_oLine.Value = a_oLine.Replace( "  ", " " );
+      }
+
+      int a_nSingleCommentIndex = a_oLine.Find( "//", 0 );
+      if( a_nSingleCommentIndex != -1 )
+      {
+         a_oLine.Value = a_oLine.Left( a_nSingleCommentIndex );
+      }
+      /*
+      int a_nMultiCommentIndexStart = a_oLine.Find( "/*", 0 );
+      if( a_nMultiCommentIndexStart != -1 )
+      {
+         a_oLine.Value = a_oLine.Left( a_nCommentIndex );
+      }
+      */
+
+      // DEBUG
+      //Console.Out( a_oLine.Value );
+
+      // Test if the line is a single-line comment.
+      if( a_oLine.Left( 2 ) != "//" )
+      {
+         // Append a_oCode with our cleaned up line.
+         a_oCode.Value = a_oLine;
+      }
+
+      ExtractTokens( p_oShaderTokens, p_oTypeAliases, p_oSourceFile, a_oCode, a_nLineIndex );
+
+      // Increment the guard, just in case we're debugging.
+      ++a_nGuard;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool IsIntegerLiteral( string p_sToken, TypeAggregatorNode p_oTypeAliases )
+{
+   bool a_bIsIntegerLiteral = true;
+   auto Str a_oToken = new Str( p_sToken );
+
+   for( int a_nCount = 0; a_nCount < a_oToken.Length(); ++a_nCount )
+   {
+      int a_nChar = a_oToken.Objects[ a_nCount ];
+      if( p_oTypeAliases.IntArray( "Digits" ).Find( 0, a_nChar ) == -1 )
+      {
+         a_bIsIntegerLiteral = false;
+         break;
+      }
+   }
+   //Console.Out( a_bIsIntegerLiteral );
+   return a_bIsIntegerLiteral;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GlslTemplateTokenLexer(
+
+   TypeAggregatorNode p_oShaderTokens,
+   TypeAggregatorNode p_oTypeAliases
+
+   )
+{
+   bool a_bInFunctionParameterList;
+   for( int a_nToken = 0; a_nToken < p_oShaderTokens.GetCount( TOKENS ); ++a_nToken )
+   {
+      auto Str a_oToken = new Str( p_oShaderTokens.StrList( TOKENS ).Objects.Get( a_nToken ) );
+
+      if( IsIntegerLiteral( a_oToken.Value, p_oTypeAliases ) )
+      {
+         p_oShaderTokens.StrList( TOKEN_INFO ).Objects.Add( INTEGER_LITERAL );
+      }
+      else
+      if( a_oToken.Value == "(" )
+      {
+         p_oShaderTokens.StrList( TOKEN_INFO ).Objects.Add( L_PAREN );
+         a_bInFunctionParameterList = true;
+      }
+      else
+      if( a_oToken.Value == ")" )
+      {
+         p_oShaderTokens.StrList( TOKEN_INFO ).Objects.Add( R_PAREN );
+         a_bInFunctionParameterList = false;
+      }
+      else
+      if( a_oToken.Value == "[" )
+      {
+         p_oShaderTokens.StrList( TOKEN_INFO ).Objects.Add( L_BRACKET );
+      }
+      else
+      if( a_oToken.Value == "]" )
+      {
+         p_oShaderTokens.StrList( TOKEN_INFO ).Objects.Add( R_BRACKET );
+      }
+      else
+      if( a_oToken.Value == "," )
+      {
+         p_oShaderTokens.StrList( TOKEN_INFO ).Objects.Add( COMMA );
+      }
+      else
+      if( p_oTypeAliases.StrList( "GlslQualifierNames" ).Objects.Find( a_oToken.Value ) != -1 )
+      {
+         p_oShaderTokens.StrList( TOKEN_INFO ).Objects.Add( FUNCTION_PARAMETER_QUALIFIER );
+      }
+      else
+      if( p_oTypeAliases.StrList( "GlslTypeNames" ).Objects.Find( a_oToken.Value ) != -1 )
+      {
+         if( a_bInFunctionParameterList )
+         {
+            p_oShaderTokens.StrList( TOKEN_INFO ).Objects.Add( FUNCTION_PARAMETER_TYPE );
+         }
+         else
+         {
+            p_oShaderTokens.StrList( TOKEN_INFO ).Objects.Add( FUNCTION_RETURN_TYPE );
+         }
+      }
+      else
+      if( p_oShaderTokens.StrList( TOKENS ).Objects.GetNext( a_nToken ) == "(" )
+      {
+         p_oShaderTokens.StrList( TOKEN_INFO ).Objects.Add( FUNCTION_NAME );
+      }
+      else
+      if( a_bInFunctionParameterList )
+      {
+         if( p_oTypeAliases.StrList( "GlslTypeNames" ).Objects.Find( a_oToken.Value ) == -1 )
+         {
+            p_oShaderTokens.StrList( TOKEN_INFO ).Objects.Add( FUNCTION_PARAMETER_NAME );
+         }
+      }
+      else
+      {
+         // For now, we're going to assume that an unknown token
+         // is a user-defined type referring to a struct. This is
+         // a bit dodgy, but we don't have much choice at the moment.
+         // because we are allowing 'forward declaration' and a function
+         // prototype that returns a struct doesn't have any other
+         // information we can use to validate it.
+         p_oShaderTokens.StrList( TOKEN_INFO ).Objects.Add( FUNCTION_RETURN_TYPE );
+      }
+
+      if( a_bInFunctionParameterList )
+      {
+         if( p_oShaderTokens.StrList( TOKENS ).Objects.LookAhead( a_nToken, 2 ) == "[" )
+         {
+            string a_sBraceOrInteger = p_oShaderTokens.StrList( TOKENS ).Objects.LookAhead( a_nToken, 3 );
+            // The final in the sequence might be an integer literal
+            // or it might be a right bracket. An integer literal indicates
+            // an explicitly sized array, and a right bracket indicates an
+            // implicitly array.
+            bool a_bIsArray;
+            int a_nArraySize;
+            if( a_sBraceOrInteger == "]" )
+            {
+               // Don't alter a_nArraySize because we'll use
+               // '0' to indicate the array is implicitly sized.
+               a_bIsArray = true;
+            }
+            else
+            if( IsIntegerLiteral( a_sBraceOrInteger, p_oTypeAliases ) )
+            {
+               auto Str a_oToInt = new Str( a_sBraceOrInteger );
+               a_oToInt.ToInt();
+               a_nArraySize = a_oToInt.ToInt();
+               a_bIsArray = true;
+            }
+
+            if( a_bIsArray )
+            {
+               // Add an entry indicating the type is arrayed.
+               p_oShaderTokens.IntArray( "IsArrayTypeIndex" ).Add( a_nToken );
+               p_oShaderTokens.IntArray( "ArraySize" ).Add( a_nArraySize );
+            }
+         }
+      }
+      else
+      {
+         if( p_oShaderTokens.StrList( TOKENS ).Objects.GetNext( a_nToken ) == "[" )
+         {
+            // Make sure we test if it's an array. Since this is a function
+            // return type, we know the array cannot be implicitly sized.
+            auto Str a_oLookAhead = new Str( p_oShaderTokens.StrList( TOKENS ).Objects.LookAhead( a_nToken, 2 ) );
+
+            if( a_oLookAhead.Length() && IsIntegerLiteral( a_oLookAhead.Value, p_oTypeAliases ) )
+            {
+               int a_nArraySize = a_oLookAhead.ToInt();
+               p_oShaderTokens.IntArray( "IsArrayTypeIndex" ).Add( a_nToken );
+               p_oShaderTokens.IntArray( "ArraySize" ).Add( a_nArraySize );
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string WriteFunction( StringArrayNode p_oFunctionPrototype, StrList p_slSpecifiersUsed )
+{
+   string a_sFunction;
+
+   // Convert the tokenized text back into a string containing the function prototype.
+   for( int w = 0; w < p_oFunctionPrototype.Objects.GetCount(); ++w )
+   {
+      string a_sToken = p_oFunctionPrototype.Objects.GetAt( w );
+      string a_sNext = p_oFunctionPrototype.Objects.GetNext( w );
+      if( a_sNext != "(" && a_sNext != "," && a_sToken != ")" )
+      {
+         a_sToken += " ";
+      }
+
+      a_sFunction += a_sToken;
+   }
+
+   return a_sFunction;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void InterleaveKeywords(
+
+   TypeAggregatorNode p_oKeywords,
+   StrList p_slInterleavedKeywordPairs,
+   ref int p_nIter,
+   ref int p_nBase,
+   int p_nTotalItems
+
+   )
+{
+   if( p_nTotalItems == 0 )
+   {
+      return;
+   }
+
+   while( p_nTotalItems > p_nIter )
+   {
+      for( int c = 0; c < p_oKeywords.NodeList.GetCount(); ++c )
+      {
+         Node a_oNode = (Node)p_oKeywords.NodeList.Get( c );
+         if( a_oNode && a_oNode.IsDerived( StringArrayNode ) )
+         {
+            StringArrayNode a_oArray = (StringArrayNode)a_oNode;
+
+            if( a_oArray.Objects.GetCount() == 0 )
+            {
+               // Something empty was passed in. We shouldn't be iterating!
+               return;
+            }
+
+            // Iterate in pairs.
+            for( int s = 0; s < 2; ++s )
+            {
+               p_slInterleavedKeywordPairs.Add( a_oArray.Objects.GetAt( s + p_nBase ) );
+               ++p_nIter;
+            }
+         }
+      }
+
+      // Reset c so we can re-iterate.
+      c = 0;
+      // Increment the base pair index.
+      p_nBase += 2;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int AddAliases(
+
+   TypeAggregatorNode p_oTypeAliases,
+   StringArrayNode p_oKeywordReplacements,
+   string p_sMember, string p_sAlias
+
+   )
+{
+   int a_nIndex;
+   while( a_nIndex < p_oTypeAliases.GetCount( p_sMember ) )
+   {
+      p_oKeywordReplacements.Objects.Add( p_sAlias );
+      p_oKeywordReplacements.Objects.Add( p_oTypeAliases.StrList( p_sMember ).Objects.GetAt( a_nIndex ) );
+      ++a_nIndex;
+   }
+
+   //SpaStrListUtil.Out( p_oKeywordReplacements.Objects );
+   return a_nIndex * 2; // Multiply by 2 because we added PAIRS of items above;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int CreateReplacementKeywords(
+
+   TypeAggregatorNode p_oTypeAliases,
+   TypeAggregatorNode p_oKeywords,
+   StrList p_slSpecifiersUsed
+
+   )
+{
+   int a_nTotalItems;
+   for( int a_nSpecifier = 0; a_nSpecifier < p_slSpecifiersUsed.GetCount(); ++a_nSpecifier )
+   {
+      // The aggregator p_oKeywords manages this memory for us.
+      StringArrayNode a_oKeywordReplacements = new StringArrayNode;
+      a_oKeywordReplacements.Name = "Replacements";
+      a_oKeywordReplacements.Variable = "Replacements";
+
+      auto Str a_oSpecifier = new Str( p_slSpecifiersUsed.GetAt( a_nSpecifier ) );
+
+      // Get the index of the overload specifier ( which is something like 'vec' or 'genType'.
+      int a_nIndex = p_oTypeAliases.StrList( OVERLOAD_SPECIFIERS ).Objects.Find( a_oSpecifier.Value );
+
+      // Use the index look up the corresponding overload specifier.
+      string a_sAccessor = p_oTypeAliases.StrList( "AliasKeys" ).Objects.GetAt( a_nIndex );
+      a_nTotalItems += AddAliases( p_oTypeAliases, a_oKeywordReplacements, a_sAccessor, a_oSpecifier.Value );
+
+      // Add each StringArrayNode to the aggregator.
+      p_oKeywords.NodeList.Add( a_oKeywordReplacements );
+   }
+
+   return a_nTotalItems;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int ComputeSpecifierMisalignment(
+
+   TypeAggregatorNode p_oTypeAliases,
+   StrList p_slSpecifiersUsed,
+   StrList p_slSortedSpecifiers
+
+   )
+{
+   auto IntArray a_aiTypeAliasCount;
+   int a_nMisalignment;
+   int a_nSpecifierCountTemp;
+   for( int a_nSpecifier = 0; a_nSpecifier < p_slSpecifiersUsed.GetCount(); ++a_nSpecifier )
+   {
+      auto Str a_oSpecifier = new Str( p_slSpecifiersUsed.GetAt( a_nSpecifier ) );
+      int a_nIndex = p_oTypeAliases.StrList( OVERLOAD_SPECIFIERS ).Objects.Find( a_oSpecifier.Value );
+      // Use the index look up the corresponding overload specifier.
+      string a_sAccessor = p_oTypeAliases.StrList( "AliasKeys" ).Objects.GetAt( a_nIndex );
+      StringArrayNode a_oStringArrayNode = (StringArrayNode)p_oTypeAliases.StrList( a_sAccessor );
+      int a_nTypeAliasCount = a_oStringArrayNode.Objects.GetCount();
+      a_aiTypeAliasCount.Add( a_nTypeAliasCount );
+      if( a_nSpecifier > 0 )
+      {
+         if( a_nTypeAliasCount != a_aiTypeAliasCount.Objects[ a_nSpecifier - 1 ] )
+         {
+            ++a_nMisalignment;
+         }
+      }
+
+      if( a_nSpecifier == 0 )
+      {
+         p_slSortedSpecifiers.Add( a_oSpecifier.Value );
+         a_nSpecifierCountTemp = a_nTypeAliasCount;
+      }
+      else
+      if( a_nTypeAliasCount < a_nSpecifierCountTemp )
+      {
+         p_slSortedSpecifiers.Insert( a_oSpecifier.Value, a_nSpecifier - 1 );
+         a_nSpecifierCountTemp = a_nTypeAliasCount;
+      }
+      else
+      if( a_nTypeAliasCount > a_nSpecifierCountTemp )
+      {
+         p_slSortedSpecifiers.Insert( a_oSpecifier.Value, a_nSpecifier + 1 );
+         a_nSpecifierCountTemp = a_nTypeAliasCount;
+      }
+   }
+
+   return a_nMisalignment;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void WriteOverloadedFunction(
+
+   TypeAggregatorNode p_oTypeAliases,
+   StringArrayNode p_oFunctionPrototype,
+   StrList p_slSpecifiersUsed,
+   StrList p_slFunctionPrototypes
+
+   )
+{
+   string a_sFunctionPrototype;
+
+   // Generate the function.
+   a_sFunctionPrototype += WriteFunction( p_oFunctionPrototype, p_slSpecifiersUsed );
+   //Console.Out( a_sFunctionPrototype );
+   // Convert the function prototype to a Str object so we do replacement.
+   auto Str a_oFunctionTemplate = new Str( a_sFunctionPrototype );
+
+   // Create a TypeAggregatorNode that contains all our replacement keywords.
+   auto StrList a_slSortedSpecifiers;
+   auto TypeAggregatorNode a_oKeywords;
+   int a_nTotalItems;
+   int a_nSpecifierMisalignment = ComputeSpecifierMisalignment( p_oTypeAliases, p_slSpecifiersUsed, a_slSortedSpecifiers );
+
+   auto StrList a_slFunctions;
+   if( a_nSpecifierMisalignment )
+   {
+      // We can't generate functions if specifiers are misaligned!
+      return;
+   }
+   else
+   {
+      a_nTotalItems = CreateReplacementKeywords( p_oTypeAliases, a_oKeywords, p_slSpecifiersUsed );
+   }
+   
+   // DEBUG
+   //Console.Out( a_sFunctionPrototype + " " + a_nTotalItems );
+   //SpaStrListUtil.Out( a_oKeywords.StrList( "Replacements" ).Objects );
+   //Console.Out( a_oKeywords.StrList( "Replacements" ).Objects.GetCount() );
+
+   // Assert if the total number of keywords is odd. This means we're
+   // missing an item or the list is bad and iInterleaving will fail.
+   // Every keyword must have a replacement value, so the total must be
+   // divisible by 2 without remainder.
+   if( Math.ModI( a_nTotalItems, 2 ) )
+   {
+      string a_sMessage = "Bad item count in object 'a_oKeywords'. " +
+         "Item count must be even, but current item count is: " + a_nTotalItems;
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   // For each specifier, there should be one StringArrayNode member in a_oKeywords!
+   if( p_slSpecifiersUsed.GetCount() != a_oKeywords.NodeList.GetCount() )
+   {
+      string a_sMessage = "The count of 'p_slSpecifiersUsed' does not match the count of 'a_oKeywords.NodeList.GetCount()'. " +
+         "This means that at least one of the keyword specifiers ( such as 'genType' ) does not have a set of replacement keywords. ";
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   // We have all the keywords that we need. Now let's interleave them.
+   // This will greatly simplify the process of replacing keywords.
+   auto StrList a_slInterleavedKeywordPairs;
+   int a_nIter = 0;
+   int a_nBase = 0;
+
+   //SpaStrListUtil.Out( p_slSpecifiersUsed );
+   if( p_slSpecifiersUsed.GetCount() > 1 && a_nSpecifierMisalignment == 0 )
+   {
+      // Do complex interleaving of more than one specifier.
+      InterleaveKeywords( a_oKeywords, a_slInterleavedKeywordPairs, a_nIter, a_nBase, a_nTotalItems );
+   }
+   else
+   {
+      // Do simple interleaving if only one specifier is used.
+      for( int a = 0; a < a_oKeywords.NodeList.GetCount(); ++a )
+      {
+         Node a_oNode = (Node)a_oKeywords.NodeList.Get( a );
+         if( a_oNode && a_oNode.IsDerived( StringArrayNode ) )
+         {
+            StringArrayNode a_oStrArray = (StringArrayNode)a_oNode;
+            for( int j = 0; j < a_oStrArray.Objects.GetCount(); ++j )
+            {
+               a_slInterleavedKeywordPairs.Add( a_oStrArray.Objects.GetAt( j ) );
+            }
+         }
+      }
+   }
+
+   // DEBUG
+   //Console.Out( a_oKeywords.NodeList.GetCount() );
+   //SpaStrListUtil.Out( a_slInterleavedKeywordPairs );
+
+   string a_sFunctions;
+   string a_sTemp;
+   int a_nCount;
+
+   // Variadic depending on number of terms to replace
+   int a_nReplacementTerms = p_slSpecifiersUsed.GetCount();
+   // Static pair size is always 2.
+   int a_nPairs = 2;
+
+   int a_nIterBlockSize = a_nReplacementTerms * a_nPairs;
+   int a_nBlockAtomic = 0;
+   auto Str a_oTemp = new Str( a_oFunctionTemplate.Value );
+   //SpaStrListUtil.Out( a_slInterleavedKeywordPairs );
+
+   for( int c = 0; c < a_slInterleavedKeywordPairs.GetCount(); ++c )
+   {
+      if( c < a_slInterleavedKeywordPairs.GetCount() - 1 )
+      {
+         // WORKS BUT NEEDS 'REPLACE WHOLE WORD FUNCTIONALITY'
+         //Console.Out( a_slInterleavedKeywordPairs.GetAt( c ) );
+         //Console.Out( a_slInterleavedKeywordPairs.GetAt( c + 1 ) );
+         //Console.Out( a_oFunctionTemplate.Value );
+         a_oFunctionTemplate.Value =
+            a_oFunctionTemplate.Replace( a_slInterleavedKeywordPairs.GetAt( c ),
+               a_slInterleavedKeywordPairs.GetAt( c + 1 ) );
+
+         a_nBlockAtomic += 2;
+
+         if( a_nBlockAtomic == a_nIterBlockSize )
+         {
+            a_sFunctionPrototype = a_oFunctionTemplate.Value;
+            //Console.Out( a_sFunctionPrototype );
+            if( p_slFunctionPrototypes.Find( a_sFunctionPrototype ) == -1 )
+            {
+               p_slFunctionPrototypes.Add( a_sFunctionPrototype );
+            }
+            a_nBlockAtomic = 0;
+            a_oFunctionTemplate.Value = a_oTemp.Value;
+         }
+         ++c;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool CompileGlslTemplatePrototypes(
+
+   TypeAggregatorNode p_oShaderTokens,
+   TypeAggregatorNode p_oTypeAliases,
+   StrList p_slFunctionPrototypes
+
+   )
+{
+   // Validate entry!
+   // Entry point must be GLSL type or <template> designation such as GenType.
+   // I thought I found a way to enter!
+
+   // Lex the tokens Luthor!
+   GlslTemplateTokenLexer( p_oShaderTokens, p_oTypeAliases );
+   
+   // Warn the user that an unrecoverable error occured during lexing.
+   int a_nTokenCount = p_oShaderTokens.GetCount( TOKENS );
+   int a_nTokenInfoCount = p_oShaderTokens.GetCount( TOKEN_INFO );
+   if( a_nTokenCount != a_nTokenInfoCount )
+   {
+      string a_sMessage = "Token count and token info count are not the same. " +
+         "p_oShaderTokens.StrList( \"Tokens\" ).Objects.GetCount(): " + a_nTokenCount +
+         " " + "p_oShaderTokens.StrList( \"TokenInfo\" ).Objects.GetCount(): " + a_nTokenInfoCount;
+      Console.Assert( a_sMessage );
+      return false;
+   }
+
+   // Sort the tokens into separate functions!
+   // Use one StringArrayNode for each function.
+   // Stores the tokens as StringArrayNode members.
+   auto TypeAggregatorNode a_oFunctionList;
+   StringArrayNode a_oFunctionPrototype;
+   for( int a_nIter = 0; a_nIter < p_oShaderTokens.GetCount( TOKENS ); ++a_nIter )
+   {
+      if( p_oShaderTokens.GetString( TOKEN_INFO, a_nIter ) == FUNCTION_RETURN_TYPE )
+      {
+         a_oFunctionPrototype = new StringArrayNode;
+         a_oFunctionPrototype.Name = p_oShaderTokens.GetString( TOKENS, a_nIter );
+         a_oFunctionList.NodeList.Add( a_oFunctionPrototype );
+      }
+      if( a_oFunctionPrototype )
+      {
+         a_oFunctionPrototype.Objects.Add( p_oShaderTokens.GetString( TOKENS, a_nIter ) );
+      }
+   }
+
+   // Create a list of overloaded <T> specifiers.
+   // These specifiers indicate the function is described
+   // using generic terms that describe a range of overloads.
+   int a_nMax = a_oFunctionList.NodeList.GetCount();
+
+   auto StrList a_slFunctionPrototypes;
+   auto List a_lSpecifierSolutionNodes;
+
+   for( int c = 0; c < a_nMax; ++c )
+   {
+      Node a_oNode = (Node)a_oFunctionList.NodeList.Get( c );
+      if( a_oNode && a_oNode.IsDerived( StringArrayNode ) )
+      {
+         bool a_bOverloaded;
+         StringArrayNode a_oFunctionDeclaration = (StringArrayNode)a_oNode;
+         auto StrList a_slSpecifiersUsed;
+
+         // Determine if the function prototype
+         // has any overload keywords and add
+         // then to a list.
+         for( int p = 0; p < a_oFunctionDeclaration.Objects.GetCount(); ++p )
+         {
+            string a_sFunctionToken = a_oFunctionDeclaration.Objects.GetAt( p );
+            int a_nOverloadIndex = p_oTypeAliases.StrList( OVERLOAD_SPECIFIERS ).Objects.Find( a_sFunctionToken );
+
+            // If the function token specifies an overload.
+            if( a_nOverloadIndex != -1 )
+            {
+               // Only add each overload specifier once.
+               if( a_slSpecifiersUsed.Find( a_sFunctionToken ) == -1 )
+               {
+                  a_slSpecifiersUsed.Add( a_sFunctionToken );
+                  // Mark function prototype as overloaded.
+                  a_bOverloaded = true;
+               }
+            }
+         }
+
+         // Now make sure that we resolve any specifier count
+         // mismatches. For example" when you use gvec4 ( which
+         // has three specifiers ) and IMAGE_PARAMS ( which
+         // has eleven specifiers ).
+         // EX: gvec4 imageLoad( readonly IMAGE_PARAMS ) // SPECIFIER COUNTS ARE MISALIGNED!
+
+         auto StrList a_slSortedSpecifiers;
+         int a_nSpecifierMisalignment = ComputeSpecifierMisalignment( p_oTypeAliases, a_slSpecifiersUsed, a_slSortedSpecifiers );
+
+         if( a_nSpecifierMisalignment )
+         {
+            while( a_nSpecifierMisalignment > 0 )
+            {
+               auto TypeAggregatorNode a_oKeywords;
+               int a_nTotalItems = CreateReplacementKeywords( p_oTypeAliases, a_oKeywords, a_slSpecifiersUsed );
+               for( int d = 0; d < a_nSpecifierMisalignment; ++d )
+               {
+                  StringArrayNode a_oStringArray = (StringArrayNode)a_oKeywords.NodeList.Get( d );
+                  // DEBUG
+                  //Console.Out( "OBJECT" );
+                  for( int k = 0; k < a_oStringArray.Objects.GetCount(); ++k )
+                  {
+                     // DEBUG
+                     //Console.Out( "   " + a_oStringArray.Objects.GetAt( k ) );
+                     Node a_oNodeClone = (Node)a_oFunctionList.NodeList.Get( c );
+                     StringArrayNode a_oReplace = (StringArrayNode)a_oNodeClone.Clone();
+                     for( int a_nReplace = 0; a_nReplace < a_oReplace.Objects.GetCount(); ++a_nReplace )
+                     {
+                        if( a_oReplace.Objects.Get( a_nReplace ) == a_oStringArray.Objects.GetAt( k ) )
+                        {
+                           a_oReplace.Objects.Replace( a_nReplace, a_oStringArray.Objects.GetAt( k + 1 ) );
+                           ++k;
+                        }
+                     }
+                     a_oFunctionList.NodeList.Add( a_oReplace );
+                     ++a_nMax;
+                  }
+               }
+
+               --a_nSpecifierMisalignment;
+            }
+            //Console.Out( a_nSpecifierMisalignment );
+         }
+
+         if( a_bOverloaded )
+         {
+            WriteOverloadedFunction(
+               p_oTypeAliases,
+               a_oFunctionDeclaration,
+               a_slSpecifiersUsed,
+               p_slFunctionPrototypes );
+         }
+         else
+         {
+            p_slFunctionPrototypes.Add( WriteFunction(
+            a_oFunctionDeclaration, a_slSpecifiersUsed ) );
+         }
+      }
+   }
+
+   //Console.Out( a_oFunctionList.NodeList.GetCount() );
+   /*
+   for( int t = 0; t < a_oFunctionList.NodeList.GetCount(); ++t )
+   {
+      StringArrayNode a_oNode = (StringArrayNode)a_oFunctionList.NodeList.Get( t );
+      for( int u = 0; u < a_oNode.Objects.GetCount(); ++u )
+      {
+         Console.Out( a_oNode.Objects.GetAt( u ) );
+      }
+   }
+   */
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetTypenames( StrList p_slTypenames )
+{
+   p_slTypenames.Add( "bool" );
+   p_slTypenames.Add( "int" );
+   p_slTypenames.Add( "uint" );
+   p_slTypenames.Add( "float" );
+   p_slTypenames.Add( "bvec2" );
+   p_slTypenames.Add( "bvec3" );
+   p_slTypenames.Add( "bvec4" );
+   p_slTypenames.Add( "ivec2" );
+   p_slTypenames.Add( "ivec3" );
+   p_slTypenames.Add( "ivec4" );
+   p_slTypenames.Add( "uvec2" );
+   p_slTypenames.Add( "uvec3" );
+   p_slTypenames.Add( "uvec4" );
+   p_slTypenames.Add( "vec2" );
+   p_slTypenames.Add( "vec3" );
+   p_slTypenames.Add( "vec4" );
+   p_slTypenames.Add( "mat2" );
+   p_slTypenames.Add( "mat3" );
+   p_slTypenames.Add( "mat4" );
+   p_slTypenames.Add( "mat2x2" );
+   p_slTypenames.Add( "mat2x3" );
+   p_slTypenames.Add( "mat2x4" );
+   p_slTypenames.Add( "mat3x2" );
+   p_slTypenames.Add( "mat3x3" );
+   p_slTypenames.Add( "mat3x4" );
+   p_slTypenames.Add( "mat4x2" );
+   p_slTypenames.Add( "mat4x3" );
+   p_slTypenames.Add( "mat4x4" );
+   p_slTypenames.Add( "dmat2" );
+   p_slTypenames.Add( "dmat3" );
+   p_slTypenames.Add( "dmat4" );
+   p_slTypenames.Add( "dmat2x2" );
+   p_slTypenames.Add( "dmat2x3" );
+   p_slTypenames.Add( "dmat2x4" );
+   p_slTypenames.Add( "dmat3x2" );
+   p_slTypenames.Add( "dmat3x3" );
+   p_slTypenames.Add( "dmat3x4" );
+   p_slTypenames.Add( "dmat4x2" );
+   p_slTypenames.Add( "dmat4x3" );
+   p_slTypenames.Add( "dmat4x4" );
+
+   return p_slTypenames.GetCount();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetColDimensions( IntArray p_aiColDimensions )
+{
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 1 );
+   p_aiColDimensions.Add( 2 );
+   p_aiColDimensions.Add( 3 );
+   p_aiColDimensions.Add( 4 );
+   p_aiColDimensions.Add( 2 );
+   p_aiColDimensions.Add( 2 );
+   p_aiColDimensions.Add( 2 );
+   p_aiColDimensions.Add( 3 );
+   p_aiColDimensions.Add( 3 );
+   p_aiColDimensions.Add( 3 );
+   p_aiColDimensions.Add( 4 );
+   p_aiColDimensions.Add( 4 );
+   p_aiColDimensions.Add( 4 );
+   p_aiColDimensions.Add( 2 );
+   p_aiColDimensions.Add( 3 );
+   p_aiColDimensions.Add( 4 );
+   p_aiColDimensions.Add( 2 );
+   p_aiColDimensions.Add( 2 );
+   p_aiColDimensions.Add( 2 );
+   p_aiColDimensions.Add( 3 );
+   p_aiColDimensions.Add( 3 );
+   p_aiColDimensions.Add( 3 );
+   p_aiColDimensions.Add( 4 );
+   p_aiColDimensions.Add( 4 );
+   p_aiColDimensions.Add( 4 );
+
+   return p_aiColDimensions.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetRowDimensions( IntArray p_aiRowDimensions )
+{
+   p_aiRowDimensions.Add( 1 );
+   p_aiRowDimensions.Add( 1 );
+   p_aiRowDimensions.Add( 1 );
+   p_aiRowDimensions.Add( 1 );
+   p_aiRowDimensions.Add( 2 );
+   p_aiRowDimensions.Add( 3 );
+   p_aiRowDimensions.Add( 4 );
+   p_aiRowDimensions.Add( 2 );
+   p_aiRowDimensions.Add( 3 );
+   p_aiRowDimensions.Add( 4 );
+   p_aiRowDimensions.Add( 2 );
+   p_aiRowDimensions.Add( 3 );
+   p_aiRowDimensions.Add( 4 );
+   p_aiRowDimensions.Add( 2 );
+   p_aiRowDimensions.Add( 3 );
+   p_aiRowDimensions.Add( 4 );
+   p_aiRowDimensions.Add( 2 );
+   p_aiRowDimensions.Add( 3 );
+   p_aiRowDimensions.Add( 4 );
+   p_aiRowDimensions.Add( 2 );
+   p_aiRowDimensions.Add( 3 );
+   p_aiRowDimensions.Add( 4 );
+   p_aiRowDimensions.Add( 2 );
+   p_aiRowDimensions.Add( 3 );
+   p_aiRowDimensions.Add( 4 );
+   p_aiRowDimensions.Add( 2 );
+   p_aiRowDimensions.Add( 3 );
+   p_aiRowDimensions.Add( 4 );
+   p_aiRowDimensions.Add( 2 );
+   p_aiRowDimensions.Add( 3 );
+   p_aiRowDimensions.Add( 4 );
+   p_aiRowDimensions.Add( 2 );
+   p_aiRowDimensions.Add( 3 );
+   p_aiRowDimensions.Add( 4 );
+   p_aiRowDimensions.Add( 2 );
+   p_aiRowDimensions.Add( 3 );
+   p_aiRowDimensions.Add( 4 );
+   p_aiRowDimensions.Add( 2 );
+   p_aiRowDimensions.Add( 3 );
+   p_aiRowDimensions.Add( 4 );
+
+   return p_aiRowDimensions.Count;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetDimensionFromString( ExpressionInfo p_oExpressionInfo, Str p_oToken )
+{
+   auto StrList a_slTypenames;
+   auto IntArray a_aiDimensionCols;
+   auto IntArray a_aiDimensionRows;
+   GetTypenames( a_slTypenames );
+   GetColDimensions( a_aiDimensionCols );
+   GetRowDimensions( a_aiDimensionRows );
+
+   if(   a_slTypenames.GetCount() != a_aiDimensionCols.Count ||
+         a_aiDimensionCols.Count != a_aiDimensionRows.Count )
+   {
+      string a_sMessage = "Counts do not match in PARSE_UTIL::SetDimensionRows()";
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   for( int i = 0; i < a_slTypenames.GetCount(); ++i )
+   {
+      if( p_oToken.Value == a_slTypenames.GetAt( i ) )
+      {
+         p_oExpressionInfo.Cols = a_aiDimensionCols.Objects[ i ];
+         p_oExpressionInfo.Rows = a_aiDimensionRows.Objects[ i ];
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void MaybeSetDimension( Node p_oNewNode, Str p_oToken )
+{
+   if( p_oNewNode && p_oNewNode.IsDerived( BooleanVectorExpressionNode ) )
+   {
+      BooleanVectorExpressionNode a_oBooleanVectorExpressionNode =
+         (BooleanVectorExpressionNode)p_oNewNode;
+      a_oBooleanVectorExpressionNode.SetDimensionFromString( p_oToken.Value );
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( BooleanVectorArrayExpressionNode ) )
+   {
+      BooleanVectorArrayExpressionNode a_oBooleanVectorArrayExpressionNode =
+         (BooleanVectorArrayExpressionNode)p_oNewNode;
+      a_oBooleanVectorArrayExpressionNode.SetDimensionFromString( p_oToken.Value );
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( IntegerVectorExpressionNode ) )
+   {
+      IntegerVectorExpressionNode a_oIntegerVectorExpressionNode =
+         (IntegerVectorExpressionNode)p_oNewNode;
+      a_oIntegerVectorExpressionNode.SetDimensionFromString( p_oToken.Value );
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( IntegerVectorArrayExpressionNode ) )
+   {
+      IntegerVectorArrayExpressionNode a_oIntegerVectorArrayExpressionNode =
+         (IntegerVectorArrayExpressionNode)p_oNewNode;
+      a_oIntegerVectorArrayExpressionNode.SetDimensionFromString( p_oToken.Value );
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( UnsignedIntegerVectorExpressionNode ) )
+   {
+      UnsignedIntegerVectorExpressionNode a_oUnsignedIntegerVectorExpressionNode =
+         (UnsignedIntegerVectorExpressionNode)p_oNewNode;
+      a_oUnsignedIntegerVectorExpressionNode.SetDimensionFromString( p_oToken.Value );
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( UnsignedIntegerVectorArrayExpressionNode ) )
+   {
+      UnsignedIntegerVectorArrayExpressionNode a_oUnsignedIntegerVectorArrayExpressionNode =
+         (UnsignedIntegerVectorArrayExpressionNode)p_oNewNode;
+      a_oUnsignedIntegerVectorArrayExpressionNode.SetDimensionFromString( p_oToken.Value );
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( VectorExpressionNode ) )
+   {
+      VectorExpressionNode a_oVectorExpressionNode =
+         (VectorExpressionNode)p_oNewNode;
+      a_oVectorExpressionNode.SetDimensionFromString( p_oToken.Value );
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( VectorArrayExpressionNode ) )
+   {
+      VectorArrayExpressionNode a_oVectorArrayExpressionNode =
+         (VectorArrayExpressionNode)p_oNewNode;
+      a_oVectorArrayExpressionNode.SetDimensionFromString( p_oToken.Value );
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( MatrixExpressionNode ) )
+   {
+      MatrixExpressionNode a_oMatrixExpressionNode =
+         (MatrixExpressionNode)p_oNewNode;
+      a_oMatrixExpressionNode.SetDimensionFromString( p_oToken.Value );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int MaybeSetSamplerType( Node p_oNewNode, string p_sTypeTemp )
+{
+   int a_nSamplerType;
+
+   if( p_oNewNode && p_oNewNode.IsDerived( SamplerNode ) )
+   {
+      auto SamplerNode a_oSamplerNodeTemp;
+      auto StrList a_slSamplerTypes;
+      auto IntArray a_aiSamplerTypeIndices;
+
+      a_oSamplerNodeTemp.GetSamplerTypes(
+         a_slSamplerTypes,
+         a_aiSamplerTypeIndices );
+
+      int a_nTypeIndex = a_slSamplerTypes.Find( p_sTypeTemp );
+      if( a_nTypeIndex != -1 )
+      {
+         SamplerNode a_oSamplerNode = (SamplerNode)p_oNewNode;
+         a_oSamplerNode.SamplerType = a_nTypeIndex;
+         a_nSamplerType = a_nTypeIndex;
+      }
+   }
+
+   return a_nSamplerType;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void MaybeSetStructType( Node p_oNewNode, string p_sStructType )
+{
+   if( p_oNewNode && p_oNewNode.IsDerived( StructExpressionNode ) )
+   {
+      StructExpressionNode a_oStructExpressionNode =
+         (StructExpressionNode)p_oNewNode;
+      a_oStructExpressionNode.StructTypeName = p_sStructType;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void MaybeSetArraySize( Node p_oNewNode, bool p_bIsArrayType, int p_nArraySize )
+{
+   if( p_oNewNode && p_oNewNode.IsDerived( BooleanArrayExpressionNode ) )
+   {
+      BooleanArrayExpressionNode a_oBooleanArrayExpressionNode =
+         (BooleanArrayExpressionNode)p_oNewNode;
+      a_oBooleanArrayExpressionNode.Count = p_nArraySize;
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( IntegerArrayExpressionNode ) )
+   {
+      IntegerArrayExpressionNode a_oIntegerArrayExpressionNode =
+         (IntegerArrayExpressionNode)p_oNewNode;
+      a_oIntegerArrayExpressionNode.Count = p_nArraySize;
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( UnsignedIntegerArrayExpressionNode ) )
+   {
+      UnsignedIntegerArrayExpressionNode a_oUnsignedIntegerArrayExpressionNode =
+         (UnsignedIntegerArrayExpressionNode)p_oNewNode;
+      a_oUnsignedIntegerArrayExpressionNode.Count = p_nArraySize;
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( FloatArrayExpressionNode ) )
+   {
+      FloatArrayExpressionNode a_oFloatArrayExpressionNode =
+         (FloatArrayExpressionNode)p_oNewNode;
+      a_oFloatArrayExpressionNode.Count = p_nArraySize;
+   }
+   if( p_oNewNode && p_oNewNode.IsDerived( BooleanVectorArrayExpressionNode ) )
+   {
+      BooleanVectorArrayExpressionNode a_oBooleanVectorArrayExpressionNode =
+         (BooleanVectorArrayExpressionNode)p_oNewNode;
+      a_oBooleanVectorArrayExpressionNode.Count = p_nArraySize;
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( IntegerVectorArrayExpressionNode ) )
+   {
+      IntegerVectorArrayExpressionNode a_oIntegerVectorArrayExpressionNode =
+         (IntegerVectorArrayExpressionNode)p_oNewNode;
+      a_oIntegerVectorArrayExpressionNode.Count = p_nArraySize;
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( UnsignedIntegerVectorArrayExpressionNode ) )
+   {
+      UnsignedIntegerVectorArrayExpressionNode a_oUnsignedIntegerVectorArrayExpressionNode =
+         (UnsignedIntegerVectorArrayExpressionNode)p_oNewNode;
+      a_oUnsignedIntegerVectorArrayExpressionNode.Count = p_nArraySize;
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( VectorArrayExpressionNode ) )
+   {
+      VectorArrayExpressionNode a_oVectorArrayExpressionNode =
+         (VectorArrayExpressionNode)p_oNewNode;
+      a_oVectorArrayExpressionNode.Count = p_nArraySize;
+   }
+   else
+   if( p_oNewNode && p_oNewNode.IsDerived( StructExpressionNode ) )
+   {
+      StructExpressionNode a_oStructExpressionNode =
+         (StructExpressionNode)p_oNewNode;
+      
+      if( p_bIsArrayType )
+      {
+         a_oStructExpressionNode.IsArray = true;
+         a_oStructExpressionNode.ArrayDimension = p_nArraySize;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SortFunctions(
+
+   List p_lContainers,
+   ShaderVersionNode p_oShaderVersionNode,
+   bool p_bSortByTypeOnly
+
+   )
+{
+   // Iterate the current empty sub-container objects.
+   for( int a_nContainer = 0; a_nContainer < p_lContainers.GetCount(); ++a_nContainer )
+   {
+      Node a_oIsContainer = (Node)p_lContainers.Get( a_nContainer );
+
+      if( a_oIsContainer && a_oIsContainer.IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oContainer = (VariableExpressionNode)a_oIsContainer;
+
+         // Iterate the master container and and find an
+         // appropriate sub-container object for each function.
+         for( int a_nFunction = 0; a_nFunction < p_oShaderVersionNode.ChildCount; ++a_nFunction )
+         {
+            Node a_oFunctionPrototype = (Node)p_oShaderVersionNode.Children[ a_nFunction ];
+            if( p_bSortByTypeOnly )
+            {
+               // If we're matching by type-only.
+               // Ex: FloatArrayExpressionNode is the container type
+               // and FloatArrayExpressionnode is the function type.
+               if( a_oContainer.MatchType( a_oContainer, a_oFunctionPrototype ) )
+               {
+                  a_oFunctionPrototype.SetParent( a_oContainer );
+                  --a_nFunction;
+               }
+            }
+            else
+            {
+               // This is a very strict match. Parameters
+               // such as vector dimension, struct type,
+               // and array count must all match.
+               if( a_oContainer.Match( a_oContainer, a_oFunctionPrototype ) )
+               {
+                  a_oFunctionPrototype.SetParent( a_oContainer );
+                  --a_nFunction;
+               }
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SortFunctionsByType( ShaderVersionNode p_oContainer )
+{
+   auto List a_lContainers;
+   int a_nVec2 = Enum.GLSL_DataType_Vec2();
+   int a_nVec3 = Enum.GLSL_DataType_Vec3();
+   int a_nVec4 = Enum.GLSL_DataType_Vec4();
+
+   // Create container objects for each
+   // type of function return type.
+   // Ex: BooleanExpressionNode contains
+   // functions that return 'bool'.
+
+   // Create a bool type container.
+   BooleanExpressionNode a_oBoolFunctions =
+      new BooleanExpressionNode;
+   a_oBoolFunctions.Name = "Bool Functions";
+   a_lContainers.AddRef( a_oBoolFunctions );
+
+   // Create a bool array type container.
+   BooleanArrayExpressionNode a_oBoolArrayFunctions =
+      new BooleanArrayExpressionNode;
+   a_oBoolArrayFunctions.Name = "Bool Array Functions";
+   a_lContainers.AddRef( a_oBoolArrayFunctions );
+
+   // Create a bvec2 type container.
+   BooleanVectorExpressionNode a_oBvec2Functions =
+      new BooleanVectorExpressionNode;
+   a_oBvec2Functions.Name = "Bvec2 Functions";
+   a_oBvec2Functions.Dimension = a_nVec2;
+   a_lContainers.AddRef( a_oBvec2Functions );
+
+   // Create a bvec3 type container.
+   BooleanVectorExpressionNode a_oBvec3Functions =
+      new BooleanVectorExpressionNode;
+   a_oBvec3Functions.Name = "Bvec3 Functions";
+   a_oBvec3Functions.Dimension = a_nVec3;
+   a_lContainers.AddRef( a_oBvec3Functions );
+
+   // Create a bvec4 type container.
+   BooleanVectorExpressionNode a_oBvec4Functions =
+      new BooleanVectorExpressionNode;
+   a_oBvec4Functions.Name = "Bvec4 Functions";
+   a_oBvec4Functions.Dimension = a_nVec4;
+   a_lContainers.AddRef( a_oBvec4Functions );
+
+   // Create a bvec2 array type container.
+   BooleanVectorArrayExpressionNode a_oBvec2ArrayFunctions =
+      new BooleanVectorArrayExpressionNode;
+   a_oBvec2ArrayFunctions.Name = "Bvec2 Array Functions";
+   a_oBvec2ArrayFunctions.Dimension = a_nVec2;
+   a_lContainers.AddRef( a_oBvec2ArrayFunctions );
+
+   // Create a bvec3 array type container.
+   BooleanVectorArrayExpressionNode a_oBvec3ArrayFunctions =
+      new BooleanVectorArrayExpressionNode;
+   a_oBvec3ArrayFunctions.Name = "Bvec3 Array Functions";
+   a_oBvec3ArrayFunctions.Dimension = a_nVec3;
+   a_lContainers.AddRef( a_oBvec3ArrayFunctions );
+
+   // Create a bvec4 array type container.
+   BooleanVectorArrayExpressionNode a_oBvec4ArrayFunctions =
+      new BooleanVectorArrayExpressionNode;
+   a_oBvec4ArrayFunctions.Name = "Bvec4 Array Functions";
+   a_oBvec4ArrayFunctions.Dimension = a_nVec4;
+   a_lContainers.AddRef( a_oBvec4ArrayFunctions );
+
+   // Create an int type container.
+   IntegerExpressionNode a_oIntFunctions =
+      new IntegerExpressionNode;
+   a_oIntFunctions.Name = "Int Functions";
+   a_lContainers.AddRef( a_oIntFunctions );
+
+   // Create an int array type container.
+   IntegerArrayExpressionNode a_oIntArrayFunctions =
+      new IntegerArrayExpressionNode;
+   a_oIntArrayFunctions.Name = "Int Array Functions";
+   a_lContainers.AddRef( a_oIntArrayFunctions );
+
+   // Create an ivec2 type container.
+   IntegerVectorExpressionNode a_oIvec2Functions =
+      new IntegerVectorExpressionNode;
+   a_oIvec2Functions.Name = "Ivec2 Functions";
+   a_oIvec2Functions.Dimension = a_nVec2;
+   a_lContainers.AddRef( a_oIvec2Functions );
+
+   // Create an ivec3 type container.
+   IntegerVectorExpressionNode a_oIvec3Functions =
+      new IntegerVectorExpressionNode;
+   a_oIvec3Functions.Name = "Ivec3 Functions";
+   a_oIvec3Functions.Dimension = a_nVec3;
+   a_lContainers.AddRef( a_oIvec3Functions );
+
+   // Create an ivec4 type container.
+   IntegerVectorExpressionNode a_oIvec4Functions =
+      new IntegerVectorExpressionNode;
+   a_oIvec4Functions.Name = "Ivec4 Functions";
+   a_oIvec4Functions.Dimension = a_nVec4;
+   a_lContainers.AddRef( a_oIvec4Functions );
+
+   // Create an ivec2 array type container.
+   IntegerVectorArrayExpressionNode a_oIvec2ArrayFunctions =
+      new IntegerVectorArrayExpressionNode;
+   a_oIvec2ArrayFunctions.Name = "Ivec2 Array Functions";
+   a_oIvec2ArrayFunctions.Dimension = a_nVec2;
+   a_lContainers.AddRef( a_oIvec2ArrayFunctions );
+
+   // Create an ivec3 array type container.
+   IntegerVectorArrayExpressionNode a_oIvec3ArrayFunctions =
+      new IntegerVectorArrayExpressionNode;
+   a_oIvec3ArrayFunctions.Name = "Ivec3 Array Functions";
+   a_oIvec3ArrayFunctions.Dimension = a_nVec3;
+   a_lContainers.AddRef( a_oIvec3ArrayFunctions );
+
+   // Create an ivec4 array type container.
+   IntegerVectorArrayExpressionNode a_oIvec4ArrayFunctions =
+      new IntegerVectorArrayExpressionNode;
+   a_oIvec4ArrayFunctions.Name = "Ivec4 Array Functions";
+   a_oIvec4ArrayFunctions.Dimension = a_nVec4;
+   a_lContainers.AddRef( a_oIvec4ArrayFunctions );
+
+   // Create a uint type container.
+   UnsignedIntegerExpressionNode a_oUintFunctions =
+      new UnsignedIntegerExpressionNode;
+   a_oUintFunctions.Name = "Uint Functions";
+   a_lContainers.AddRef( a_oUintFunctions );
+
+   // Create a uint array type container.
+   UnsignedIntegerArrayExpressionNode a_oUintArrayFunctions
+      = new UnsignedIntegerArrayExpressionNode;
+   a_oUintArrayFunctions.Name = "Uint Array Functions";
+   a_lContainers.AddRef( a_oUintArrayFunctions );
+
+   // Create a uvec2 type container.
+   UnsignedIntegerVectorExpressionNode a_oUvec2Functions =
+      new UnsignedIntegerVectorExpressionNode;
+   a_oUvec2Functions.Name = "Uvec2 Functions";
+   a_oUvec2Functions.Dimension = a_nVec2;
+   a_lContainers.AddRef( a_oUvec2Functions );
+
+   // Create a uvec3 type container.
+   UnsignedIntegerVectorExpressionNode a_oUvec3Functions =
+      new UnsignedIntegerVectorExpressionNode;
+   a_oUvec3Functions.Name = "Uvec3 Functions";
+   a_oUvec3Functions.Dimension = a_nVec3;
+   a_lContainers.AddRef( a_oUvec3Functions );
+
+   // Create a uvec4 type container.
+   UnsignedIntegerVectorExpressionNode a_oUvec4Functions =
+      new UnsignedIntegerVectorExpressionNode;
+   a_oUvec4Functions.Name = "Uvec4 Functions";
+   a_oUvec4Functions.Dimension = a_nVec4;
+   a_lContainers.AddRef( a_oUvec4Functions );
+
+   // Create a uvec2 array type container.
+   UnsignedIntegerVectorArrayExpressionNode a_oUvec2ArrayFunctions =
+      new UnsignedIntegerVectorArrayExpressionNode;
+   a_oUvec2ArrayFunctions.Name = "Uvec2 Array Functions";
+   a_oUvec2ArrayFunctions.Dimension = a_nVec2;
+   a_lContainers.AddRef( a_oUvec2ArrayFunctions );
+
+   // Create a uvec3 array type container.
+   UnsignedIntegerVectorArrayExpressionNode a_oUvec3ArrayFunctions =
+      new UnsignedIntegerVectorArrayExpressionNode;
+   a_oUvec3ArrayFunctions.Name = "Uvec3 Array Functions";
+   a_oUvec3ArrayFunctions.Dimension = a_nVec3;
+   a_lContainers.AddRef( a_oUvec3ArrayFunctions );
+
+   // Create a uvec4 array type container.
+   UnsignedIntegerVectorArrayExpressionNode a_oUvec4ArrayFunctions =
+      new UnsignedIntegerVectorArrayExpressionNode;
+   a_oUvec4ArrayFunctions.Name = "Uvec4 Array Functions";
+   a_oUvec4ArrayFunctions.Dimension = a_nVec4;
+   a_lContainers.AddRef( a_oUvec4ArrayFunctions );
+
+   // Create a float type container.
+   FloatExpressionNode a_oFloatFunctions =
+      new FloatExpressionNode;
+   a_oFloatFunctions.Name = "Float Functions";
+   a_lContainers.AddRef( a_oFloatFunctions );
+
+   // Create a float array type container.
+   FloatArrayExpressionNode a_oFloatArrayFunctions =
+      new FloatArrayExpressionNode;
+   a_oFloatArrayFunctions.Name = "Float Array Functions";
+   a_lContainers.AddRef( a_oFloatArrayFunctions );
+
+   // Create a vec2 type container.
+   VectorExpressionNode a_oVec2Functions =
+      new VectorExpressionNode;
+   a_oVec2Functions.Name = "Vec2 Functions";
+   a_oVec2Functions.Dimension = a_nVec2;
+   a_lContainers.AddRef( a_oVec2Functions );
+
+   // Create a vec3 type container.
+   VectorExpressionNode a_oVec3Functions =
+      new VectorExpressionNode;
+   a_oVec3Functions.Name = "Vec3 Functions";
+   a_oVec3Functions.Dimension = a_nVec3;
+   a_lContainers.AddRef( a_oVec3Functions );
+
+   // Create a vec4 type container.
+   VectorExpressionNode a_oVec4Functions =
+      new VectorExpressionNode;
+   a_oVec4Functions.Name = "Vec4 Functions";
+   a_oVec4Functions.Dimension = a_nVec4;
+   a_lContainers.AddRef( a_oVec4Functions );
+
+   // Create a vec2 array type container.
+   VectorArrayExpressionNode a_oVec2ArrayFunctions =
+      new VectorArrayExpressionNode;
+   a_oVec2ArrayFunctions.Name = "Vec2 Array Functions";
+   a_oVec2ArrayFunctions.Dimension = a_nVec2;
+   a_lContainers.AddRef( a_oVec2ArrayFunctions );
+
+   // Create a vec3 array type container.
+   VectorArrayExpressionNode a_oVec3ArrayFunctions =
+      new VectorArrayExpressionNode;
+   a_oVec3ArrayFunctions.Name = "Vec3 Array Functions";
+   a_oVec3ArrayFunctions.Dimension = a_nVec3;
+   a_lContainers.AddRef( a_oVec3ArrayFunctions );
+
+   // Create a vec4 array type container.
+   VectorArrayExpressionNode a_oVec4ArrayFunctions =
+      new VectorArrayExpressionNode;
+   a_oVec4ArrayFunctions.Name = "Vec4 Array Functions";
+   a_oVec4ArrayFunctions.Dimension = a_nVec4;
+   a_lContainers.AddRef( a_oVec4ArrayFunctions );
+
+   // Create a mat2x2 array type container.
+   MatrixExpressionNode a_oMat2x2Functions =
+      new MatrixExpressionNode;
+   a_oMat2x2Functions.Name = "Mat2x2 Functions";
+   a_oMat2x2Functions.Cols = a_nVec2;
+   a_oMat2x2Functions.Rows = a_nVec2;
+   a_lContainers.AddRef( a_oMat2x2Functions );
+
+   // Create a mat2x3 array type container.
+   MatrixExpressionNode a_oMat2x3Functions =
+      new MatrixExpressionNode;
+   a_oMat2x3Functions.Name = "Mat2x3 Functions";
+   a_oMat2x3Functions.Cols = a_nVec2;
+   a_oMat2x3Functions.Rows = a_nVec3;
+   a_lContainers.AddRef( a_oMat2x3Functions );
+
+   // Create a mat2x4 array type container.
+   MatrixExpressionNode a_oMat2x4Functions =
+      new MatrixExpressionNode;
+   a_oMat2x4Functions.Name = "Mat2x4 Functions";
+   a_oMat2x4Functions.Cols = a_nVec2;
+   a_oMat2x4Functions.Rows = a_nVec4;
+   a_lContainers.AddRef( a_oMat2x4Functions );
+
+   // Create a mat3x2 array type container.
+   MatrixExpressionNode a_oMat3x2Functions =
+      new MatrixExpressionNode;
+   a_oMat3x2Functions.Name = "Mat3x2 Functions";
+   a_oMat3x2Functions.Cols = a_nVec3;
+   a_oMat3x2Functions.Rows = a_nVec2;
+   a_lContainers.AddRef( a_oMat3x2Functions );
+
+   // Create a mat3x3 array type container.
+   MatrixExpressionNode a_oMat3x3Functions =
+      new MatrixExpressionNode;
+   a_oMat3x3Functions.Name = "Mat3x3 Functions";
+   a_oMat3x3Functions.Cols = a_nVec3;
+   a_oMat3x3Functions.Rows = a_nVec3;
+   a_lContainers.AddRef( a_oMat3x3Functions );
+
+   // Create a mat3x4 array type container.
+   MatrixExpressionNode a_oMat3x4Functions =
+      new MatrixExpressionNode;
+   a_oMat3x4Functions.Name = "Mat3x4 Functions";
+   a_oMat3x4Functions.Cols = a_nVec3;
+   a_oMat3x4Functions.Rows = a_nVec4;
+   a_lContainers.AddRef( a_oMat3x4Functions );
+
+   // Create a mat4x2 array type container.
+   MatrixExpressionNode a_oMat4x2Functions =
+      new MatrixExpressionNode;
+   a_oMat4x2Functions.Name = "Mat4x2 Functions";
+   a_oMat4x2Functions.Cols = a_nVec4;
+   a_oMat4x2Functions.Rows = a_nVec2;
+   a_lContainers.AddRef( a_oMat4x2Functions );
+
+   // Create a mat4x3 array type container.
+   MatrixExpressionNode a_oMat4x3Functions =
+      new MatrixExpressionNode;
+   a_oMat4x3Functions.Name = "Mat4x3 Functions";
+   a_oMat4x3Functions.Cols = a_nVec4;
+   a_oMat4x3Functions.Rows = a_nVec3;
+   a_lContainers.AddRef( a_oMat4x3Functions );
+
+   // Create a mat4x4 array type container.
+   MatrixExpressionNode a_oMat4x4Functions =
+      new MatrixExpressionNode;
+   a_oMat4x4Functions.Name = "Mat4x4 Functions";
+   a_oMat4x4Functions.Cols = a_nVec4;
+   a_oMat4x4Functions.Rows = a_nVec4;
+   a_lContainers.AddRef( a_oMat4x4Functions );
+
+   // Create a struct type container.
+   StructExpressionNode a_oStructFunctions =
+      new StructExpressionNode;
+   a_oStructFunctions.Name = "Struct Functions";
+   a_lContainers.AddRef( a_oStructFunctions );
+
+   // Create a sampler type container.
+   SamplerExpressionNode a_oSamplerFunctions =
+      new SamplerExpressionNode;
+   a_oSamplerFunctions.Name = "Sampler Functions";
+   a_lContainers.AddRef( a_oSamplerFunctions );
+
+   // Create an uncategorized type container.
+   VariableExpressionNode a_oUnsortedFunctions =
+      new VariableExpressionNode;
+   a_oUnsortedFunctions.Name = "Unsorted Functions";
+   a_lContainers.AddRef( a_oUnsortedFunctions );
+
+   // We're going to do this sort in two passes.
+   // The first pass sorts using a strict match
+   // criteria. There will likely be some leftovers.
+   // The second pass sorts by type only, and
+   // this allows us to have a FloatArrayExpression
+   // function group that contains all functions that
+   // return an array of floats, without requiring us
+   // to have a different function group for every
+   // different array count that any set of functions
+   // might return. For example: we're going to 
+   // use a single FloatArrayExpressionNode to
+   // store functions that return float[4] and float[32].
+   // This keeps the final function list nice and clean.
+   SortFunctions( a_lContainers, p_oContainer, false );
+   SortFunctions( a_lContainers, p_oContainer, true );
+
+   // Any functions that remain in the intial
+   // container have not been sorted. We'll place
+   // them in the unsorted functions container.
+   for( int i = 0; i < p_oContainer.ChildCount; ++i )
+   {
+      Node a_oNode = (Node)p_oContainer.Children[ i ];
+      a_oNode.SetParent( a_oUnsortedFunctions );
+   }
+
+   for( int j = 0; j < a_lContainers.GetCount(); ++j )
+   {
+      VariableExpressionNode a_oAddChild = (VariableExpressionNode)a_lContainers.Get( j );
+      // Make the function category an expression of type
+      // "function" so that we don't get errors when the function
+      // database is opened. These errors won't really matter, but
+      // they make the graph look ugly when the file is opened.
+      a_oAddChild.MakeFunction();
+      p_oContainer.AddChild( a_oAddChild );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool CompileGlslObjectCode(
+
+   TypeAggregatorNode p_oShaderTokens,
+   TypeAggregatorNode p_oTypeAliases,
+   List p_lFunctionContainers
+
+   )
+{
+   // Validate entry!
+   // Entry point must be GLSL type or <template> designation such as GenType.
+   // I thought I found a way to enter!
+
+   GlslTemplateTokenLexer( p_oShaderTokens, p_oTypeAliases );
+   
+   // Warn the user that an unrecoverable error occured during lexing.
+   int a_nTokenCount = p_oShaderTokens.StrList( TOKENS ).Objects.GetCount();
+   int a_nTokenInfoCount = p_oShaderTokens.StrList( TOKEN_INFO ).Objects.GetCount();
+   if( a_nTokenCount != a_nTokenInfoCount )
+   {
+      string a_sMessage = "Token count and token info count are not the same. " +
+         "p_oShaderTokens.StrList( \"Tokens\" ).Objects.GetCount(): " + a_nTokenCount +
+         " " + "p_oShaderTokens.StrList( \"TokenInfo\" ).Objects.GetCount(): " + a_nTokenInfoCount;
+      Console.Assert( a_sMessage );
+      return false;
+   }
+
+   // Replace GLSL keywords such as vec3, ivec3, vec4, mat3x3 with SSL types.
+   // vec3 = VectorExpressionNode, mat3x3 = MatrixExpressionNode, etc.
+
+   // We'll store the sorted functions in this object.
+   ShaderVersionNode a_oContainer = new ShaderVersionNode;
+   a_oContainer.Name = "Functions";
+   a_oContainer.ShadingLanguageVersion = p_oShaderTokens.Int( "shadingLanguageVersion" ).Value;
+   a_oContainer.Name = a_oContainer.GetDeclarationString();
+
+   Group a_oFunction;
+
+   int a_nMax = p_oShaderTokens.GetCount( TOKENS );
+   //a_nMax = 4;
+   bool a_bGenerate;
+   bool a_bUnsupportedType;
+   bool a_bUnsupportedParameterType;
+
+   // Iterate the tokens and create a VariableExpressionNode
+   // for each function and function parameter. Add the
+   // function parameters as we iterate, alternating between
+   // creating expressions for each function and its parameters.
+
+   auto StrList a_slParameterQualifiers;
+   for( int a_nToken = 0; a_nToken < a_nMax; ++a_nToken )
+   {
+      auto Str a_oToken = new Str( p_oShaderTokens.GetString( TOKENS, a_nToken ) );
+      auto Str a_oTokenInfo = new Str( p_oShaderTokens.GetString( TOKEN_INFO, a_nToken ) );
+      //Console.Out( a_nToken );
+      //Console.Out( a_oToken.Value + " " + a_oTokenInfo.Value + " " + a_nToken );
+
+      if( a_oTokenInfo.Value == UNKNOWN || p_oTypeAliases.StrList( "UnsupportedTypeNames" ).Objects.Find( a_oToken.Value ) != -1 )
+      {
+         a_bUnsupportedType = true;
+         if( a_oFunction )
+         {
+            // DEBUG
+            //Console.Out( "Deleting: " + a_oFunction.Name );
+            delete a_oFunction;
+         }
+         // Clear this StrList because the
+         // variable type is not supported.
+         a_slParameterQualifiers.Clear();
+      }
+
+      if( a_bUnsupportedType && a_oTokenInfo.Value == R_PAREN )
+      {
+         a_bUnsupportedType = false;
+      }
+
+      if( a_bUnsupportedType )
+      {
+         //Console.Out( "Continuing past unsupported type: " + a_oToken.Value );
+         continue;
+      }
+
+      //Console.Out( a_oTokenInfo.Value );
+      if( a_oTokenInfo.Value == FUNCTION_PARAMETER_QUALIFIER )
+      {
+         //Console.Out( a_oToken.Value );
+         a_slParameterQualifiers.Add( a_oToken.Value );
+      }
+      else
+      if( a_oTokenInfo.Value == FUNCTION_PARAMETER_TYPE || a_oTokenInfo.Value == FUNCTION_RETURN_TYPE )
+      {
+         // DEBUG
+         //Console.Out( a_oToken.Value + " " + a_oTokenInfo.Value );
+
+         // Find the index of the type name.
+         int a_nIndex = p_oTypeAliases.StrList( "GlslTypeNames" ).Objects.Find( a_oToken.Value );
+
+         string a_sTypeTemp = a_oToken.Value;
+         if( a_sTypeTemp == "struct" )
+         {
+            auto Str a_oNextToken = new Str( p_oShaderTokens.GetString( TOKENS, a_nToken + 1 ) );
+            a_sTypeTemp = a_oNextToken.Value;
+         }
+
+         // Determine if the type is an array.
+         bool a_bIsArrayType;
+         int a_nIsArray = p_oShaderTokens.IntArray( "IsArrayTypeIndex" ).Find( 0, a_nToken );
+      
+         // Find the equivalent Scenome type name.
+         string a_sType;
+         int a_nArraySize;
+
+         string a_sLookupType = "ScenomeTypeNames";
+         string a_sLookupArrayType = "ScenomeArrayTypeNames";
+         if( a_oTokenInfo.Value == FUNCTION_PARAMETER_TYPE )
+         {
+            a_sLookupType = "ScenomeVariableTypeNames";
+            a_sLookupArrayType = "ScenomeVariableArrayTypeNames";
+         }
+
+         if( a_nIsArray != -1 )
+         {
+            // Find the array type.
+            a_sType = p_oTypeAliases.StrList( a_sLookupArrayType ).Objects.GetAt( a_nIndex );
+            p_oShaderTokens.StrList( "Tokens" ).Objects.Replace( a_nToken, a_sType );
+            a_nArraySize = p_oShaderTokens.IntArray( "ArraySize" ).Objects[ a_nIsArray ];
+            // DEBUG
+            //Console.Out( a_nArraySize );
+            a_bIsArrayType = true;
+         }
+         else
+         {
+            // Find the non-array type.
+            a_sType = p_oTypeAliases.StrList( a_sLookupType ).Objects.GetAt( a_nIndex );
+            p_oShaderTokens.StrList( "Tokens" ).Objects.Replace( a_nToken, a_sType );
+         }
+
+         // We probably have a struct type.
+         if( a_sType == "" )
+         {
+            a_sType = a_sTypeTemp;
+         }
+
+         if( a_oTokenInfo.Value == FUNCTION_RETURN_TYPE )
+         {
+            auto Type a_oType;
+            auto TypeInformation a_oTypeInfo = a_oType.GetType().FindClassType( a_sType );
+            // We cannot know all the user-defined types beforehand, so we're going
+            // to assume that any type we can't identify is a user-defined type
+            // that refers to a struct.
+            // See GlslTemplateTokenLexer() for the origin of this issue.
+            if( !a_oTypeInfo )
+            {
+               a_oTypeInfo = StructExpressionNode;
+            }
+
+            if( a_oTypeInfo )
+            {
+               string a_sFunctionName;
+               int a_nFunctionNameIndex = p_oShaderTokens.StrList( TOKEN_INFO ).Objects.FindNext( FUNCTION_NAME, a_nToken );
+
+               if( a_nFunctionNameIndex != -1 )
+               {
+                  a_sFunctionName = p_oShaderTokens.GetString( TOKENS, a_nFunctionNameIndex );
+               }
+               else
+               {
+                  a_sFunctionName = a_oToken.Value;
+               }
+
+               Node a_oNewNode = ValidateNodeCreateContext.CreateNodeOfType( a_oTypeInfo, a_sFunctionName );
+               if( a_oNewNode && a_oNewNode.IsDerived( VariableExpressionNode ) )
+               {
+                  VariableExpressionNode a_oVariableExpressionNode = (VariableExpressionNode)a_oNewNode;
+                  a_oVariableExpressionNode.ExpressionSide = Enum.ExpressionSide_None();
+                  a_oVariableExpressionNode.MakeFunctionPrototype();
+                  a_oVariableExpressionNode.FunctionName = a_sFunctionName;
+                  auto ExpressionInfo a_oExpressionInfo;
+                  a_oExpressionInfo.ArrayCount = a_nArraySize;
+                  a_oExpressionInfo.StructType = a_sTypeTemp;
+                  a_oExpressionInfo.SamplerType = MaybeSetSamplerType( a_oNewNode, a_sTypeTemp );
+                  SetDimensionFromString( a_oExpressionInfo, a_oToken );
+                  a_oVariableExpressionNode.SetParams( a_oExpressionInfo );
+                  ParameterListNode a_oParameterListNode = new ParameterListNode;
+                  a_oParameterListNode.Name = "Parameters";
+                  a_oVariableExpressionNode.AddChild( a_oParameterListNode );
+               }
+
+               if( a_oContainer )
+               {
+                  a_oContainer.AddChild( a_oNewNode );
+                  //Console.Out( "Adding child named: " + a_oNewNode.Name + " to: " + a_oContainer.Name + " " + a_nToken );
+               }
+               else
+               {
+                  //Console.Out( "Deleting: " + a_oNewNode.Name );
+                  delete a_oNewNode;
+               }
+
+               if( a_oNewNode && a_oNewNode.IsDerived( Group ) )
+               {
+                  a_oFunction = (Group)a_oNewNode;
+               }
+            }
+         }
+         else
+         if( a_oTokenInfo.Value == FUNCTION_PARAMETER_TYPE )
+         {
+            auto Type a_oType;
+            auto TypeInformation a_oTypeInfo = a_oType.GetType().FindClassType( a_sType );
+            if( a_oTypeInfo )
+            {
+               string a_sParameterName;
+               int a_nParameterNameIndex = p_oShaderTokens.StrList( TOKEN_INFO ).Objects.FindNext( FUNCTION_PARAMETER_NAME, a_nToken );
+               if( a_nParameterNameIndex != -1 )
+               {
+                  a_sParameterName = p_oShaderTokens.GetString( TOKENS, a_nParameterNameIndex );
+               }
+               else
+               {
+                  a_sParameterName = a_oToken.Value;
+               }
+
+               Node a_oNewNode = ValidateNodeCreateContext.CreateNodeOfType( a_oTypeInfo, a_sParameterName );
+               if( a_oNewNode && a_oNewNode.IsDerived( VariableExpressionNode ) )
+               {
+                  VariableExpressionNode a_oVariableExpressionNode =
+                     (VariableExpressionNode)a_oNewNode;
+                  a_oVariableExpressionNode.MakeFunctionParameter();
+                  MaybeSetDimension( a_oNewNode, a_oToken );
+                  MaybeSetStructType( a_oNewNode, a_sTypeTemp );
+                  MaybeSetSamplerType( a_oNewNode, a_sTypeTemp );
+                  MaybeSetArraySize( a_oNewNode, a_bIsArrayType, a_nArraySize );
+               }
+               else
+               if( a_oNewNode && a_oNewNode.IsDerived( VariableNode ) )
+               {
+                  VariableNode a_oVariableNode = (VariableNode)a_oNewNode;
+                  a_oVariableNode.Variable = a_oNewNode.Name;
+                  auto ExpressionInfo a_oExpressionInfo;
+                  a_oExpressionInfo.ArrayCount = a_nArraySize;
+                  a_oExpressionInfo.StructType = a_sTypeTemp;
+                  a_oExpressionInfo.SamplerType = MaybeSetSamplerType( a_oNewNode, a_sTypeTemp );
+                  SetDimensionFromString( a_oExpressionInfo, a_oToken );
+                  a_oVariableNode.SetParams( a_oExpressionInfo );
+                  if( a_slParameterQualifiers.GetCount() )
+                  {
+                     AddQualifiers( a_slParameterQualifiers, a_oVariableNode );
+                     //SpaStrListUtil.Out( a_slParameterQualifiers );
+                     a_slParameterQualifiers.Clear();
+                  }
+               }
+
+               if( a_oFunction )
+               {
+                  Node a_oIsParams = (Node)a_oFunction.Children[ 0 ];
+                  if( a_oIsParams && a_oIsParams.IsDerived( ParameterListNode ) )
+                  {
+                     ParameterListNode a_oParameterListNode = (ParameterListNode)a_oIsParams;
+                     a_oParameterListNode.AddChild( a_oNewNode );
+                  }
+                  else
+                  {
+                     a_oFunction.AddChild( a_oNewNode );
+                  }
+                  //Console.Out( "Adding child named: " + a_oNewNode.Name + " to: " + a_oFunction.Name + " " + a_nToken );
+               }
+               else
+               {
+                  delete a_oNewNode;
+               }
+            }
+            else
+            {
+               if( a_oFunction )
+               {
+                  delete a_oFunction;
+               }
+            }
+         }
+      }
+
+      //Console.Out( a_nToken );
+   }
+
+   // Sort the functions by type.
+   SetFunctionSignatures( a_oContainer );
+   SortFunctionsByType( a_oContainer );
+   p_lFunctionContainers.AddRef( a_oContainer );
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool ExtractEnumerationsFromSource(
+
+   string p_sStructure,
+   StrList p_slTokens,
+   StrList p_slStructure
+
+   )
+{
+   bool a_bStructure;
+
+   for( int a_nToken = 0; a_nToken < p_slTokens.GetCount(); ++a_nToken )
+   {
+      if( p_slTokens.Get( a_nToken ) == p_sStructure )
+      {
+         p_slStructure.Add( p_slTokens.Get( a_nToken ) );
+
+         for( int a_nStructureToken = a_nToken + 1; a_nStructureToken < p_slTokens.GetCount(); ++a_nStructureToken )
+         {
+            if( !( p_slTokens.Get( a_nStructureToken ) == ";" ) )
+            {
+               p_slStructure.Add( p_slTokens.Get( a_nStructureToken ) );
+            }
+            else
+            {
+               p_slStructure.Add( p_slTokens.Get( a_nStructureToken ) );
+               a_bStructure = true;
+               break;
+            }
+         }
+         a_nToken = a_nStructureToken;
+      }
+   }
+
+   return a_bStructure;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ParseEnumerationSource( Group p_oEnums, FilePath p_oPathToSource )
+{
+   // This parser only works on VALID C++ source ( ex: C++ that compiles ).
+   // It has very little error checking.
+   auto StrList a_slTokens;
+   auto IntArray a_aiLineNumbers;
+   auto StrList a_slFileNames;
+
+
+   // Create a ShaderTokens object to store tokenized code.
+   // See \SCRIPTS\CLASSES\GENERAL_CLASSES.BOX for class layout.
+   TypeAggregatorNode a_oShaderTokens =
+      Classes.CreateShaderTokensObject();
+   if( !a_oShaderTokens )
+   {
+      return;
+   }
+
+   // Create a TypeAliases object to manage code generation.
+   // This object contains static string arrays with keywords.
+   // See \SCRIPTS\CLASSES\GENERAL_CLASSES.BOX for class layout.
+   auto TypeAggregatorNode a_oTypeAliases =
+      Classes.CreateTypeAliasesObject();
+   if( !a_oTypeAliases )
+   {
+      return;
+   }
+
+   TokenizeSource(
+      a_oShaderTokens,
+      a_oTypeAliases,
+      p_oPathToSource );
+
+   for( int i = 0; i < a_oShaderTokens.StrList( "Tokens" ).Objects.GetCount(); ++i )
+   {
+      a_slTokens.Add( a_oShaderTokens.StrList( "Tokens" ).Objects.GetAt( i ) );
+   }
+
+   // Collect the enumerated type tokens from the global token list.
+   auto List a_lNodes;
+   auto StrList a_slEnumeratedTypeItems;
+   string a_sStructure = "enum";
+
+   if( !( ExtractEnumerationsFromSource(
+            a_sStructure,
+            a_slTokens,
+            a_slEnumeratedTypeItems ) ) )
+   {
+      string a_sFailure = "Failed to extract structure of type <" + a_sStructure + "> in file: ";
+      string a_sMessage = a_sFailure + p_oPathToSource.GetPath();
+      Console.Error( a_sMessage );
+      return;
+   }
+
+   // At minimum, an enumeration must have six tokens.
+   // Otherwise, it's pointless to 
+   // enum Type
+   // {
+   //    member
+   // };
+   int a_nMinTokenCount = 6;
+   if( a_slEnumeratedTypeItems.GetCount() < a_nMinTokenCount )
+   {
+      string a_sFailure = "Valid C++ enumerations require at least six tokens: ";
+      string a_sMessage = a_sFailure + p_oPathToSource.GetPath();
+      Console.Error( a_sMessage );
+      return;
+   }
+
+   // DEBUG
+   //SpaStrListUtil.Out( a_slEnumeratedTypeItems );
+
+   // Generate the enumeration nodes and
+   Group a_oEnumerationRoot;
+   Group a_oCurrentEnumerationMember;
+   string a_sEnumeratorRootName;
+   auto List a_lEnumerations;
+
+   // Create a graph representing the enumerated types.
+   TypeRepNode a_oEnumContainer = new TypeRepNode;
+   a_oEnumContainer.Name = p_oPathToSource.GetFileName();
+   a_oEnumContainer.Type = "TypeRepNode";
+   a_oEnumContainer.Documentation = "This TypeRepNode stores enumeration info.";
+
+   for( int a_nEnum = 0; a_nEnum < a_slEnumeratedTypeItems.GetCount(); ++a_nEnum )
+   {
+      if( a_slEnumeratedTypeItems.Get( a_nEnum ) == "enum" )
+      {
+         DataMemberNode a_oRoot = new DataMemberNode;
+         a_oRoot.PropertyItemType = Enum.PropertyItemType_Enumeration();
+         if( a_nEnum < a_slEnumeratedTypeItems.GetCount() - 1 )
+         {
+            a_sEnumeratorRootName = a_slEnumeratedTypeItems.Get( a_nEnum + 1 );
+            a_oRoot.Name = a_sEnumeratorRootName;
+         }
+         p_oEnums.AddChild( a_oRoot );
+
+         a_oEnumerationRoot = a_oRoot;
+         a_lEnumerations.AddRef( a_oEnumContainer );
+      }
+
+      if( a_nEnum < a_slEnumeratedTypeItems.GetCount() - 1 )
+      {
+         if( a_slEnumeratedTypeItems.Get( a_nEnum + 1 ) == "=" )
+         {
+            StringArrayNode a_oEnumerationItem = new StringArrayNode;
+            a_oEnumerationItem.Name = a_slEnumeratedTypeItems.Get( a_nEnum );
+            a_oEnumerationItem.Objects.Add( a_slEnumeratedTypeItems.Get( a_nEnum ) );
+
+            int a_nIndexShift;
+            if( a_nEnum < a_slEnumeratedTypeItems.GetCount() - 2 )
+            {
+               auto Str a_oEnumValue;
+               int a_nValueIndex;
+               for(   a_nValueIndex = a_nEnum + 2; a_nValueIndex <
+                     a_slEnumeratedTypeItems.GetCount(); ++a_nValueIndex )
+               {
+                  if(   a_slEnumeratedTypeItems.Get( a_nValueIndex ) != "," &&
+                        a_slEnumeratedTypeItems.Get( a_nValueIndex ) != "}" )
+                  {
+                     a_oEnumValue.Value += a_slEnumeratedTypeItems.Get( a_nValueIndex );
+                     ++a_nIndexShift;
+                  }
+                  else
+                  {
+                     break;
+                  }
+               }
+               a_oEnumerationItem.Objects.Add( a_oEnumValue.Value );
+            }
+            a_oEnumerationRoot.AddChild( a_oEnumerationItem );
+            a_nEnum += a_nIndexShift + 1;
+         }
+         else
+         if( a_slEnumeratedTypeItems.Get( a_nEnum + 1 ) == "," )
+         {
+            StringArrayNode a_oEnumerationItem = new StringArrayNode;
+            a_oEnumerationItem.Name = a_slEnumeratedTypeItems.Get( a_nEnum );
+            a_oEnumerationItem.Objects.Add( a_slEnumeratedTypeItems.Get( a_nEnum ) );
+            a_oEnumerationRoot.AddChild( a_oEnumerationItem );
+            ++a_nEnum;
+         }
+      }
+   }
+}

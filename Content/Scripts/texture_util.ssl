@@ -1,0 +1,165 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             TEXTURE_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements helper functions for textures.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+library SpaTextureUtil;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetTextureTypeString( Texture p_oTexture )
+{
+   if( p_oTexture.TextureType == 0 )
+   {
+      return "2D";
+   }
+   else
+   if( p_oTexture.TextureType == 1 )
+   {
+      return "3D";
+   }
+   else
+   if( p_oTexture.TextureType == 2 )
+   {
+      return "Cube Map";
+   }
+   else
+   if( p_oTexture.TextureType == 3 )
+   {
+      return "Render Buffer";
+   }
+
+   return "Unable to determine the type of the texture node.";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int SetTextureType( string p_sTextureType )
+{
+   if( p_sTextureType == "2D" )
+   {
+      return 0;
+   }
+   else
+   if( p_sTextureType == "Array" )
+   {
+      return 0;
+   }
+   else
+   if( p_sTextureType == "3D" )
+   {
+      return 1;
+   }
+   else
+   if( p_sTextureType == "Cube Map" )
+   {
+      return 2;
+   }
+
+   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateRenderFormatList( StrList p_slRenderFormats )
+{
+   p_slRenderFormats.Add( "None" );
+   p_slRenderFormats.Add( "8-Bit Indexed" );
+   p_slRenderFormats.Add( "8-Bit Alpha" );
+   p_slRenderFormats.Add( "1555 ARGB" );
+   p_slRenderFormats.Add( "565 RGB" );
+   p_slRenderFormats.Add( "888 RGB" );
+   p_slRenderFormats.Add( "8888 ARGB" );
+   p_slRenderFormats.Add( "4444 ARGB" );
+   p_slRenderFormats.Add( "32-Bit Depth" );
+   p_slRenderFormats.Add( "32-Bit Depth, 8-Bit Stencil" );
+   p_slRenderFormats.Add( "10-bit x 3, 2-Bit Alpha" );
+   p_slRenderFormats.Add( "F16 R" );
+   p_slRenderFormats.Add( "F16 RG" );
+   p_slRenderFormats.Add( "F16 RGB" );
+   p_slRenderFormats.Add( "F16 RGBA" );
+   p_slRenderFormats.Add( "F32 R" );
+   p_slRenderFormats.Add( "F32 RG" );
+   p_slRenderFormats.Add( "F32 RGB" );
+   p_slRenderFormats.Add( "F32 RGBA" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetTextureRenderFormatString( Texture p_oTexture )
+{
+   auto StrList a_slRenderFormats;
+   CreateRenderFormatList( a_slRenderFormats );
+
+   for( int i =0; i < a_slRenderFormats.GetCount(); ++i )
+   {
+      if( p_oTexture.RenderFormat == i )
+      {
+         return a_slRenderFormats.Get(i);
+      }
+   }
+   return "Unable to determine render format for texture.";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetTextureParametersFromImage( string p_sFilePath, Texture p_oTexture )
+{
+   Image image = new Image;
+   image.OpenFileHeader( p_sFilePath );
+   p_oTexture.RenderFormat = image.PixelFormat;
+   p_oTexture.SourceX = 0;
+   p_oTexture.SourceY = 0;
+   p_oTexture.SourceWidth = image.Width;
+   p_oTexture.SourceHeight = image.Height;
+   p_oTexture.RenderWidth = image.Width;
+   p_oTexture.RenderHeight = image.Height;
+   delete image;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetArraySizeFromImage( string p_sFilePath, Texture p_oTexture, string p_sTextureType )
+{
+   Image image = new Image;
+   image.OpenFileHeader( p_sFilePath );
+   int a_iArraySize;
+
+   if( image.Width > image.Height )
+   {
+      a_iArraySize = image.Width / image.Height;
+   }
+   else
+   {
+      a_iArraySize = image.Height / image.Width;
+   }
+   
+   if( p_sTextureType == "Array" )
+   {
+      p_oTexture.ArraySize = a_iArraySize;
+   }
+   else
+   if( p_sTextureType == "3D" )
+   {
+      p_oTexture.RenderDepth = a_iArraySize;
+   }
+
+   delete image;
+}

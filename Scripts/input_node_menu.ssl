@@ -1,0 +1,523 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file         :	INPUT_NODE_MENU.SSL
+// $author       :	Scenomics                                
+// $privacy      :	PUBLIC                                   
+// $description  :	This script implements features for setting InputNode data sources.
+// $legal        :   Reserved * r_rLegal                      
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////
+
+import library "graph_util.ssl";
+import library "list_util.ssl";
+import library "menu_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetMemberSelectionForDomain( string p_sInputDomain, int p_iMemberSelectionIndex )
+{
+   string a_sMember;
+
+   if( p_iMemberSelectionIndex == 0 )
+   {
+      if( p_sInputDomain == "XYZW" )
+      {
+         a_sMember = "x";
+      }
+      else
+      if( p_sInputDomain == "RGBA" )
+      {
+         a_sMember = "r";
+      }
+      else
+      if( p_sInputDomain == "STPQ" )
+      {
+         a_sMember = "s";
+      }
+      else
+      {
+         a_sMember = "x";
+      }
+   }
+   else
+   if( p_iMemberSelectionIndex == 1 )
+   {
+      if( p_sInputDomain == "XYZW" )
+      {
+         a_sMember = "y";
+      }
+      else
+      if( p_sInputDomain == "RGBA" )
+      {
+         a_sMember = "g";
+      }
+      else
+      if( p_sInputDomain == "STPQ" )
+      {
+         a_sMember = "t";
+      }
+      else
+      {
+         a_sMember = "y";
+      }
+   }
+   else
+   if( p_iMemberSelectionIndex == 2 )
+   {
+      if( p_sInputDomain == "XYZW" )
+      {
+         a_sMember = "z";
+      }
+      else
+      if( p_sInputDomain == "RGBA" )
+      {
+         a_sMember = "b";
+      }
+      else
+      if( p_sInputDomain == "STPQ" )
+      {
+         a_sMember = "p";
+      }
+      else
+      {
+         a_sMember = "z";
+      }
+   }
+   else
+   if( p_iMemberSelectionIndex == 3 )
+   {
+      if( p_sInputDomain == "XYZW" )
+      {
+         a_sMember = "w";
+      }
+      else
+      if( p_sInputDomain == "RGBA" )
+      {
+         a_sMember = "a";
+      }
+      else
+      if( p_sInputDomain == "STPQ" )
+      {
+         a_sMember = "q";
+      }
+      else
+      {
+         a_sMember = "w";
+      }
+   }
+
+
+   return a_sMember;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetMemberSelectionIndex( int p_iDataSourceIndex )
+{
+   int p_iMemberSelectionIndex;
+
+   if( p_iDataSourceIndex == 0 )
+   {
+      p_iMemberSelectionIndex = 0;
+   }
+   else
+   {
+      p_iMemberSelectionIndex = p_iDataSourceIndex * 2;
+   }
+   return p_iMemberSelectionIndex;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetComponentVector( Vec4 p_vComponentMasks, InputNode p_oInputNode, int p_iIndex )
+{
+   p_vComponentMasks.X = p_oInputNode.GetComponentValue( p_iIndex, 0 );
+   p_vComponentMasks.Y = p_oInputNode.GetComponentValue( p_iIndex, 1 );
+   p_vComponentMasks.Z = p_oInputNode.GetComponentValue( p_iIndex, 2 );
+   p_vComponentMasks.W = p_oInputNode.GetComponentValue( p_iIndex, 3 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetMemberSelectionForDataSourceBlock( InputNode p_oInputNode, int p_iDataSourceIndex, int p_iRequiredDimension, string p_sInputDomain )
+{
+   string a_sCode;
+   string a_sMemberSelection;
+   int a_iUserDimensions;
+   int p_iIndex = GetMemberSelectionIndex( p_iDataSourceIndex );
+
+   auto Vec4 a_vComponentMasks;
+   GetComponentVector( a_vComponentMasks, p_oInputNode, p_iIndex );
+
+   if( a_vComponentMasks.X > 0 )
+   {
+      a_sMemberSelection += GetMemberSelectionForDomain( p_sInputDomain, 0 );
+   }
+   if( a_vComponentMasks.Y > 0 )
+   {
+      a_sMemberSelection += GetMemberSelectionForDomain( p_sInputDomain, 1 );
+   }
+   if( a_vComponentMasks.Z > 0 )
+   {
+      a_sMemberSelection += GetMemberSelectionForDomain( p_sInputDomain, 2 );
+   }
+   if( a_vComponentMasks.W > 0 )
+   {
+      a_sMemberSelection += GetMemberSelectionForDomain( p_sInputDomain, 3 );
+   }
+   
+   if( a_sMemberSelection != "" )
+   {
+      a_sCode = "." + a_sMemberSelection;
+   }
+
+   return a_sCode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetInputNodeTargetNodeSetRecurse( Node p_oNode,
+                                                List p_oDestSet,
+                                                TypeInformation typeInfo,
+                                                int p_iBindingType,
+                                                int p_iInputIsCoercible ) {
+   if( p_oNode.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)p_oNode;
+      int a_iChildCount = a_oGroup.ChildCount;
+      for( int i = 0; i < a_iChildCount; ++i )
+      {
+         GetInputNodeTargetNodeSetRecurse(   a_oGroup.Children[i],
+                                             p_oDestSet,
+                                             typeInfo,
+                                             p_iBindingType,
+                                             p_iInputIsCoercible );
+      }
+   }
+
+   if( p_oNode.IsDerived( StringNode ) == 0 )
+   {
+      if( p_oNode.IsDerived( typeInfo ) )
+      {
+         if( p_oNode.IsDerived( VariableNode ) )
+         {
+            VariableNode a_oVariableNode = (VariableNode)p_oNode;
+
+            if( p_iBindingType == -1 )
+            {
+               p_oDestSet.AddRef( p_oNode );
+            }
+            else
+            if( a_oVariableNode.BindingType == p_iBindingType )
+            {
+               p_oDestSet.AddRef( p_oNode );
+            }
+         }
+
+         if( p_oNode.IsDerived( Group ) )
+         {
+            if( p_oNode.GetType().GetTypeName() == "Group" )
+            {
+               p_oDestSet.AddRef( p_oNode );
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetShaderBranch( ref Node a_oIsShaderBranch, List p_lNodes )
+{
+   for( int i = 0; i < p_lNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)p_lNodes.Get( i );
+
+      if( a_oNode.Class == "GenerateVertexShader" )
+      {
+         a_oIsShaderBranch = a_oNode;
+      }
+      else
+      if( a_oNode.Class == "GenerateControlShader" )
+      {
+         a_oIsShaderBranch = a_oNode;
+      }
+      else
+      if( a_oNode.Class == "GenerateEvaluationShader" )
+      {
+         a_oIsShaderBranch = a_oNode;
+      }
+      else
+      if( a_oNode.Class == "GenerateGeometryShader" )
+      {
+         a_oIsShaderBranch = a_oNode;
+      }
+      else
+      if( a_oNode.Class == "GenerateFragmentShader" )
+      {
+         a_oIsShaderBranch = a_oNode;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetInputNodeTargetNodeSet( InputNode p_oInputNode,
+                                         int p_iInputIndex,
+                                         List p_oDestSet ) {
+
+   // For now, find all child nodes of type VariableNode that are descendants
+   // of p_oNode's grandparent.
+   // Mike, you will have to enhance this to perform whatever filtering you need.
+   // p_iInputIndex is the index of the input that the popup menu is being built for.
+
+   auto Type a_oType;
+   auto TypeInformation typeInfo = a_oType.GetType().FindClassType(
+      p_oInputNode.GetInputType( p_iInputIndex ) );
+
+   if( p_oInputNode )
+   {
+      Node a_oParent;
+      Node a_oIsShaderBranch;
+
+      auto List a_lNodeParentsToRoot;
+      Graph.GetNodeParentsToRoot( p_oInputNode, a_lNodeParentsToRoot );
+      GetShaderBranch( a_oIsShaderBranch, a_lNodeParentsToRoot );
+
+      if( !a_oIsShaderBranch )
+      {
+         a_oParent = p_oInputNode.Parent();
+      }
+      else
+      {
+         a_oParent = a_oIsShaderBranch;
+      }
+
+      int a_iBindingType = p_oInputNode.GetInputBindingType( p_iInputIndex );
+      int a_iCoercible = p_oInputNode.GetCoerceInput( p_iInputIndex );
+
+      GetInputNodeTargetNodeSetRecurse( a_oParent, p_oDestSet, typeInfo, a_iBindingType, a_iCoercible );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateInputNodeInputPopupMenu( CommandBar p_oDestBar,
+                                               string p_sCallback,
+                                               InputNode p_oInputNode,
+                                               int p_iInputIndex )
+{
+   auto List a_lNodeList;
+
+   GetInputNodeTargetNodeSet( p_oInputNode,
+                              p_iInputIndex,
+                              a_lNodeList );
+
+   string a_sCommandGuid = "{176C1C2E-6C4D-4EC1-AABA-B461FBE39DFF}";
+   SpaMenuUtil.BuildMenuFromNodeList( p_oDestBar,
+                                      a_sCommandGuid,
+                                      Script,
+                                      p_sCallback,
+                                      a_lNodeList,
+                                      p_iInputIndex );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateInputNodeDataSourceMenus_OnShowPopupMenu( CommandBarEvent event )
+[HandleEvent="SPA.ShellUIEvents.ShowPopupMenu"]
+{
+   ////////////////////////////////////////////////////////////////////////////////
+   // Create Parameter Input Menus
+   ////////////////////////////////////////////////////////////////////////////////
+
+   int a_iInputCount = 1;
+   CommandItem inputNodeDataSourcesPopup = event.Bar.GetItemByText( 0, "InputNodeDataSources" );
+
+   if( inputNodeDataSourcesPopup )
+   {
+      InputNode a_oInputNode;
+
+      // Remove the initial placeholder.
+      int a_iPlaceHolderIndex = event.Bar.GetItemIndex( inputNodeDataSourcesPopup );
+      event.Bar.RemoveItem( a_iPlaceHolderIndex );
+
+      // Only support populating the menu if one InputNode is selected.
+      if( Model.GetSelectCount() == 1 )
+      {
+         Node a_oSelectedNode = (Node)Model.GetSelectedNode(0).GetNode();
+         if( a_oSelectedNode.IsDerived( InputNode ) )
+         {
+            a_oInputNode = (InputNode)a_oSelectedNode;
+         }
+      }
+
+      if( a_oInputNode )
+      {
+         // Insert a popup menu for each active input, giving each a predefined
+         // name so we can look for it in the code further below where we actually
+         // populate the individual popups.
+         int a_iActiveInputs = 0;
+         for( int i = 0; i < a_iInputCount; ++i )
+         {
+            if( a_oInputNode.GetInputEnabled(i) )
+            {
+               string a_sPopupName = a_oInputNode.GetInputName(i);
+               if( a_sPopupName == "" )
+               {
+                  a_sPopupName = "Input " + i;
+               }
+
+               // Insert an item for the popup then insert the placeholder item *on* the popup.
+               event.Bar.InsertPopup( a_iPlaceHolderIndex + a_iActiveInputs, a_sPopupName, -1 );
+               CommandItem a_oInputPopup = event.Bar.Items[ a_iPlaceHolderIndex + a_iActiveInputs ];
+               string a_sCommandGuid = "{176C1C2E-6C4D-4EC1-AABA-B461FBE39DFF}";
+               a_oInputPopup.PopupBar.InsertItem( 0, "InputNodeInputMenu" + i, a_sCommandGuid, -1, true, false );
+
+               ++a_iActiveInputs;
+               ++a_iPlaceHolderIndex;
+            }
+         }
+
+         string a_sEnumerateVariableInfo;
+         Group a_oParent = (Group)a_oInputNode.Parent();
+         int a_iCurrentDataSource = a_oParent.GetChildIndex( a_oInputNode );
+         Node a_oDataSource = a_oInputNode.SearchForDataSource();
+         string a_sVariableName;
+
+         if( a_oDataSource )
+         {
+            a_sEnumerateVariableInfo = "Data Source Is: <" + a_oDataSource.Name + ">";
+
+            if( a_oDataSource.IsDerived( VariableNode ) )
+            {
+               string a_sDomain = a_oInputNode.GetInputDomain( 0 );
+               string a_sMemberSelection;
+
+               if( a_oInputNode.GetParameterDimension() != a_oInputNode.GetVariableDimension() )
+               {
+                  a_sMemberSelection = GetMemberSelectionForDataSourceBlock( a_oInputNode, 0, a_oInputNode.GetParameterDimension(), a_sDomain );
+               }
+               VariableNode a_oVariableNode = (VariableNode)a_oDataSource;
+               a_sVariableName = "Parameter Resolves To: '" + a_oVariableNode.NamePrefix + a_oVariableNode.Variable + a_oVariableNode.NameSuffix + a_sMemberSelection + "'";
+            }
+         }
+         else
+         {
+            a_sEnumerateVariableInfo = "Current Value: " + a_oInputNode.GetComponentValue( 1, 0 );
+         }
+         
+         event.Bar.InsertItem( a_iPlaceHolderIndex, a_sEnumerateVariableInfo, "{176C1C2E-6C4D-4EC1-AABA-B461FBE39DFF}", 0, 1, 0 );
+         
+         if( a_oDataSource && a_oDataSource.IsDerived( VariableNode ) )
+         {
+            event.Bar.InsertItem( a_iPlaceHolderIndex, a_sVariableName, "{176C1C2E-6C4D-4EC1-AABA-B461FBE39DFF}", 0, 1, 0 );
+            ++a_iPlaceHolderIndex;
+         }
+
+         ++a_iPlaceHolderIndex;
+         event.Bar.InsertItem( a_iPlaceHolderIndex, "&Clear Data Source", "{8044E46F-87FF-407B-8171-6FC79B4A2067}", 0, 1, 0 );
+         ++a_iPlaceHolderIndex;
+      }
+      else
+      {
+         // Remove the separator.
+         event.Bar.RemoveItem( a_iPlaceHolderIndex - 1 );
+      }
+   }
+
+   // Now check if the menu being activated is an input popup and populate it if so.
+   if( event.Bar.Items.Length == 1 )
+   {
+      InputNode a_oInputNode;
+      CommandItem a_oItem = event.Bar.Items[0];
+      for( int i = 0; i < a_iInputCount; ++i )
+      {
+         if( a_oItem.Text == "InputNodeInputMenu" + i )
+         {
+            event.Bar.RemoveAllItems();
+
+            // Populate the menu with nodes appropriate for the given input.
+            if( Model.GetSelectCount() == 1 )
+            {
+               Node a_oSelectedNode = (Node)Model.GetSelectedNode(0).GetNode();
+               if( a_oSelectedNode.IsDerived( InputNode ) )
+               {
+                  a_oInputNode = (InputNode)a_oSelectedNode;
+               }
+            }
+
+            if( a_oInputNode )
+            {
+               GenerateInputNodeInputPopupMenu( event.Bar,
+                                                "SetInputNodeDataSourceCallback",
+                                                a_oInputNode,
+                                                i );
+            }
+            break;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetInputNodeDataSourceCallback( ApplicationEventSource sender, CommandExecutionEvent event, string PathToNode, int inputIndex )
+{
+   if( Model.GetSelectCount() == 1 )
+   {
+      Node a_oSelectedNode = (Node)Model.GetSelectedNode(0).GetNode();
+      if( a_oSelectedNode.IsDerived( InputNode ) )
+      {
+         InputNode a_oInputNode = (InputNode)Model.EditNode( a_oSelectedNode );
+
+         // Look up the node by the specified path and assign it to the specified input index.
+         Node a_oNewDataSource = Model.GetNodeByPath( PathToNode );
+         if( a_oNewDataSource )
+         {
+            int a_iDataSourceIndex = 0;
+            if( a_oNewDataSource.IsDerived( VariableNode ) )
+            {
+               
+            }
+            a_oInputNode.SetDataSource( a_iDataSourceIndex, a_oNewDataSource );
+            a_oInputNode.Name = a_oInputNode.GetInputName( 0 );
+         }
+      }
+   }
+}
+
+function void SetInputNodeDataSourceCallback_OnUpdate( ApplicationEventSource sender, CommandUpdateEvent event, string PathToNode, int inputIndex )
+{
+   ValidateNodeCommandContext.TestContext( event.Info, InputNode, "Change the input parameter to given node." );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro CreateInputNodeDataSourceMenus( CommandPresentationModuleInfo commandInfo )
+[Category="Expression Commands", Guid="{176C1C2E-6C4D-4EC1-AABA-B461FBE39DFF}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   // Stub to reserve the GUID and associate the image.
+}

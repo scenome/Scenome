@@ -1,0 +1,413 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file         :	APPLICATION_UTIL.SSL                      
+// $author       :	Scenomics                                
+// $privacy      :	PUBLIC                                   
+// $description  :	This script implements common application functions.
+// $legal        :   Reserved * r_rLegal                      
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+
+////////////////////////////////////////////////////////////////////////////
+
+library SpaApplicationUtil;
+import library "message_util.ssl";
+
+bool a_bDebug = false;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string SPA_GetApplicationFilePath( string appfolder, string appname )
+{
+   return Application.GetApplicationDocumentsFilePath( "Applications\\" + appfolder + "\\" + appname + ".scenomeapp" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int SPA_IsApplicationFileLoaded( string appfolder, string appname )
+{
+   string appFilePath = SPA_GetApplicationFilePath( appfolder, appname );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int IsProjectDesignerApplicationLoaded()
+{
+   string appFilePath = SPA_GetApplicationFilePath( "ProjectDesigner", "ProjectDesigner" );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int IsScenomeApplicationLoaded()
+{
+   string appFilePath = SPA_GetApplicationFilePath( "Scenome", "Scenome" );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int IsProductApplicationLoaded()
+{
+   string appFilePath = SPA_GetApplicationFilePath( "Product", "Product" );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int IsTerrainApplicationLoaded()
+{
+   string appFilePath = SPA_GetApplicationFilePath( "Terrain", "Terrain" );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int IsShaderApplicationLoaded()
+{
+   string appFilePath = SPA_GetApplicationFilePath( "Shader", "Shader" );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int IsUtilityApplicationLoaded()
+{
+   string appFilePath = SPA_GetApplicationFilePath( "Utility", "Utility" );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int IsShaderDesignerApplicationLoaded()
+{
+   string appFilePath = SPA_GetApplicationFilePath( "ShaderDesigner", "ShaderDesigner" );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int IsShaderDesignerV1ApplicationLoaded()
+{
+   string appFilePath = SPA_GetApplicationFilePath( "ShaderDesigner", "ShaderDesigner_v1" );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int IsShaderDesignerV2ApplicationLoaded()
+{
+   string appFilePath = SPA_GetApplicationFilePath( "ShaderDesigner", "ShaderDesigner_v2" );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int IsShaderDesignerV3ApplicationLoaded()
+{
+   string appFilePath = SPA_GetApplicationFilePath( "ShaderDesigner", "ShaderDesigner_v3" );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int SPA_MATERIALDESIGNER_IsApplicationFileLoaded()
+{
+   string appFilePath = SPA_GetApplicationFilePath( "MaterialDesigner", "MaterialDesigner" );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int SPA_SCENEDESIGNER_IsApplicationFileLoaded()
+{
+   string appFilePath = SPA_GetApplicationFilePath( "SceneDesigner", "SceneDesigner" );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int SPA_RENDERDESIGNER_IsApplicationFileLoaded()
+{
+   string appFilePath = SPA_GetApplicationFilePath( "RenderDesigner", "RenderDesigner" );
+   return Application.IsApplicationFileLoaded( appFilePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int SPA_LoadApplicationFile( string appfolder, string appname )
+{
+   string appFilePath = SPA_GetApplicationFilePath( appfolder, appname );
+
+   if( !Application.IsApplicationFileLoaded( appFilePath ) )
+   {
+      return Application.LoadApplicationFile( appFilePath, false );
+   }
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetLibraryPath()
+{
+   return Application.GetApplicationDocumentsPath() + "Library\\";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetTypeLibraryPath()
+{
+   return Application.GetApplicationDocumentsPath() + "Library\\Types.box";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetShaderLibraryPath()
+{
+   return Application.GetApplicationDocumentsPath() + "Library\\Shaders.box";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetMaterialLibraryPath()
+{
+   return Application.GetApplicationDocumentsPath() + "Library\\Materials.box";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetShapeLibraryPath()
+{
+   return Application.GetApplicationDocumentsPath() + "Library\\Shapes.box";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetSceneLibraryPath()
+{
+   return Application.GetApplicationDocumentsPath() + "Library\\Scenes.box";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetEffectLibraryPath()
+{
+   return Application.GetApplicationDocumentsPath() + "Library\\Effects.box";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetExpressionLibraryPath()
+{
+   return Application.GetApplicationDocumentsPath() + "Library\\Expressions.box";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool MaybeOverrideDefaultProjectPaths( Model3D p_oModel3D )
+{
+   // Open the overrides file.
+   auto FilePath a_oProjectFilePath = new FilePath( Model.Filename );
+   a_oProjectFilePath.RemoveFileName();
+   auto FilePath a_oOverrideFile = new FilePath( a_oProjectFilePath.GetPath() +
+      Model.Name + "_overrides.txt" );
+   a_oOverrideFile.Canonicalize();
+
+   // Try to open the overrides file.
+   // return if we don't find it.
+   auto TextFile a_oOverride = new TextFile;
+   if( a_oOverride.Open( a_oOverrideFile.GetPath(), true ) == false )
+   {
+      string a_sMessage = "Unable to open overrides file: " + a_oOverrideFile.GetPath() + "\n";
+      a_sMessage += "If there are errors in the 'BasePath' of any root <ConfigNode>, " +
+         "you must fix these errors manually and then save the file.\n";
+      a_sMessage += "The overrides file will be written again in a good state when you save the file.";
+      return false;
+   }
+
+   // Accumulate the override file paths into a StrList.
+   auto StrList a_slOverrideFilePaths;
+
+   while( !a_oOverride.IsEndOfFile() )
+   {
+      auto FilePath a_oOverridePath = new FilePath( a_oOverride.ReadLine() );
+      string a_sFilePath = a_oOverridePath.GetPath();
+      if( a_sFilePath != "" )
+      {
+         if( a_oOverridePath.FileExists() )
+         {
+            a_slOverrideFilePaths.Add( a_oOverridePath.GetPath() );
+         }
+         else
+         {
+            string a_sMessage = "Overrides file contains a bad path: " + a_oOverridePath.GetPath() + "\n";
+            a_sMessage += "If there are errors in the file, you must fix these errors manually and save the file.\n";
+            a_sMessage += "The overrides file will be written again in a good state when you save the file.";
+            Console.Error( a_sMessage );
+            a_oOverride.Close();
+            return false;
+         }
+      }
+      else
+      {
+         a_slOverrideFilePaths.Add( "" );
+      }
+   }
+
+   // Accumulate all the root level ConfigNodes into a List.
+   auto List a_lConfigNodeRoots;
+   p_oModel3D.PopulateList( a_lConfigNodeRoots, ConfigNode );
+
+   if( a_lConfigNodeRoots.GetCount() != a_slOverrideFilePaths.GetCount() )
+   {
+      string a_sMessage = "Override file appears to be corrupted: " +
+         a_oOverrideFile.GetPath() + "\n";
+      a_sMessage += "The number of overrides does not match the number " +
+         "of ConfigNode children directly below the root of the document.\n";
+      a_sMessage += "This document has " + a_lConfigNodeRoots.GetCount() +
+         " nodes of type <ConfigNode> below the root.\n";
+      a_sMessage += "The override document specifies " + a_slOverrideFilePaths.GetCount() +
+         " overrides.";
+      Console.Error( a_sMessage );
+      a_oOverride.Close();
+      return false;
+   }
+
+   for( int i = 0; i < a_lConfigNodeRoots.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)a_lConfigNodeRoots.Get( i );
+
+      // Get the ConfigNode absolute path.
+      ConfigNode a_oConfigNode = (ConfigNode)a_oNode;
+      auto FilePath a_oConfigFilePath = new FilePath( a_oConfigNode.GetAbsolutePath() );
+      auto FilePath a_oOverridePath = new FilePath( a_slOverrideFilePaths.Get( i ) );
+
+      if( a_oOverridePath.GetPath() == "" )
+      {
+         continue;
+      }
+
+      if( a_oConfigFilePath.FileExists() == false )
+      {
+         string a_sMessage = "ConfigNode path does not exist: " + a_oConfigNode.GetPathToNode() + "\n";
+         a_sMessage += "File path does not exist: " + a_oConfigNode.BasePath + "\n";
+            a_sMessage += "Overriding bad file path with: " + a_oOverridePath.GetPath();
+         Console.Info( a_sMessage );
+         a_oConfigNode.BasePath = a_slOverrideFilePaths.Get( i );
+         Console.Out( "Restored override: " + a_slOverrideFilePaths.Get( i ) );
+         a_oOverride.Close();
+      }
+   }
+
+   a_oOverride.Close();
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool WriteOverridePaths( Model3D p_oModel3D )
+{
+   TextFile a_oOverrides = new TextFile;
+   auto FilePath a_oModelPath = new FilePath( p_oModel3D.Filename );
+   a_oModelPath.RemoveFileName();
+   a_oModelPath.SetPath( a_oModelPath.GetPath() + p_oModel3D.Name + "_overrides.txt" );
+   a_oModelPath.Canonicalize();
+
+   // Write all paths to disk, even if they're bad. We'll catch
+   // errors when the file is opened again, and we want to
+   // try and make sure that the number of override entries
+   // exactly matches the number of root ConfigNodes.
+   if( a_oOverrides.Open( a_oModelPath.GetPath(), false ) )
+   {
+      for( int i = 0; i < p_oModel3D.ChildCount; ++i )
+      {
+         Node a_oNode = (Node)p_oModel3D.Children[i];
+         if( a_oNode && a_oNode.IsDerived( ConfigNode ) )
+         {
+            ConfigNode a_oConfigNode = (ConfigNode)a_oNode;
+            auto FilePath a_oConfigFilePath = new FilePath( a_oConfigNode.GetAbsolutePath() );
+            a_oOverrides.Write( a_oConfigFilePath.GetPath() + "\n" );
+
+            // DEBUG
+            //Console.Message( a_oConfigNode.GetAbsolutePath() );
+            // DEBUG
+            //Console.Out( "Wrote override: " + a_oConfigFilePath.GetPath() );
+         }
+      }
+   }
+
+   a_oOverrides.Close();
+   delete a_oOverrides;
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetShellForClass( string p_sDatabaseClass )
+{
+   auto FilePath a_oAppFolder = new FilePath( Application.GetInterfaceDefinitionFile() );
+   a_oAppFolder.RemoveFileName();
+   a_oAppFolder.Canonicalize();
+   string a_sFilename = a_oAppFolder.GetPath() + p_sDatabaseClass + ".xml";
+   if( !( Application.SetInterfaceDefinitionFile( a_sFilename ) ) )
+   {
+      string a_sMessage = "Failed to load interface definition: " + a_sFilename;
+      Console.Error( a_sMessage );
+   }
+}
+

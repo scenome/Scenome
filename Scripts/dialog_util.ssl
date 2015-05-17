@@ -1,0 +1,179 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file         :   DIALOG_UTIL.SSL
+// $author       :   Scenomics
+// $privacy      :   PUBLIC
+// $description  :   This script implements basic dialog features.
+// $legal        :   Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////
+
+import library "application_util.ssl";
+import library "message_util.ssl";
+import library "graph_util.ssl";
+
+library Dialog;
+
+////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////
+
+function void TestSelectNodeDialog()
+{
+   auto SelectNodeDialog a_oDlg;
+   auto List a_oSrcNodes;
+   auto List a_oDstNodes;
+   auto List a_oInitSelNodes;
+   int i = 0;
+ 
+   // Populate the source node set from the UI selection.
+   // Also populate the initial selection list based on every-other-node in the UI selection.
+   for( i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oNode = Model.GetSelectedNode( i ).GetNode();
+ 
+      a_oSrcNodes.AddRef( a_oNode );
+ 
+      // Select every other node for fun.
+      if( Math.ModI( i, 2 ) == 0 )
+      {
+         a_oInitSelNodes.AddRef( a_oNode );
+      }
+   }
+ 
+   // Set the source node list and dest node list.  The dest node list will be populated
+   // with the nodes selected by the user, once they click OK.
+   a_oDlg.SourceSet = a_oSrcNodes;
+   a_oDlg.DestSet = a_oDstNodes;
+ 
+   // Set a_oDlg.SelRequired to true if a selection is required in order for the user
+   // to close the dialog box with the OK button.
+   // Set SelRequired it to false if an empty selection is OK.
+   a_oDlg.SelRequired = false;
+   // Set a_oDlg.SelAllowMultiple to true if the calling code expects or allows multiple
+   // nodes to be selected.
+   // Set SelAllowMultiple to false if the calling code only expects (or wants) one node
+   // to be selected.
+   a_oDlg.SelAllowMultiple = true;
+ 
+   // To specify a blank initial selection, don't set a_oDlg.InitialSelection,
+   // or set it to a list that is empty.
+   // To specify the whole source list as the initial selection, set a_oDlg.InitialSelection
+   // to a_oSrcNodes.
+   // To specify a subset of the source list as the initial selection, create a list and
+   // set a_oDlg.InitialSelection to it, as is done here.
+   a_oDlg.InitialSelection = a_oInitSelNodes;
+ 
+   // Show the dialog box, and if the user clicks OK, we print out the names of the nodes
+   // that were selected.  You'll obviously want some other behavior inside the if block.
+   if( a_oDlg.Show( "Select Data Source Nodes",
+                    "Select one or more nodes for the FancyNode data source:" ) )
+   {
+      Log.DebugString( "SelectNodeDialog returned:\n" );
+      for( i = 0; i < a_oDstNodes.GetCount(); ++i )
+      {
+         Node a_oNode = (Node)a_oDstNodes.Get( i );
+         Log.DebugString( "   " + a_oNode.Name + "\n" );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetTypeInfo( TypeInformation p_oTypeInfo, TypeInformation p_oType )
+{
+   p_oTypeInfo = p_oType;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SelectDataCaptureDataSource( Model3D p_oModel, DataCapture p_oNewDataCapture )
+{
+   // Determine the data capture target type.
+   // Ex: MaterialDataCaptureAmbientColor requires a material node.
+   // Ex: LightDataCapture requires a light node.
+   TypeInformation a_oTypeInfo;
+   a_oTypeInfo = p_oNewDataCapture.GetCaptureTargetType();
+
+   // Ex: ViewDataCaptureModelViewMatrix does not require any node data source.
+   // So just return.
+   if( !a_oTypeInfo )
+   {
+      return;
+   }
+
+   // Instantiate a dialog object and declare
+   // storage objects used by the dialog.
+   auto SelectNodeDialog a_oDataCaptureSelectDialog;
+   auto List a_oSrcNodes;
+   auto List a_oDstNodes;
+
+   // Get all the nodes that match a_oTypeInfo from the document.
+   // Ex: get all the lights, all the materials, etc.
+   Graph.GetNodesFromDatabase( Model, a_oSrcNodes, a_oTypeInfo );
+
+   // Return if we can't find any data sources.
+   // The user can change this later.
+   if( !( a_oSrcNodes.GetCount() ) )
+   {
+      return;
+   }
+
+   // Configure the select nodes dialog object.
+   // Force the user to select a single node
+   // that we can set as the capture object data source.
+   a_oDataCaptureSelectDialog.SourceSet = a_oSrcNodes;
+   a_oDataCaptureSelectDialog.DestSet = a_oDstNodes;
+   a_oDataCaptureSelectDialog.SelRequired = true;
+   a_oDataCaptureSelectDialog.SelAllowMultiple = false;
+
+   // Set a concise title and info tip for the dialog.
+   string a_sDialogTitle = "Select Data Capture Target";
+   string a_sInfoTip = "Select the node from which you wish to capture data:";
+
+   // Display the dialog and get the selected node from the source nodes.
+   // Set the selected node as the capture object's data capture target.
+   // Ex: The user selects a light from which they wish to capture data.
+   if( a_oDataCaptureSelectDialog.Show( a_sDialogTitle, a_sInfoTip ) )
+   {
+      Node a_oNode = (Node)a_oSrcNodes.GetFirst();
+      if( a_oNode && a_oNode.IsDerived( a_oTypeInfo ) )
+      {
+         p_oNewDataCapture.NodeSelector.AddNode( p_oModel, a_oNode );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SelectFunctionDataSource( List p_lSourceNodes, List p_lDestinationNodes )
+{
+   // Instantiate a dialog object and declare
+   // storage objects used by the dialog.
+   auto SelectNodeDialog a_oSelectFunctionDialog;
+
+   // Configure the select nodes dialog object.
+   // Force the user to select a single node
+   // that we can set as the capture object data source.
+   a_oSelectFunctionDialog.SourceSet = p_lSourceNodes;
+   a_oSelectFunctionDialog.DestSet = p_lDestinationNodes;
+   a_oSelectFunctionDialog.SelRequired = false;
+   a_oSelectFunctionDialog.SelAllowMultiple = false;
+
+   // Set a concise title and info tip for the dialog.
+   string a_sDialogTitle = "Select Function";
+   string a_sInfoTip = "Select the function you wish to call:";
+
+   // Display the dialog and get the selected node from the source nodes.
+   // Set the selected node as the function we're going to call.
+   if( a_oSelectFunctionDialog.Show( a_sDialogTitle, a_sInfoTip ) )
+   {
+      Node a_oNode = (Node)p_lSourceNodes.GetFirst();
+   }
+}

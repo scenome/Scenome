@@ -1,0 +1,1920 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// $file             BUILD_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $description      This script implements project build commands.
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+import library "build_util.ssl";
+import library "create_type_tree_util.ssl";
+import library "expression_util.ssl";
+import library "file_util.ssl";
+import library "graph_util.ssl";
+import library "html_util.ssl";
+import library "int_array_util.ssl";
+import library "opengl_util.ssl";
+import library "list_util.ssl";
+import library "message_util.ssl";
+import library "select_util.ssl";
+import library "statistics_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetProjectRoot( Node p_oSelNode, ref Node p_oProjectRoot )
+{
+   if(   p_oSelNode && p_oSelNode.IsDerived( LibraryConfigNode )     ||
+         p_oSelNode && p_oSelNode.IsDerived( ApplicationConfigNode ) ||
+         p_oSelNode && p_oSelNode.IsDerived( HelpConfigNode )        ||
+         p_oSelNode && p_oSelNode.IsDerived( InstallerConfigNode ) )
+   {
+      p_oProjectRoot = (Node)p_oSelNode;
+   }
+   else
+   if( p_oSelNode )
+   {
+      GetProjectRoot( p_oSelNode.Parent(), p_oProjectRoot );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetRoot( Node p_oSelNode, ref Node p_oIsRoot,
+   TypeInfoArray p_oTypeInfoArray )
+{
+   for( int type = 0; type < p_oTypeInfoArray.Count; ++ type )
+   {
+      if( p_oIsRoot && p_oIsRoot.IsDerived( p_oTypeInfoArray.Objects[ type ] ) )
+      {
+         p_oIsRoot = (Node)p_oSelNode;
+      }
+      else
+      if( p_oSelNode )
+      {
+         GetRoot( p_oSelNode.Parent(), p_oIsRoot, p_oTypeInfoArray );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetProjectRootFromSelection( List p_lProjectRootNodes, Node p_oProjectRoot )
+{
+   for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+   {
+      Node a_oNode = (Node)Model.GetSelectedNode( sel ).GetNode();
+
+      if( !p_oProjectRoot )
+      {
+         GetProjectRoot( a_oNode, p_oProjectRoot );
+         if( !p_lProjectRootNodes.In( p_oProjectRoot ) )
+         {
+            if( p_oProjectRoot )
+            {
+               p_lProjectRootNodes.AddRef( p_oProjectRoot );
+            }
+            p_oProjectRoot = null;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool EnterFtpText( string p_sTitle, string p_sInstructions, string p_sCommand, StrList p_slFtpDirectives )
+{
+   auto Str a_strFtpDirective = new Str( p_sTitle );
+   auto EnterTextDialog ftpDirectives;
+
+   if( ftpDirectives.Show( p_sTitle, p_sInstructions, true, a_strFtpDirective ) )
+   {
+      if( a_strFtpDirective.Value == "" || a_strFtpDirective.Value == p_sTitle )
+      {
+         string a_sMessage = "Bad value: " + p_sTitle;
+         Console.Error( a_sMessage );
+         return false;
+      }
+      else
+      {
+         if( p_sCommand != "" )
+         {
+            p_sCommand += " ";
+         }
+
+         p_slFtpDirectives.Add( p_sCommand + a_strFtpDirective.Value );
+         return true;
+      }
+   }
+   else
+   {
+      return false;
+   }
+
+   return false;
+}
+
+function bool GetServerCredentials( StrList p_slFtpDirectives )
+{
+   if( EnterFtpText( "FTP Server Address", "Type FTP server address here:", "open", p_slFtpDirectives ) == false )
+   {
+      return false;
+   }
+
+   if( EnterFtpText( "FTP Username", "Type FTP username here:", "", p_slFtpDirectives ) == false )
+   {
+      return false;
+   }
+
+   if( EnterFtpText( "FTP Password", "Type FTP password here:", "", p_slFtpDirectives ) == false )
+   {
+      return false;
+   }
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationUploadInstaller_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, InstallerConfigNode,
+      "Creates and executes an FTP script that uploads an installer executable to an FTP server" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro ApplicationUploadInstaller( CommandPresentationModuleInfo commandInfo )
+[Category="Application Commands", Guid="{4F5CB621-FA54-4D30-BE08-91E0594F9DBA}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode( sel ).GetNode();
+      if( a_oSelNode && a_oSelNode.IsDerived( InstallerConfigNode ) )
+      {
+         InstallerConfigNode a_oInstallerConfigNode = (InstallerConfigNode)a_oSelNode;
+
+         if( SpaFileUtil.DisplaySecurityWarning() == false )
+         {
+            return;
+         }
+
+         auto StrList a_slFtpDirectives;
+         // Request the user's FTP credentials. Server, username, and password.
+         if( GetServerCredentials( a_slFtpDirectives ) == false )
+         {
+            return;
+         }
+
+         // Create FTP script items to set server directory, local directory, binary xfer, and hash marks.
+         string a_sInstallerDir = a_oInstallerConfigNode.GetAbsolutePath() + "\\Installer";
+         string a_sUploadFile;
+         string a_sServerDir = a_oInstallerConfigNode.ServerDestinationPath;
+         a_slFtpDirectives.Add( "cd " + a_sServerDir );
+         a_slFtpDirectives.Add( "lcd " + a_sInstallerDir );
+         a_slFtpDirectives.Add( "bin" );
+         a_slFtpDirectives.Add( "hash" );
+
+         // Get the SectionConfigNodes from the InstallerConfigNodes.
+         // We need to gather information about the installer executable filename.
+         bool a_bFoundSetup;
+         auto List a_lSectionConfigNodes;
+         Graph.GetNodesFromDatabase( a_oInstallerConfigNode,
+            a_lSectionConfigNodes, SectionConfigNode );
+         for( int node = 0; node < a_lSectionConfigNodes.GetCount(); ++node )
+         {
+            SectionConfigNode a_oSectionConfigNode =
+               (SectionConfigNode)a_lSectionConfigNodes.Get( node );
+            if( a_oSectionConfigNode && a_oSectionConfigNode.Section == 13 ) // Setup
+            {
+               for( int setup = 0; setup < a_oSectionConfigNode.ChildCount; ++setup )
+               {
+                  Node a_oSectionChild = (Node)a_oSectionConfigNode.Children[ setup ];
+                  if( a_oSectionChild && a_oSectionChild.IsDerived( InstallerDirectiveNode ) )
+                  {
+                     InstallerDirectiveNode a_oInstallerDirectiveNode = (InstallerDirectiveNode)a_oSectionChild;
+                     if( a_oInstallerDirectiveNode.Setup.Directive == "OutputBaseFilename" )
+                     {
+                        if( a_oInstallerDirectiveNode.Setup.DirectiveValue != "" )
+                        {
+                           // DEBUG
+                           //a_sUploadFile += "test.txt";
+                           a_sUploadFile += a_oInstallerDirectiveNode.Setup.DirectiveValue + ".exe";
+                           auto File a_oFile;
+                           string a_sAbsUploadPath = a_sInstallerDir + "\\" + a_sUploadFile;
+                           if( a_oFile.FileExists( a_sAbsUploadPath ) == false )
+                           {
+                              string a_sMessage = "The file you are trying to upload does not exist: " + a_sAbsUploadPath;
+                              Console.Error( a_sMessage );
+                              return;
+                           }
+                           
+                           // Write the directive that puts the file onto the server.
+                           a_slFtpDirectives.Add( "put " + a_sUploadFile );
+                           // Close FTP after transfer completes.
+                           a_slFtpDirectives.Add( "bye" );
+                           a_bFoundSetup = true;
+                        }
+                     }
+                  }
+               }
+            }
+         }
+
+         // If we didn't find the setup info, return with error.
+         if( a_bFoundSetup == false )
+         {
+            string a_sMessage = "Unable to find a <SectionConfigNode> with the 'Section' parameter '[Setup]'.\n" +
+               "Unable to write FTP script.";
+            Console.Error( a_sMessage );
+            return;
+         }
+
+         // Begin performance profiling here.
+         int a_iStartTickCount = Math.FAbs( Time.GetTickCount() );
+         SpaFileUtil.Upload( a_slFtpDirectives, a_sInstallerDir, "installer" );
+
+         // Display profile info.
+         int a_iEndTickCount = Math.FAbs( Time.GetTickCount() );
+         int a_iSeconds = Math.FAbs( ( a_iStartTickCount - a_iEndTickCount ) / 1000.0 );
+         int a_iMinutes = a_iSeconds / 60;
+         string a_sMessage = "<Uploaded Completed>\n";
+         if( a_iSeconds < 60 )
+         {
+            a_sMessage += "Uploaded 1 file(s) in " + a_iSeconds + " seconds.";
+         }
+         else
+         {
+            a_sMessage += "Uploaded 1 file(s) in " + a_iMinutes + " minutes.";
+         }
+
+         Console.Out( a_sMessage );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void UnwindServerPathIntoDirectives( StrList p_slCreateServerPaths,
+   StrList p_slFtpDirectives, Str p_oCwdDirective )
+{
+   // Convert:
+   // Webroot/Help/Introduction
+
+   // To:
+   // Webroot
+   // Webroot/Help
+   // Webroot/Help/Introduction
+
+   // Copy into a temp object and trim off the leading / ( if present ).
+   auto Str a_oUnwindDirective = new Str( p_oCwdDirective );
+   int a_iFirstChar = a_oUnwindDirective.Objects[ 0 ];
+   if( a_iFirstChar == 47 )
+   {
+      a_oUnwindDirective.Value = a_oUnwindDirective.Right( 1 );
+   }
+
+   // The total directory count is the number of forward slashes.
+   int a_iDirectoryCount;
+   auto IntArray a_aiSeparatorIndices;
+   for( int discrete = 0; discrete < a_oUnwindDirective.Length(); ++discrete )
+   {
+      int a_iChar = a_oUnwindDirective.Objects[ discrete ];
+      if( a_iChar == 47 )
+      {
+         a_aiSeparatorIndices.Add( discrete );
+         ++a_iDirectoryCount;
+      }
+   }
+
+   auto StrList a_slDirectoryList;
+   for( int directory = 0; directory < a_iDirectoryCount; ++directory )
+   {
+      string a_sCreateServerPath =
+         a_oUnwindDirective.Left( a_aiSeparatorIndices.Objects[ directory ] );
+      if( p_slCreateServerPaths.Find( a_sCreateServerPath ) == -1 )
+      {
+         p_slCreateServerPaths.Add( a_sCreateServerPath );
+         a_slDirectoryList.Add( a_sCreateServerPath );
+      }
+   }
+
+   if( p_slCreateServerPaths.Find( a_oUnwindDirective.Value ) == -1 )
+   {
+      p_slCreateServerPaths.Add( a_oUnwindDirective.Value );
+      a_slDirectoryList.Add( a_oUnwindDirective.Value );
+   }
+   
+   // Iterate the directory list and generate FTP directives.
+   // Make sure we add the "/" that we trimmed earlier.
+   for( int directive = 0; directive < a_slDirectoryList.GetCount(); ++directive )
+   {
+      p_slFtpDirectives.Add( "mkdir \"" + "/" + a_slDirectoryList.Get( directive ) + "\"" );
+   }
+   
+   //SpaStrListUtil.Out( a_slDirectoryList );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ApplicationUploadDocumentation_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   Node a_oProjectRoot;
+   auto List a_lProjectRootNodes;
+
+   // Iterate the selection and accumulate nodes into a list.
+   GetProjectRootFromSelection( a_lProjectRootNodes, a_oProjectRoot );
+
+   if( a_lProjectRootNodes.GetCount() > 1 )
+   {
+      string a_sHint = "You can only upload files and folders for a single project at a time";
+      commandInfo.Status.SetHint( a_sHint );
+      commandInfo.SetEnabled( false );
+      return;
+   }
+
+   // Check if the single item in the list is a HelpConfigNode.
+   a_oProjectRoot = (Node)a_lProjectRootNodes.Get( 0 );
+
+   if( a_oProjectRoot && a_oProjectRoot.IsDerived( HelpConfigNode ) )
+   {
+      string a_sHint = "Creates and executes an FTP script that uploads the documentation to an FTP server";
+      commandInfo.Status.SetHint( a_sHint );
+      commandInfo.SetEnabled( true );
+   }
+   else
+   {
+      string a_sHint = "You can only upload files and folders when the project root is of type HelpConfigNode";
+      commandInfo.Status.SetHint( a_sHint );
+      commandInfo.SetEnabled( false );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro ApplicationUploadDocumentation( CommandPresentationModuleInfo commandInfo )
+[Category="Application Commands", Guid="{CB6FC119-DED9-4CA3-AEFB-966CD5D67419}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   if( SpaFileUtil.DisplaySecurityWarning() == false )
+   {
+      return;
+   }
+
+   // Begin performance profiling here.
+   int a_iStartTickCount = Math.FAbs( Time.GetTickCount() );
+
+   HelpConfigNode a_oHelpConfigNode;
+   Node a_oProjectRoot;
+   bool a_bRootSelected;
+   bool a_bError;
+   auto List a_lFolderConfigNodes;
+   auto List a_lFileConfigNodes;
+   auto StrList a_slFilePaths;
+   auto StrList a_slLocalFolderPaths;
+   int a_iFileCount;
+
+   // Accumulate the selection into a list.
+   auto List a_lSelectedNodes;
+   for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+   {
+      a_lSelectedNodes.AddRef( (Node)Model.GetSelectedNode( sel ).GetNode() );
+   }
+
+   // Iterate the selection and check if any HelpConfigNode is selected.
+   // In this case, we're going to upload everything regardless of what else is selected.
+   for( int all = 0; all < a_lSelectedNodes.GetCount(); ++all )
+   {
+      Node a_oNode = (Node)a_lSelectedNodes.Get( all );
+      if( a_oNode && a_oNode.IsDerived( HelpConfigNode ) )
+      {
+         a_oHelpConfigNode = (HelpConfigNode)a_oNode;
+      }
+   }
+
+   if( a_oHelpConfigNode )
+   {
+      a_lFolderConfigNodes.Clear();
+      Graph.GetFoldersFromProject( a_oHelpConfigNode, a_lFolderConfigNodes );
+
+      // Try to get the backend data and add it first so that it gets uploaded first.
+      if( a_oHelpConfigNode.ParameterGroup )
+      {
+         Node a_oIsConfigNode = (Node)a_oHelpConfigNode.ParameterGroup;
+         if( a_oIsConfigNode && a_oIsConfigNode.IsDerived( ConfigNode ) )
+         {
+            ConfigNode a_oConfigNode = (ConfigNode)a_oIsConfigNode;
+            Node a_oBackendRoot;
+            //GetProjectRoot( a_oConfigNode, a_oBackendRoot );
+            //Console.Out( "->" + a_oConfigNode.Name );
+            //Graph.GetFoldersFromProject( a_oBackendRoot, a_lFolderConfigNodes );
+            //SpaListUtil.Out( a_lFolderConfigNodes );
+         }
+      }
+   }
+   else
+   {
+      for( int sub = 0; sub < a_lSelectedNodes.GetCount(); ++sub )
+      {
+         Node a_oNode = (Node)a_lSelectedNodes.Get( sub );
+         GetProjectRoot( a_oNode, a_oProjectRoot );
+         if( a_oNode && a_oNode.IsDerived( FolderConfigNode ) )
+         {
+            FolderConfigNode a_oFolderConfigNode = (FolderConfigNode)a_oNode;
+            Graph.GetFoldersFromProject( a_oFolderConfigNode, a_lFolderConfigNodes );
+         }
+         else
+         if( a_oNode && a_oNode.IsDerived( FileConfigNode ) )
+         {
+            FileConfigNode a_oFileConfigNode = (FileConfigNode)a_oNode;
+            SpaBuildUtil.ExtractPathAndFilename( a_oFileConfigNode, a_lFileConfigNodes,
+               a_slFilePaths, a_slLocalFolderPaths );
+            ++a_iFileCount;
+         }
+      }
+
+      if( a_oProjectRoot && a_oProjectRoot.IsDerived( HelpConfigNode ) )
+      {
+         a_oHelpConfigNode = (HelpConfigNode)a_oProjectRoot;
+      }
+      else
+      {
+         string a_sMessage = "Unable to find a project root of type HelpConfigNode.";
+         Console.Error( a_sMessage );
+         return;
+      }
+   }
+
+   auto FilePath a_oDocumentationRootPath = new FilePath( a_oHelpConfigNode.GetAbsolutePath() );
+   a_oDocumentationRootPath.Canonicalize();
+   auto Str a_oDocumentationRoot = new Str( a_oDocumentationRootPath.GetPath() );
+
+   auto FilePath a_oServerRootPath = new FilePath( a_oHelpConfigNode.ServerRoot );
+   a_oServerRootPath.ResolveToModel( Model );
+   a_oServerRootPath.Canonicalize();
+   auto Str a_oServerRoot = new Str( a_oServerRootPath.GetPath() );
+
+   auto FilePath a_oRemoteServerRootPath = new FilePath( a_oHelpConfigNode.RemoteServerRoot );
+   a_oRemoteServerRootPath.Canonicalize();
+
+   string a_sFrontLeadingSlash;
+   if( a_oRemoteServerRootPath.GetPath() )
+   {
+      a_sFrontLeadingSlash = "/";
+   }
+
+   auto Str a_oRemoteServerRoot = new Str( a_sFrontLeadingSlash + a_oRemoteServerRootPath.GetPath() );
+   a_oRemoteServerRoot.Value = a_oRemoteServerRoot.Replace( "\\", "/" );
+
+   // Iterate each FolderConfigNode and create the upload script.
+   for( int folder = 0; folder < a_lFolderConfigNodes.GetCount(); ++folder )
+   {
+      FolderConfigNode a_oFolderConfigNode = (FolderConfigNode)a_lFolderConfigNodes.Get( folder );
+      if( a_oFolderConfigNode.ChildCount )
+      {
+         for( int children = 0; children < a_oFolderConfigNode.ChildCount; ++children )
+         {
+            Node a_oNode =(Node)a_oFolderConfigNode.Children[ children ];
+            if( a_oNode && a_oNode.IsDerived( FileConfigNode ) )
+            {
+               FileConfigNode a_oFileConfigNode = (FileConfigNode)a_oNode;
+               SpaBuildUtil.ExtractPathAndFilename( a_oFileConfigNode, a_lFileConfigNodes,
+                  a_slFilePaths, a_slLocalFolderPaths );
+               ++a_iFileCount;
+            }
+         }
+      }
+   }
+
+   if( a_slFilePaths.GetCount() == 0 || a_slLocalFolderPaths.GetCount() == 0 )
+   {
+      string a_sMessage = "No files have been found. Nothing to upload.";
+      Console.Error( a_sMessage );
+      return;
+   }
+
+   // Create a StrList to store all the paths we need to create on the server.
+   auto StrList a_slCreateServerPaths;
+   // Request the user's FTP credentials. Server, username, and password.
+   auto StrList a_slFtpDirectives;
+
+   if( GetServerCredentials( a_slFtpDirectives ) == false )
+   {
+      return;
+   }
+
+   a_slFtpDirectives.Add( "hash" );
+
+   // Validate HTML and accumulate resources from href="", src="", and rel="".
+   auto StrList a_slContentPaths;
+   auto StrList a_slHumanReadableContent;
+   auto StrList a_slErrorMessages;
+
+   // Iterate a_slFilePaths and validate each document.
+   for( int a_nFile = 0; a_nFile < a_slFilePaths.GetCount(); ++a_nFile )
+   {
+      FilePath a_oDocumentFilePath = new FilePath( a_slFilePaths.GetAt( a_nFile ) );
+      if( !( SpaValidationUtil.ValidateXmlDocument( a_oDocumentFilePath ) ) )
+      {
+         return;
+      }
+   }
+
+   // Iterate a_slFilePaths and collect resources such as related documents and images.
+   for( int a_nContent = 0; a_nContent < a_slFilePaths.GetCount(); ++a_nContent )
+   {
+      FilePath a_oDocumentFilePath = new FilePath( a_slFilePaths.GetAt( a_nContent ) );
+      SpaHtmlUtil.GetRelatedContentFromXmlDocument( a_oDocumentFilePath, a_slContentPaths );
+   }
+
+   //SpaStrListUtil.Out( a_slFilePaths );
+   //SpaStrListUtil.Out( a_slContentPaths );
+
+   for( int add = 0; add < a_slContentPaths.GetCount(); ++add )
+   {
+      auto FilePath a_oContentPath = new FilePath( a_oServerRoot.Value + a_slContentPaths.GetAt( add ) );
+      a_oContentPath.Canonicalize();
+      auto Str a_oHomogenizeFilePathNotation = new Str( a_oContentPath.GetPath() );
+      a_oContentPath.SetPath( a_oHomogenizeFilePathNotation.Replace( "/", "\\" ) );
+         
+      // Only add unique paths and filenames.
+      if( a_slFilePaths.Find( a_oContentPath.GetPath() ) == -1 )
+      {
+         a_slFilePaths.Add( a_oContentPath.GetPath() );
+         ++a_iFileCount;
+      }
+      a_oContentPath.RemoveFileName();
+      if( a_slLocalFolderPaths.Find( a_oContentPath.GetPath() ) == -1 )
+      {
+         a_slLocalFolderPaths.Add( a_oContentPath.GetPath() );
+      }
+   }
+
+   // DEBUG
+   //SpaStrListUtil.Out( a_slFilePaths );
+
+   // Add the index tree file to the list of files. We don't need
+   // to validate this file because we make it ourselves and
+   // and there is separate QA for the index ( including security ).
+   // We're doing this file last so that new documentation isn't accessible
+   // until everything else has been uploaded.
+   auto FilePath a_oIndexPath = new FilePath( a_oHelpConfigNode.HelpIndexFile );
+   a_oIndexPath.ResolveToPath( a_oServerRootPath.GetPath() );
+   if( a_oIndexPath.FileExists() )
+   {
+      auto FileConfigNode a_oHelpIndexConfigNode;
+      a_oHelpIndexConfigNode.BasePath = a_oIndexPath.GetPath();
+      SpaBuildUtil.ExtractPathAndFilename( a_oHelpIndexConfigNode, a_lFileConfigNodes,
+         a_slFilePaths, a_slLocalFolderPaths );
+      ++a_iFileCount;
+   }
+   else
+   {
+      string a_sMessage = "Unable to find help index file at: " + a_oIndexPath.GetPath();
+      Console.Error( a_sMessage );
+   }
+
+   // Bucket the actual files by testing if file path matches the local folder path.
+   // This might seem wasteful, but we don't actually know how the user has structured
+   // their online help, and the graph structure of the help might have different files
+   // that reference the same target folder in various locations. This expensive sort
+   // helps us create a fixed number of upload buckets regardless of help structure.
+   // This means we can reduce the amount of directives and corresponding server load.
+   for( int path = 0; path < a_slLocalFolderPaths.GetCount(); ++path )
+   {
+      auto Str a_oLocalFolder = new Str( a_slLocalFolderPaths.Get( path ) );
+            
+      // Trim off any trailing \. EX: The local folder path is probably in the form C:\SomePath\AnotherPath\
+      // Most FTP servers do not accept a path with a final, trailing \ as valid.
+      int a_iFinalChar = a_oLocalFolder.Objects[ a_oLocalFolder.Length() - 1 ];
+      auto Str a_oTrimmedLocalPath;
+      if( a_iFinalChar == 92 )
+      {
+         a_oTrimmedLocalPath = new Str( a_oLocalFolder.Left( a_oLocalFolder.Length() - 1 ) );
+      }
+      //Console.Message( a_oTrimmedLocalPath.Value );
+      // Create a directive that sets the local directory to the local folder value.
+      a_slFtpDirectives.Add( "lcd \"" + a_oTrimmedLocalPath.Value + "\"" );
+
+      // Now create the directive that sets the target directory of the web server.
+      // To do this, we're going to trim off the local server root from the path
+      // and prepend the new path with the remote server root ( if any ).
+      auto Str a_oCwdDirective = new Str( a_slLocalFolderPaths.Get( path ) );
+      int a_iLength = a_oServerRoot.Length();
+      if( a_oCwdDirective.Left( a_iLength ) == a_oServerRoot.Value )
+      {
+         // The documentation file root is equivalent to, or a sub-directory of the server root.
+         auto Str a_oDocumentationPathFromServerRoot = new Str( a_oCwdDirective.Right( a_iLength ) );
+         // Replace \ with / to indicate FTP server path.
+         auto Str a_oServerPathPrefix = new Str( a_oDocumentationPathFromServerRoot.Replace( "\\", "/" ) );
+         a_oCwdDirective.Value = a_oRemoteServerRoot.Value + a_oServerPathPrefix.Value;
+      }
+
+      // Finally, we need to trim any trailing / from the CWD directive.
+      a_iFinalChar = a_oCwdDirective.Objects[ a_oCwdDirective.Length() - 1 ];
+      if( a_iFinalChar == 47 )
+      {
+         a_oCwdDirective.Value = a_oCwdDirective.Left( a_oCwdDirective.Length() - 1 );
+      }
+
+      // Now add the MKDIR and CWD directives to the script. To do this,
+      // we will need to unroll the file path and create each directory.
+
+      // Starting with: /FolderA/FolderB/FolderC
+
+      // We want to generate the following directives, in order:
+      // mkdir FolderA
+      // mkdir FolderA/FolderB
+      // mkdir FolderA/FolderB/FolderC.
+
+      // If the directory already exists, the server will generate
+      // a harmless error that won't affect the upload process at all.
+      UnwindServerPathIntoDirectives( a_slCreateServerPaths, a_slFtpDirectives, a_oCwdDirective );
+      a_slFtpDirectives.Add( "cd \"/" + a_oCwdDirective.Value + "\"" );
+
+      // Create "put" commands that will upload the file to the server.
+      auto StrList a_slFiles;
+      for( int file = 0; file < a_slFilePaths.GetCount(); ++file )
+      {
+         auto Str a_oLocalFile = new Str( a_slFilePaths.Get( file ) );
+         auto FilePath a_oLocalFilePath = new FilePath( a_oLocalFile );
+         auto FilePath a_oLocalFilename = new FilePath( a_oLocalFile );
+         a_oLocalFilePath.RemoveFileName();
+         a_oLocalFilename.RemoveFilePath();
+
+         // Compare the local file path with the trimmed path,
+         // but append a \ to reverse the trim operation. It saves
+         // us also having to trim a_oLocalFilePath.
+         if( a_oLocalFilePath.GetPath() == a_oTrimmedLocalPath.Value + "\\" )
+         {
+            a_slFiles.Add( a_oLocalFilename.GetPath() );
+         }
+      }
+
+      // Now sort the files we collected into binary and
+      // ascii buckets so we can set the transfer mode.
+      auto StrList a_slAsciiFiles;
+      auto StrList a_slBinaryFiles;
+      for( int mode = 0; mode < a_slFiles.GetCount(); ++mode )
+      {
+         string a_sFile = a_slFiles.Get( mode );
+         if( SpaFileUtil.IsAsciiFile( a_sFile ) )
+         {
+            a_slAsciiFiles.Add( a_sFile );
+         }
+         else
+         {
+            a_slBinaryFiles.Add( a_sFile );
+         }
+      }
+
+      // Set the transfer mode to ascii and generate directives.
+      if( a_slAsciiFiles.GetCount() )
+      {
+         a_slFtpDirectives.Add( "ascii" );
+         for( int ascii = 0; ascii < a_slAsciiFiles.GetCount(); ++ascii )
+         {
+            a_slFtpDirectives.Add( "put " + a_slAsciiFiles.Get( ascii ) );
+         }
+      }
+
+      // Set the transfer mode to binary and generate directives.
+      if( a_slBinaryFiles.GetCount() )
+      {
+         a_slFtpDirectives.Add( "binary" );
+         for( int binary = 0; binary < a_slBinaryFiles.GetCount(); ++binary )
+         {
+            a_slFtpDirectives.Add( "put " + a_slBinaryFiles.Get( binary ) );
+         }
+      }
+   }
+
+   // Close the FTP connection.
+   a_slFtpDirectives.Add( "bye" );
+
+   // DEBUG
+   //SpaStrListUtil.Out( a_slFtpDirectives );
+   SpaFileUtil.Upload( a_slFtpDirectives, a_oServerRoot.Value, "documentation" );
+
+   // Display profile info.
+   int a_iEndTickCount = Math.FAbs( Time.GetTickCount() );
+   int a_iSeconds = Math.FAbs( ( a_iStartTickCount - a_iEndTickCount ) / 1000.0 );
+   int a_iMinutes = a_iSeconds / 60;
+   string a_sMessage = "\n--- <Uploading \'" + a_oHelpConfigNode.Name + "'> ---\n";
+   if( a_iSeconds < 60 )
+   {
+      a_sMessage += "Validate and upload for " + a_iFileCount + " file(s) completed in " + a_iSeconds + " seconds.";
+   }
+   else
+   {
+      a_sMessage += "Validate and upload for " + a_iFileCount + " file(s) completed in " + a_iMinutes + " minutes.";
+   }
+
+   Console.Out( a_sMessage );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CopyHelpAddressToClipboard_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, HelpConfigNode,
+      "Copies the help address to the Windows clipboard" );
+}
+
+macro CopyHelpAddressToClipboard( CommandPresentationModuleInfo commandInfo )
+[Category="Build Commands", Guid="{A4E4EAE0-EDBF-4D22-BB17-CC297D9508BB}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   if( Model.GetSelectCount() )
+   {
+      HelpConfigNode a_oHelpConfigNode = (HelpConfigNode)Model.GetFirstSelectedNode().GetNode();
+      auto FilePath a_oServerRoot = new FilePath( a_oHelpConfigNode.ServerRoot );
+      a_oServerRoot.ResolveToModel( Model );
+
+      auto FilePath a_oHelpPath = new FilePath( a_oHelpConfigNode.HelpAddress );
+      a_oHelpPath.ResolveToPath( a_oServerRoot.GetPath() );
+      Clipboard.SetString ( a_oHelpPath.GetPath() );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void RefreshCommandList_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, CommandConfigNode,
+      "Creates a list of CommandRepNodes that represent each command" );
+}
+
+macro RefreshCommandList( CommandPresentationModuleInfo commandInfo )
+[Category="Build Commands", Guid="{15CD0DD2-12D0-4DBD-AB57-B970D56FF057}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   CommandConfigNode a_oCommandConfigNode = (CommandConfigNode)Model.GetFirstSelectedNode().GetNode();
+
+   auto StrList a_slCommandNames;
+   auto StrList a_slCommandGuids;
+   auto StrList a_slCommandCategories;
+   auto StrList a_slExistingCommandNames;
+   SpaModuleUtil.GetCommandInfo( a_slCommandNames, a_slCommandGuids, a_slCommandCategories );
+   //SpaStrListUtil.Out( a_slCommandNames );
+
+   /*
+   // IMPORTANT! Only switch this on if you need to regenerate a
+   // command list for some reason. This will create an entirely
+   // new set of CommandRepNodes, but all commands will be undocumented!
+   SpaModuleUtil.GetCommandInfo( a_slCommandNames, a_slCommandGuids, a_slCommandCategories );
+   for( int command = 0; command < a_slCommandNames.GetCount(); ++command )
+   {
+      CommandRepNode a_oCommandRepNode = new CommandRepNode;
+      a_oCommandRepNode.Name = a_slCommandNames.Get( command );
+      a_oCommandRepNode.CommandName = a_slCommandNames.Get( command );
+      a_oCommandRepNode.Guid().Value = a_slCommandGuids.Get( command );
+      a_oCommandRepNode.CommandCategory = a_slCommandCategories.Get( command );
+      Model.AddNode( a_oCommandRepNode, a_oCommandConfigNode, -1 );
+   }
+   */
+
+   /*
+   Console.Out( "Command name count: " + a_slCommandNames.GetCount() );
+   Console.Out( "Command GUID count: " + a_slCommandGuids.GetCount() );
+   */
+
+   // Pass 1.
+   // Iterate the list and update existing commands.
+   // We need to make sure the command still exists,
+   // and we need to make sure that its info is good.
+   for( int update = 0; update < a_oCommandConfigNode.ChildCount; ++update )
+   {
+      Node a_oChild = (Node)a_oCommandConfigNode.Children[update];
+      if( a_oChild && a_oChild.IsDerived( CommandRepNode ) )
+      {
+         CommandRepNode a_oCommandRepNode = (CommandRepNode)Model.EditNode( a_oChild );
+
+         // First search to see if the GUID is still valid.
+         Guid a_oGuid = a_oCommandRepNode.Guid();
+         int a_iExistsAtIndex = a_slCommandGuids.Find( a_oGuid.Value );
+         //Console.Out( a_iExistsAtIndex );
+
+         // Make sure command info is good.
+         // If we find the command GUID, make sure we sync the command
+         // with any changes to its name, command name, or category.
+         if( a_iExistsAtIndex != -1 )
+         {
+            a_oCommandRepNode.Name = a_slCommandNames.GetAt( a_iExistsAtIndex );
+            a_oCommandRepNode.CommandName = a_slCommandNames.GetAt( a_iExistsAtIndex );
+            a_oCommandRepNode.CommandCategory = a_slCommandCategories.GetAt( a_iExistsAtIndex );
+            a_oCommandRepNode.DocumentationFilePath =
+               SpaHtmlUtil.GenerateCommandFileFromName( a_oCommandRepNode.CommandName ) + ".txt";
+            // Add to the list of existing commands that are known good.
+            a_slExistingCommandNames.Add( a_oCommandRepNode.CommandName );
+            commandInfo.Status.SetHint( "Updating command: " + a_oCommandRepNode.Name );
+         }
+         else
+         {
+            // We didn't find it in the existing list of CommandRepNodes,
+            // so we need to indicate that it's been removed from the API.
+            a_oCommandRepNode.CommandStatus = 0;
+            a_oCommandRepNode.ExportDisabled = true;
+            commandInfo.Status.SetHint( "Deprecating command: " + a_oCommandRepNode.Name );
+         }
+      }
+   }
+
+   // Pass 2.
+   // Iterate the list of commands and make sure that we
+   // add any new commands. For ease-of-use, add these to
+   // the end of the list.
+   commandInfo.Status.SetHint( "Adding new command representations..." );
+   for( int command = 0; command < a_slCommandNames.GetCount(); ++command )
+   {
+      if( a_slExistingCommandNames.Find( a_slCommandNames.Get( command ) ) == -1 )
+      {
+         CommandRepNode a_oCommandRepNode = new CommandRepNode;
+         a_oCommandRepNode.Name = a_slCommandNames.Get( command );
+         a_oCommandRepNode.CommandName = a_slCommandNames.Get( command );
+         a_oCommandRepNode.Guid().Value = a_slCommandGuids.Get( command );
+         a_oCommandRepNode.CommandCategory = a_slCommandCategories.Get( command );
+         Model.AddNode( a_oCommandRepNode, a_oCommandConfigNode, command );
+      }
+   }
+}
+
+function void RebuildTypeList( TypeConfigNode p_oTypeConfigNode )
+{
+   // Create a StrList of node types.
+   auto StrList a_slNodeTypes;
+   SpaModuleUtil.GetNodeNames( a_slNodeTypes );
+   // DEBUG
+   //SpaStrListUtil.Out( a_slNodeTypes );
+
+   // Create TypeRepNodes for each node type.
+   auto List a_lTypeRepNodes;
+   for( int nodes = 0; nodes < a_slNodeTypes.GetCount(); ++nodes )
+   {
+      TypeRepNode a_oTypeRepNode = new TypeRepNode;
+      a_oTypeRepNode.Name = a_slNodeTypes.Get( nodes );
+      a_lTypeRepNodes.AddRef( a_oTypeRepNode );
+   }
+
+   // Iterate the nodes and set superclasses.
+   for( int set = 0; set < a_lTypeRepNodes.GetCount(); ++set )
+   {
+      auto Type a_oType;
+      auto TypeInformation a_oTypeInfo = a_oType.GetType().FindClassType( a_slNodeTypes.Get( set ) );
+      auto TypeInformation a_oClass = a_oTypeInfo;
+      TypeRepNode a_oTypeRepNode = (TypeRepNode)a_lTypeRepNodes.Get( set );
+      // DEBUG
+      //Console.Out( "Type is: " + a_slNodeTypes.Get( set ) + " and super class is: " + a_oClass.GetBaseType().GetTypeName() );
+      for( int i = 0; i < a_lTypeRepNodes.GetCount(); ++i )
+      {
+         Node a_oIsSuperClass = (Node)a_lTypeRepNodes.Get( i );
+         if( a_oIsSuperClass.Name == a_oClass.GetBaseType().GetTypeName() )
+         {
+            a_oTypeRepNode.SuperClass = a_oIsSuperClass;
+            break;
+         }
+      }
+   }
+
+   // Format the list of types and create member docs.
+   SpaTypeTreeUtil.CreateTypeTree( a_lTypeRepNodes );
+
+   // Add all the new TypeRepNodes to the TypeConfigNode.
+   for( int node = 0; node < a_lTypeRepNodes.GetCount(); ++node )
+   {
+      Node a_oTypeRepNode = (Node)a_lTypeRepNodes.Get( node );
+      Model.AddNode( a_oTypeRepNode, p_oTypeConfigNode, -1 );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void RefreshTypeList_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, TypeConfigNode,
+      "Creates a TypeRepNode for each type requiring a command menu ( nodes and draw modes )" );
+}
+
+macro RefreshTypeList( CommandPresentationModuleInfo commandInfo )
+[Category="Build Commands", Guid="{E3B68D9D-F1DA-4534-8733-FEEC00C1B50A}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   TypeConfigNode a_oTypeConfigNode = (TypeConfigNode)Model.GetFirstSelectedNode().GetNode();
+
+   if( a_oTypeConfigNode.ChildCount == 0 )
+   {
+      RebuildTypeList( a_oTypeConfigNode );
+      return;
+   }
+
+   SpaBuildUtil.WriteTypeTreeCommand( a_oTypeConfigNode );
+
+   // Accumulate a global list of types that have command menus
+   // ( nodes and draw modes ) in the string list a_slCommandMenuTypes.
+   auto StrList a_slCommandMenuTypes;
+   SpaModuleUtil.GetCommandMenuTypes( a_slCommandMenuTypes );
+
+   // Accumulate all existing TypeRepNodes in the node list a_lTypeRepNodes.
+   // Accumulate all existing type names into a_slExistingCommandMenuTypes.
+   auto List a_lTypeRepNodes;
+   auto StrList a_slExistingCommandMenuTypes;
+   commandInfo.Status.SetHint( "Getting existing type representations..." );
+   for( int exist = 0; exist < a_oTypeConfigNode.ChildCount; ++exist )
+   {
+      Node a_oIsTypeConfigNode = (Node)a_oTypeConfigNode.Children[ exist ];
+      if( a_oIsTypeConfigNode && a_oIsTypeConfigNode.IsDerived( TypeRepNode ) )
+      {
+         TypeRepNode a_oTypeRepNode = (TypeRepNode)a_oTypeConfigNode.Children[ exist ];
+         a_lTypeRepNodes.AddRef( a_oTypeRepNode );
+         a_slExistingCommandMenuTypes.Add( a_oTypeRepNode.Type );
+         commandInfo.Status.SetHint( "Adding existing type representations..." );
+      }
+   }
+
+   // DEBUG
+   //SpaStrListUtil.Out( a_slCommandMenuTypes );
+   //Console.Out( a_slCommandMenuTypes.GetCount() );
+
+   // DEBUG
+   //SpaStrListUtil.Out( a_slExistingCommandMenuTypes );
+
+   // Compare the list of existing types in a_slExistingCommandMenuTypes
+   // with the global list of such types accumulated into a_slCommandMenuTypes.
+   // Add to the model new TypeRepNodes ( from the global type list ) that
+   // do not already have an associated TypeRepNode. We do this because we
+   // want to have a context menu for every node that needs one.
+   
+   int a_iNewTypes;
+   auto StrList a_slNewTypes;
+   for( int menu = 0; menu < a_slCommandMenuTypes.GetCount(); ++menu )
+   {
+      string a_sExistingType = a_slCommandMenuTypes.Get( menu );
+      int a_iExistsAtIndex = a_slExistingCommandMenuTypes.Find( a_sExistingType );
+      if( a_iExistsAtIndex == -1 )
+      {
+         // Add a new TypeRepNode if it doesn't exist.
+         TypeRepNode a_oTypeRepNode = new TypeRepNode;
+         a_oTypeRepNode.Name = a_sExistingType;
+         a_oTypeRepNode.Type = a_sExistingType;
+         a_lTypeRepNodes.AddRef( a_oTypeRepNode );
+         Model.AddNode( a_oTypeRepNode, a_oTypeConfigNode, -1 );
+         commandInfo.Status.SetHint( "Adding new type representation: " + a_oTypeRepNode.Type );
+         // DEBUG
+         //a_slNewTypes.Add( a_sExistingType );
+         ++a_iNewTypes;
+      }
+   }
+
+   // Iterate the existing nodes ( and any new nodes added above ) and set superclasses.
+   // We won't be always able to set a super class because the list of node types
+   // only contains types that have an associated command menu. For example, the type <Node>
+   // is derived from <Type>, and <Type> does not have a command menu ( since the user cannot
+   // directly interact with <Type> ). For that reason, <Node> will not have a super class.
+
+   for( int set = 0; set < a_lTypeRepNodes.GetCount(); ++set )
+   {
+      TypeRepNode a_oTypeRepNode = (TypeRepNode)a_lTypeRepNodes.Get( set );
+      auto Type a_oType;
+      auto TypeInformation a_oTypeInfo = a_oType.GetType().FindClassType( a_oTypeRepNode.Type );
+      if( a_oTypeInfo == null )
+      {
+         // There are a few edge cases ( face, edge, vertex ) that have command menus
+         // but do not have any associated node type. Make sure we set their superclass
+         // to null. This code also handles cases where we can't find type information.
+         a_oTypeRepNode.SuperClass = null;
+
+         // Throw an error if we can't find type information and the type is not one
+         // of the 'Special Filtered Types' types we use to implement a command menu
+         // for a selection that contains nodes of multiple types, or is not a node.
+         if( a_oTypeRepNode.NodeElementType == 0 )
+         {
+            string a_sMessage = "Unable to find TypeInformation for: <" + a_oTypeRepNode.Type + ">\n";
+            a_sMessage += "This does not appear to be a valid type and you should remove the associated command menu.";
+            Console.Error( a_sMessage );
+            break;
+         }
+         else
+         {
+            continue;
+         }
+      }
+      else
+      {
+         // DEBUG - SANITY CHECK
+         //Console.Out( "Type is: " + a_oTypeRepNode.Type + " and super class is: " + a_oTypeInfo.GetBaseType().GetTypeName() );
+         // Iterate the TypeRepNodes again and search for superclasses.
+         for( int i = 0; i < a_lTypeRepNodes.GetCount(); ++i )
+         {
+            TypeRepNode a_oIsSuperClass = (TypeRepNode)a_lTypeRepNodes.Get( i );
+            if( a_oIsSuperClass.Type == a_oTypeInfo.GetBaseType().GetTypeName() )
+            {
+               a_oTypeRepNode.SuperClass = a_oIsSuperClass;
+               break;
+            }
+         }
+      }
+   }
+
+   if( a_iNewTypes > 0 )
+   {
+      commandInfo.Status.SetHint( "Finished adding " + a_iNewTypes + " new types." );
+      // Do a pause so the user can see status info.
+      Time.Wait( 1000 );
+   }
+   else
+   {
+      commandInfo.Status.SetHint( "New new types were found and nothing was added." );
+      // Do a pause so the user can see status info.
+      Time.Wait( 1000 );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ToggleConfigBuildMode_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   auto TypeInfoArray types;
+   types.Add( ConfigNode );
+   types.Add( Model3D );
+   types.Add( InterfaceElementNode );
+   bool a_bEnabled = SpaSelectUtil.ValidateSelectionArray( types );
+   commandInfo.SetEnabled( a_bEnabled );
+   if( a_bEnabled )
+   {
+      commandInfo.Status.SetHint( "This command toggles debug and release mode" );
+   }
+   else
+   {
+      commandInfo.Status.SetHint( "Select a node of type ConfigNode or Model3D" );
+   }
+}
+
+macro ToggleConfigBuildMode( CommandPresentationModuleInfo commandInfo )
+[Category="Build Commands", Guid="{D3CFB821-2AD4-4710-9B9F-A90CA7387D7E}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode(sel).GetNode();
+      if( a_oSelNode && a_oSelNode.IsDerived( Model3D ) )
+      {
+         Group a_oModel3DGroup = (Group)a_oSelNode;
+         for( int child = 0; child < a_oModel3DGroup.ChildCount; ++child )
+         {
+            Node a_oModelChild = (Node)a_oModel3DGroup.Children[ child ];
+            if( a_oModelChild && a_oModelChild.IsDerived( ConfigNode ) )
+            {
+               ConfigNode a_oChildProject = (ConfigNode)a_oModelChild;
+               a_oChildProject.BuildMode = !a_oChildProject.BuildMode; // DEBUG
+            }
+         }
+      }
+      else
+      if( a_oSelNode && a_oSelNode.IsDerived( ConfigNode ) )
+      {
+         ConfigNode a_oChildProject = (ConfigNode)a_oSelNode;
+         a_oChildProject.BuildMode = !a_oChildProject.BuildMode; // DEBUG
+      }
+      else
+      if( a_oSelNode && a_oSelNode.IsDerived( InterfaceElementNode ) )
+      {
+         InterfaceElementNode a_oInterfaceElementNode = (InterfaceElementNode)a_oSelNode;
+         a_oInterfaceElementNode.IsDebugOnly = !a_oInterfaceElementNode.IsDebugOnly;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void RefreshDataInterfaceList_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, DataConfigNode,
+      "Creates a graph representing data interfaces, functions, and members" );
+}
+
+macro RefreshDataInterfaceList( CommandPresentationModuleInfo commandInfo )
+[Category="Build Commands", Guid="{D4934224-B4D5-449A-A03A-5CFC5A92ECF6}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   DataConfigNode a_oDataConfigNode = (DataConfigNode)Model.GetFirstSelectedNode().GetNode();
+   if( a_oDataConfigNode && a_oDataConfigNode.IsDerived( DataConfigNode ) )
+   {
+      Graph.DeleteAllChildren( a_oDataConfigNode );
+
+      // Create nodes to represent the data interfaces
+      // and store them in a List object. This List owns
+      // the memory these objects use so we must add
+      // them to the Model or they will be destroyed
+      // when a_lDataInterfaceGraphNodes goes out of scope.
+      auto List a_lDataInterfaceGraphNodes;
+      Application.LogInterfacesHtml( a_lDataInterfaceGraphNodes );
+
+      // Set information strings so that we can use
+      // them to generate documentation fragment files.
+      auto Str a_oBaseInfoString = new Str( "IDS_DATA_INTERFACE_" );
+
+      // Pass in the List of Node objects that we're using
+      auto FilePath a_oDocsBasePath = new FilePath( a_oDataConfigNode.BasePath );
+
+      // Add the nodes to the Model right away so that
+      // we won't leak memory. Please note that these
+      // nodes are not actually in the Model until
+      // this command completes.
+      for( int i = 0; i < a_lDataInterfaceGraphNodes.GetCount(); ++i )
+      {
+         Node a_oRep = (Node)a_lDataInterfaceGraphNodes.Get( i );
+         SpaBuildUtil.CreateDocumentationInfoStringNames( a_oRep, a_oBaseInfoString );
+         SpaBuildUtil.CreateDocumentInfoFiles( a_oDocsBasePath, a_oRep );
+         SpaBuildUtil.LoadDocumentationFromInfoStrings( a_oRep, a_oDocsBasePath );
+         Model.AddNode( a_oRep, a_oDataConfigNode, -1 );
+      }
+
+      // Set superclass links for each data interface.
+      // To do this, iterate the list and find the
+      // superclass type.
+      int a_nCount = a_lDataInterfaceGraphNodes.GetCount();
+      for( int j = 0; j < a_nCount; ++j )
+      {
+         // Create TypeInformation for each TypeRepNode.
+         TypeRepNode a_oTypeRepNode = (TypeRepNode)a_lDataInterfaceGraphNodes.Get( j );
+         auto Type a_oType;
+         TypeInformation a_oTypeInfo = a_oType.GetType().FindClassType( a_oTypeRepNode.Type );
+
+         // If the type information is valid
+         // and we can find a base type as well.
+         if( a_oTypeInfo && a_oTypeInfo.GetBaseType() )
+         {
+            // Iterate the list until we find the base type.
+            // Then point the TypeRepNode's super class
+            // object at the appropriate type.
+            for( int k = 0; k < a_lDataInterfaceGraphNodes.GetCount(); ++k )
+            {
+               TypeRepNode a_oIsSuperClass = (TypeRepNode)a_lDataInterfaceGraphNodes.Get( k );
+               if( a_oIsSuperClass.Type == a_oTypeInfo.GetBaseType().GetTypeName() )
+               {
+                  a_oTypeRepNode.SuperClass = a_oIsSuperClass;
+                  break;
+               }
+            }
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void BuildGraphFromInterface_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, AppScaffoldNode,
+      "Creates an interface graph for the current application" );
+}
+
+macro BuildGraphFromInterface( CommandPresentationModuleInfo commandInfo )
+[Category="Hierarchy Commands", Guid="{44EEC676-44E0-4412-9A6C-7F3D2E8FD83F}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   // Intentionally left blank.
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TypeRepNodeToggleIsFinalType_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, TypeRepNode,
+      "Copies the help address to the Windows clipboard" );
+}
+
+macro TypeRepNodeToggleIsFinalType( CommandPresentationModuleInfo commandInfo )
+[Category="Node Commands", Guid="{33E42D2D-6C94-43EA-A4A4-0411B59C210C}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+   {
+      Node a_oNode = (Node)Model.GetSelectedNode( sel ).GetNode();
+      if( a_oNode && a_oNode.IsDerived( TypeRepNode ) )
+      {
+         TypeRepNode a_oTypeRepNode = (TypeRepNode)a_oNode;
+         a_oTypeRepNode.IsFinalType = !a_oTypeRepNode.IsFinalType;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CommandRepNodeCreateExtendedDocumentationFile_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, CommandRepNode,
+      "Creates a file for the extended command documentation" );
+
+   ValidateNodeCommandContext.TestParent( commandInfo, CommandConfigNode,
+      "Please select a CommandRepNode that is a child of a CommandConfigNode" );
+}
+
+macro CommandRepNodeCreateExtendedDocumentationFile( CommandPresentationModuleInfo commandInfo )
+[Category="Node Commands", Guid="{FAA33321-D4C0-4517-AC0C-4C00DAD0A084}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+   {
+      Node a_oNode = (Node)Model.GetSelectedNode( sel ).GetNode();
+      if( a_oNode && a_oNode.IsDerived( CommandRepNode ) )
+      {
+         CommandRepNode a_oCommandRepNode = (CommandRepNode)a_oNode;
+         CommandConfigNode a_oCommandConfigNode = (CommandConfigNode)a_oNode.Parent();
+         auto FilePath a_oDocFilePath = new FilePath( a_oCommandConfigNode.BasePath );
+         a_oDocFilePath.Canonicalize();
+         if( a_oDocFilePath.FileExists() )
+         {
+            a_oDocFilePath.SetPath( a_oCommandRepNode.GetDocFilePathComplete() );
+            a_oDocFilePath.Canonicalize();
+            if( a_oDocFilePath.FileExists() )
+            {
+               string a_sMessage = "The following file already exists: " + a_oDocFilePath.GetPath();
+               Console.Error( a_sMessage );
+               return;
+            }
+
+            SpaFileUtil.CreateAsciiFile( a_oDocFilePath.GetPath() );
+         }
+         else
+         {
+            string a_sMessage = "The following directory does not exist: " + a_oDocFilePath.GetPath();
+            Console.Error( a_sMessage );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void DocumentCommandRepNodes_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, CommandConfigNode,
+      "This command iterates the CommandRepNodes below a CommandConfigNode and requests documentation" );
+}
+
+macro DocumentCommandRepNodes( CommandPresentationModuleInfo commandInfo )
+[Category="Node Commands", Guid="{6EBD0E0A-5CA7-447E-9CA7-74F2331E1C09}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   auto List a_lCommandRepNodes;
+   for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+   {
+      Node a_oNode = (Node)Model.GetSelectedNode( sel ).GetNode();
+      if( a_oNode && a_oNode.IsDerived( CommandConfigNode ) )
+      {
+         CommandConfigNode a_oCommandConfigNode = (CommandConfigNode)a_oNode;
+         Graph.GetNodesFromDatabase( a_oCommandConfigNode, a_lCommandRepNodes, CommandRepNode );
+      }
+   }
+
+   if( a_lCommandRepNodes.GetCount() == 0 )
+   {
+      return;
+   }
+
+   auto List a_lUndocumentedCommands;
+   int a_iCommandCount;
+   for( int add = 0; add < a_lCommandRepNodes.GetCount(); ++add )
+   {
+      CommandRepNode a_oCommandRepNode = (CommandRepNode)a_lCommandRepNodes.Get( add );
+      if( a_oCommandRepNode.CommandDocumentation == "" )
+      {
+         a_lUndocumentedCommands.AddRef( a_oCommandRepNode );
+         ++a_iCommandCount;
+      }
+   }
+
+   if( a_lUndocumentedCommands.GetCount() == 0 )
+   {
+      string a_sMessage = "There are no undocumented commands.";
+      Console.Info( a_sMessage );
+      return;
+   }
+
+   for( int child = 0; child < a_lCommandRepNodes.GetCount(); ++child )
+   {
+      CommandRepNode a_oCommandRepNode = (CommandRepNode)a_lUndocumentedCommands.Get( child );
+      if( a_oCommandRepNode.CommandDocumentation != "" )
+      {
+         continue;
+      }
+
+      auto Str a_oDocumentation = new Str( "" );
+      auto EnterTextDialog a_oEnterCommandDocs;
+
+      string a_sTitle = a_oCommandRepNode.Name + " " + child + " / " + a_iCommandCount;
+      if( a_oEnterCommandDocs.Show( a_sTitle, "Type documentation:", true, a_oDocumentation ) )
+      {
+         a_oCommandRepNode.CommandDocumentation = a_oDocumentation.Value;
+      }
+      else
+      {
+         break;
+      }
+      --a_iCommandCount;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void EnumerateXmlDocumentContent_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   SpaSelectUtil.ValidateXmlDocumentCommandContext( commandInfo, "", "", true );
+}
+
+macro EnumerateXmlDocumentContent( CommandPresentationModuleInfo commandInfo )
+[Category="Hierarchy Commands", Guid="{86A660D1-E4D4-41CA-A92F-465DEF2DD688}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   auto List a_lFileConfigNodes;
+   Graph.GetDocumentsFromSelection( a_lFileConfigNodes );
+   auto StrList a_slHumanReadableContent;
+   auto StrList a_slDocumentPaths;
+   auto StrList a_slImagePaths;
+   auto StrList a_slImageAltDesc;
+
+   // Iterate the list of FileConfigNodes and validate each file by its type.
+   for( int a_nNode = 0; a_nNode < a_lFileConfigNodes.GetCount(); ++a_nNode )
+   {
+      FileConfigNode a_oFileConfigNode = (FileConfigNode)a_lFileConfigNodes.Get( a_nNode );
+      auto FilePath a_oDocumentPath = new FilePath( a_oFileConfigNode.GetAbsolutePath() );
+      if( a_oDocumentPath.FileExists() == false )
+      {
+         string a_sMessage = "File does not exist: " + a_oDocumentPath.GetPath();
+         Console.Out( a_sMessage );
+         continue;
+      }
+      a_oDocumentPath.Canonicalize();
+
+      if( !( SpaFileUtil.IsXmlDocument( a_oDocumentPath.GetFileExtension() ) ) )
+      {
+         return;
+      }
+
+      auto TextFile a_oXmlDocument;
+      auto List a_lErrorDetails;
+      auto Str a_oReadableContent;
+
+      if( !SpaValidationUtil.AddShimsToDocument( a_oDocumentPath ) )
+      {
+         return;
+      }
+
+      // Open the shimmed document so we can get external content.
+      auto IXmlNode a_oDom = a_oXmlDocument.OpenXml( a_oDocumentPath.GetPath(), true, a_lErrorDetails );
+
+      if( a_lErrorDetails.GetCount() )
+      {
+         SpaValidationUtil.EnumerateXmlDocumentErrors( a_oXmlDocument, a_oDocumentPath, a_lErrorDetails );
+         return ;
+      }
+
+      if( a_oDom )
+      {
+         SpaHtmlUtil.GetHumanReadableContent( a_oDom, a_oReadableContent, a_slImagePaths, a_slImageAltDesc );
+         commandInfo.Status.SetHint( "Reading document: " + a_oDocumentPath.GetPath() );
+      }
+
+      a_oXmlDocument.Close();
+
+      if( !SpaValidationUtil.RemoveShimsFromDocument( a_oDocumentPath ) )
+      {
+         return;
+      }
+
+      a_slHumanReadableContent.Add( a_oReadableContent.Value );
+      a_slDocumentPaths.Add( a_oDocumentPath.GetPath() );
+   }
+
+   if( a_slHumanReadableContent.GetCount() != a_slDocumentPaths.GetCount() )
+   {
+      string a_sMessage = "The number of documents is not equal to the number of recorded text content entries in MACRO: EnumerateXmlDocumentContent()";
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   auto TextFile a_oReadableContent;
+   auto TextFile a_oImageContent;
+   auto Str a_oText;
+   auto FilePath a_oProjectFolder;
+   auto FilePath a_oImageContentPath;
+   auto FilePath a_oRawProjectPath;
+
+   for( int a_nSel = 0; a_nSel < Model.GetSelectCount(); ++a_nSel )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode( a_nSel ).GetNode();
+      Node a_oProjectRoot;
+      GetProjectRoot( a_oSelNode, a_oProjectRoot );
+      if( a_oProjectRoot && a_oProjectRoot.IsDerived( HelpConfigNode ) )
+      {
+         HelpConfigNode a_oHelpConfigNode = (HelpConfigNode)a_oProjectRoot;
+         a_oProjectFolder = new FilePath( a_oHelpConfigNode.GetAbsolutePath() );
+         a_oRawProjectPath.SetPath( a_oHelpConfigNode.ServerRoot );
+         a_oRawProjectPath.ResolveToModel( Model );
+
+         a_oImageContentPath = new FilePath( a_oHelpConfigNode.GetAbsolutePath() );
+         if( !( a_oProjectFolder.FileExists() ) )
+         {
+            string a_sMessage = "The path specified by the <HelpConfigNode> does not exist: " + a_oProjectFolder.GetPath();
+            Console.Error( a_sMessage );
+            return;
+         }
+      }
+      else
+      {
+         string a_sMessage = "Unable to find a project root of type <HelpConfigNode>";
+         Console.Error( a_sMessage );
+         return;
+      }
+
+      a_oProjectFolder.AppendPath( "human_readable_document_content.txt" );
+      a_oImageContentPath.AppendPath( "document_images.htm" );
+      a_oProjectFolder.Canonicalize();
+      break;
+   }
+
+   if( !( a_oReadableContent.Open( a_oProjectFolder.GetPath(), false ) ) )
+   {
+      return;
+   }
+
+   for( int a_nDocuments = 0; a_nDocuments < a_slDocumentPaths.GetCount(); ++a_nDocuments )
+   {
+      commandInfo.Status.SetHint( "Writing from document: " + a_slDocumentPaths.Get( a_nDocuments ) );
+      a_oText.Value += "////////////////////////////////////////////////////////////////////////////////\n";
+      a_oText.Value += "// " + a_slDocumentPaths.Get( a_nDocuments ) + "\n";
+      a_oText.Value += "////////////////////////////////////////////////////////////////////////////////\n\n";
+
+      a_oText.Value += a_slHumanReadableContent.Get( a_nDocuments );
+   }
+
+   a_oReadableContent.Write( a_oText.Value );
+   a_oReadableContent.Close();
+
+   if( !( a_oImageContent.Open( a_oImageContentPath.GetPath(), false ) ) )
+   {
+      return;
+   }
+
+   auto Str a_oReviewImageHtml;
+   a_oReviewImageHtml.Value += "<!DOCTYPE html>\n";
+   a_oReviewImageHtml.Value += "<html>\n";
+   a_oReviewImageHtml.Value += "<head>\n";
+   a_oReviewImageHtml.Value += "<title>Online Help Image Dictionary</title>";
+   a_oReviewImageHtml.Value += "<style type=\"text/css\">body{ font-size: 10pt; font-family:Arial;}</style>";
+   a_oReviewImageHtml.Value += "</head>\n";
+   a_oReviewImageHtml.Value += "<body>\n";
+
+   for( int a_nImages = 0; a_nImages < a_slImagePaths.GetCount(); ++a_nImages )
+   {
+      string a_sImage = a_slImagePaths.Get( a_nImages );
+      commandInfo.Status.SetHint( "Writing from document: " + a_sImage );
+      a_oReviewImageHtml.Value += "<h3>" + a_sImage +  "</h3>\n";
+      
+      auto FilePath a_oImagePath = new FilePath( a_oRawProjectPath.GetPath() );
+      a_oImagePath.AppendPath( a_sImage );
+      a_oImagePath.Canonicalize();
+
+      a_oReviewImageHtml.Value += "<img src=\"" + a_oImagePath.GetPath() +  "\" alt=\"" + a_slImageAltDesc.Get( a_nImages ) +  "\" />\n";
+   }
+   a_oReviewImageHtml.Value += "</body>\n";
+   a_oReviewImageHtml.Value += "</html>";
+
+   a_oImageContent.Write( a_oReviewImageHtml.Value );
+   a_oImageContent.Close();
+
+   auto StrList a_slCommandMessages;
+   SpaBuildUtil.GenerateCommandHeader( "EnumerateXmlDocumentContent", a_slCommandMessages );
+   a_slCommandMessages.Add( "Wrote file containing human-readable content: " + a_oProjectFolder.GetPath() );
+   a_slCommandMessages.Add( "Wrote file containing image content: " + a_oImageContentPath.GetPath() );
+   SpaBuildUtil.Out( a_slCommandMessages );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateDocumentationInfoStrings_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, DataConfigNode,
+      "Generates documentation info strings, such as IDS_DATA_INTERFACE_ACCESSCONTROLNODE" );
+}
+
+macro GenerateDocumentationInfoStrings( CommandPresentationModuleInfo commandInfo )
+[Category="Hierarchy Commands", Guid="{F3278FE8-E464-4074-AE80-8E12C36D5226}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   DataConfigNode a_oDataConfigNode = (DataConfigNode)Model.GetFirstSelectedNode().GetNode();
+
+   auto Str a_oBaseInfoString = new Str( "IDS_DATA_INTERFACE_" );
+   SpaBuildUtil.CreateDocumentationInfoStringNames( a_oDataConfigNode, a_oBaseInfoString );
+
+   auto FilePath a_oDocsBasePath = new FilePath( a_oDataConfigNode.BasePath );
+   SpaBuildUtil.CreateDocumentInfoFiles( a_oDocsBasePath, a_oDataConfigNode );
+   return;
+
+   // Use this code to output all the human-readable
+   // documentation to the output window.
+   auto StrList a_slInfoStrings;
+   string a_sCompletePath = a_oDataConfigNode.BasePath + "\\";
+   auto FilePath a_oFilePath = new FilePath( a_sCompletePath );
+   a_oFilePath.FindFiles( a_slInfoStrings, "*.txt", true, false );
+
+   string a_sAllDocs;
+   for( int i = 0; i < a_slInfoStrings.GetCount(); ++i )
+   {
+      string a_sFilePath = a_slInfoStrings.Get( i );
+      auto TextFile a_oDocumentation;
+      if( a_oDocumentation.Open( a_sFilePath, 1 ) )
+      {
+         string a_sTemp;
+         while( !a_oDocumentation.IsEndOfFile() )
+         {
+            a_sTemp += a_oDocumentation.ReadLine();
+         }
+         if( a_sTemp != "" )
+         {
+            a_sTemp += "\n\n";
+            a_sAllDocs += a_sTemp;
+         }
+      }
+   }
+   Console.Out( a_sAllDocs );
+
+   return;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void LoadDocumentationInfoStrings_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, DataConfigNode,
+      "Copies the documentation information string onto the objects in the data interface object graph" );
+}
+
+macro LoadDocumentationInfoStrings( CommandPresentationModuleInfo commandInfo )
+[Category="Hierarchy Commands", Guid="{F5835E80-8699-4FFE-AE8C-F1889C6FD0FD}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   DataConfigNode a_oDataConfigNode = (DataConfigNode)Model.GetFirstSelectedNode().GetNode();
+   auto FilePath a_oDocsBasePath = new FilePath( a_oDataConfigNode.BasePath );
+   SpaBuildUtil.LoadDocumentationFromInfoStrings( a_oDataConfigNode, a_oDocsBasePath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ConvertTemp( Node p_oNode, Group p_oCurrentParent, List p_lConvertedNodes )
+{
+   if( p_oNode && p_oNode.IsDerived( ContainerNode ) )
+   {
+      //Console.Out( p_oNode.Name );
+      ContainerNode a_oContainerNode = new ContainerNode;
+      a_oContainerNode.Name = p_oNode.Name;
+      p_lConvertedNodes.AddRef( a_oContainerNode );
+      p_oCurrentParent = (Group)a_oContainerNode;
+      if( p_oCurrentParent )
+      {
+         p_oCurrentParent.AddChild( a_oContainerNode );
+      }
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( InterfaceSectionNode ) )
+   {
+      InterfaceSectionNode a_oExisting = (InterfaceSectionNode)p_oNode;
+      InterfaceSectionNode a_oInterfaceSectionNode = new InterfaceSectionNode;
+      a_oInterfaceSectionNode.Name = p_oNode.Name;
+      a_oInterfaceSectionNode.InterfaceSection = a_oExisting.InterfaceSection;
+      a_oInterfaceSectionNode.ContextMenuCategory = a_oExisting.ContextMenuCategory;
+      a_oInterfaceSectionNode.TypeConfigDataSourceLink = a_oExisting.TypeConfigDataSourceLink;
+      a_oInterfaceSectionNode.RefreshFunction = a_oExisting.RefreshFunction;
+
+      p_oCurrentParent.AddChild( a_oInterfaceSectionNode );
+      p_oCurrentParent = null;
+      p_oCurrentParent = (Group)a_oInterfaceSectionNode;
+      if( p_oCurrentParent )
+      {
+         p_oCurrentParent.AddChild( a_oInterfaceSectionNode );
+      }
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( InterfaceElementNode ) )
+   {
+      Node a_oNodePtrHandle;
+      InterfaceElementNode a_oExisting = (InterfaceElementNode)p_oNode;
+      if( a_oExisting.Element == Enum.InterfaceElements_Interface() )
+      {
+         InterfaceElementNode a_oInterfaceElementNode = new InterfaceElementNode;
+         a_oInterfaceElementNode.Name = p_oNode.Name;
+         a_oInterfaceElementNode.VersionString = a_oExisting.VersionString;
+         a_oInterfaceElementNode.Element = a_oExisting.Element;
+         a_oInterfaceElementNode.ShellOverload = a_oExisting.ShellOverload;
+         a_oNodePtrHandle = a_oInterfaceElementNode;
+
+         p_lConvertedNodes.AddRef( a_oInterfaceElementNode );
+         p_oCurrentParent = null;
+         p_oCurrentParent = (Group)a_oInterfaceElementNode;
+      }
+      else
+      if( a_oExisting.Element == Enum.InterfaceElements_Popup() )
+      {
+         PopupElementNode a_oPopupElementNode = new PopupElementNode;
+         a_oNodePtrHandle = a_oPopupElementNode;
+         a_oPopupElementNode.Name = a_oExisting.Name;
+         a_oPopupElementNode.Image = a_oExisting.Image;
+         a_oPopupElementNode.Text = a_oExisting.Text;
+         p_oCurrentParent.AddChild( a_oPopupElementNode );
+         p_oCurrentParent = null;
+         p_oCurrentParent = (Group)a_oPopupElementNode;
+      }
+      else
+      if( a_oExisting.Element == Enum.InterfaceElements_Menu() )
+      {
+         MenuElementNode a_oMenuElementNode = new MenuElementNode;
+         a_oMenuElementNode.Name = a_oExisting.Name;
+         p_oCurrentParent.AddChild( a_oMenuElementNode );
+         p_oCurrentParent = null;
+         p_oCurrentParent = (Group)a_oMenuElementNode;
+      }
+      else
+      if( a_oExisting.Element == Enum.InterfaceElements_Item() )
+      {
+         ItemElementNode a_oItemElementNode = new ItemElementNode;
+         a_oNodePtrHandle = a_oItemElementNode;
+         a_oItemElementNode.Name = a_oExisting.Name;
+         a_oItemElementNode.CommandName = a_oExisting.CommandNameString;
+         a_oItemElementNode.Guid = a_oExisting.GuidString;
+         a_oItemElementNode.CommandStatus = a_oExisting.ElementStatus;
+         a_oItemElementNode.CommandMode = a_oExisting.IsDebugOnly;
+         a_oItemElementNode.Image = a_oExisting.Image;
+         a_oItemElementNode.Text = a_oExisting.Text;
+         p_oCurrentParent.AddChild( a_oItemElementNode );
+         p_oCurrentParent = null;
+         p_oCurrentParent = (Group)a_oItemElementNode;
+      }
+      else
+      if( a_oExisting.Element == Enum.InterfaceElements_Separator() )
+      {
+         SeparatorElementNode a_oSeparatorElementNode = new SeparatorElementNode;
+         a_oSeparatorElementNode.Name = "separator";
+         p_oCurrentParent.AddChild( a_oSeparatorElementNode );
+      }
+      else
+      if( a_oExisting.Element == Enum.InterfaceElements_Dockbar() )
+      {
+         DockbarElementNode a_oDockbarElementNode = new DockbarElementNode;
+         a_oDockbarElementNode.Name = a_oExisting.Name;
+         a_oDockbarElementNode.Guid = a_oExisting.GuidString;
+         p_oCurrentParent.AddChild( a_oDockbarElementNode );
+         p_oCurrentParent = null;
+         p_oCurrentParent = (Group)a_oDockbarElementNode;
+      }
+      else
+      if( a_oExisting.Element == Enum.InterfaceElements_DockedView() )
+      {
+         DockedViewElementNode a_oDockedViewElementNode = new DockedViewElementNode;
+         a_oDockedViewElementNode.Name = a_oExisting.Name;
+         a_oDockedViewElementNode.Guid = a_oExisting.GuidString;
+         p_oCurrentParent.AddChild( a_oDockedViewElementNode );
+      }
+      else
+      if( a_oExisting.Element == Enum.InterfaceElements_ContextMenu() )
+      {
+         ContextMenuElementNode a_oContextMenuElementNode = new ContextMenuElementNode;
+         a_oContextMenuElementNode.Name = a_oExisting.Name;
+         a_oContextMenuElementNode.ClassName = a_oExisting.Name;
+         a_oContextMenuElementNode.MenuName = a_oExisting.Name + " Context Menu";
+         p_oCurrentParent.AddChild( a_oContextMenuElementNode );
+         p_oCurrentParent = null;
+         p_oCurrentParent = (Group)a_oContextMenuElementNode;
+      }
+      else
+      if( a_oExisting.Element == Enum.InterfaceElements_Toolbar() )
+      {
+         ToolbarElementNode a_oToolbarElementNode = new ToolbarElementNode;
+         a_oToolbarElementNode.Name = a_oExisting.Name;
+         p_oCurrentParent.AddChild( a_oToolbarElementNode );
+         p_oCurrentParent = null;
+         p_oCurrentParent = (Group)a_oToolbarElementNode;
+      }
+      else
+      if( a_oExisting.Element == Enum.InterfaceElements_ActiveView() )
+      {
+         ActiveViewElementNode a_oActiveViewElementNode = new ActiveViewElementNode;
+         a_oActiveViewElementNode.Name = a_oExisting.Name;
+         a_oActiveViewElementNode.Guid = a_oExisting.GuidString;
+         p_oCurrentParent.AddChild( a_oActiveViewElementNode );
+      }
+      else
+      if( a_oExisting.Element == Enum.InterfaceElements_Keyboard() )
+      {
+         KeyboardElementNode a_oKeyboardElementNode = new KeyboardElementNode;
+         a_oKeyboardElementNode.Name = a_oExisting.Name;
+         p_oCurrentParent.AddChild( a_oKeyboardElementNode );
+         p_oCurrentParent = null;
+         p_oCurrentParent = (Group)a_oKeyboardElementNode;
+      }
+      else
+      if( a_oExisting.Element == Enum.InterfaceElements_Accelerator() )
+      {
+         AcceleratorElementNode a_oAcceleratorElementNode = new AcceleratorElementNode;
+         a_oAcceleratorElementNode.Name = a_oExisting.Name;
+         a_oAcceleratorElementNode.Keys = a_oExisting.KeysString;
+         a_oAcceleratorElementNode.Guid = a_oExisting.GuidString;
+         p_oCurrentParent.AddChild( a_oAcceleratorElementNode );
+      }
+
+      if( p_oCurrentParent && a_oNodePtrHandle )
+      {
+         p_oCurrentParent.AddChild( a_oNodePtrHandle );
+      }
+   }
+   else
+   if( p_oNode && p_oNode.IsDerived( NodeLink ) )
+   {
+      NodeLink a_oLink = (NodeLink)p_oNode.Clone();
+      p_oCurrentParent.AddChild( a_oLink );
+   }
+
+   if( p_oNode && p_oNode.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)p_oNode;
+      for( int i = 0; i < a_oGroup.ChildCount; ++i )
+      {
+         Node a_oChild = (Node)a_oGroup.Children[ i ];
+         ConvertTemp( a_oChild, p_oCurrentParent, p_lConvertedNodes );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void ConvertToExplicitElements_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, Group,
+      "Converts an InterfaceElementNode tree to a tree of explicit representations" );
+}
+
+macro ConvertToExplicitElements( CommandPresentationModuleInfo commandInfo )
+[Category="Hierarchy Commands", Guid="{F2A84C82-5DF6-46DA-9293-32A680EFC193}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Group a_oSelNode = (Group)Model.GetFirstSelectedNode().GetNode();
+   if( !a_oSelNode || !( a_oSelNode.IsDerived( Group ) ) )
+   {
+      return;
+   }
+
+   /*
+   PopupElementNode a_oPopupElementNode = new PopupElementNode;
+   a_oPopupElementNode.Name = "THIS";
+   Group a_oGroup;
+   a_oGroup = (Group)a_oPopupElementNode;
+   Console.Out( a_oGroup.Name );
+   Model.AddNode( a_oGroup, a_oSelNode, -1 );
+   return;
+   */
+
+   auto List a_lNewNodes;
+   ConvertTemp( a_oSelNode, a_oSelNode, a_lNewNodes );
+   Console.Out( a_lNewNodes.GetCount() );
+   for( int i = 0; i < a_lNewNodes.GetCount(); ++i )
+   {
+      Node a_oNode = (Node)a_lNewNodes.Get( i );
+      Model.AddNode( a_oNode, Model, -1 );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void InstallDeclarationNodeAddFile_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   string a_sHint = "Please select a single InstallerDeclarationNode";
+
+   if( Model.GetSelectCount() > 1 )
+   {
+      commandInfo.Status.SetHint( a_sHint );
+      commandInfo.SetEnabled( false );
+      return;   
+   }
+
+   a_sHint = "Adds a file to the installer";
+
+   ValidateNodeCommandContext.TestContext( commandInfo, InstallerDeclarationNode, a_sHint );
+}
+
+macro InstallDeclarationNodeAddFile( CommandPresentationModuleInfo commandInfo )
+[Category="Hierarchy Commands", Guid="{4C13703B-FBA5-4427-97DD-175F17D233E1}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+   if( !( a_oSelNode ) || !( a_oSelNode.IsDerived( InstallerDeclarationNode ) ) )
+   {
+      return;
+   }
+
+   // Get the InstallerConfigNode.
+   // Use its directory as a base.
+   Node a_oIsProjectRoot;   
+   GetProjectRoot( a_oSelNode, a_oIsProjectRoot );
+
+   if( !( a_oIsProjectRoot ) || !( a_oIsProjectRoot.IsDerived( InstallerConfigNode ) ) )
+   {
+      string a_sMessage = "Unable to find InstallerConfigNode above this selection.";
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   InstallerConfigNode a_oInstallerConfigNode = (InstallerConfigNode)a_oIsProjectRoot;
+   InstallerDeclarationNode a_oInstallerDeclarationNode = (InstallerDeclarationNode)a_oSelNode;
+
+   Node a_oIsParam = (Node)a_oInstallerDeclarationNode.Children[ 0 ];
+   if( !( a_oIsParam ) || !( a_oIsParam.IsDerived( InstallerParameterNode ) ) )
+   {
+      return;
+   }
+
+   InstallerParameterNode a_oInstallerParameterNode = (InstallerParameterNode)a_oIsParam;
+   if( a_oInstallerParameterNode.Key != "Source" )
+   {
+      return;
+   }
+
+   // Replace the any " with nothing.
+   // We need this for a well-formed file path.
+   auto FilePath a_oAbsolutePathToFile = new FilePath( a_oInstallerConfigNode.BasePath );
+   auto FilePath a_oBasePath = new FilePath( a_oInstallerConfigNode.BasePath );
+   auto Str a_oResourceValue = new Str( a_oInstallerParameterNode.Value );
+   a_oResourceValue.Value = a_oResourceValue.Replace( "\"", "" );
+   a_oAbsolutePathToFile.AppendPath( a_oResourceValue.Value );
+   a_oBasePath.Canonicalize();
+   a_oAbsolutePathToFile.Canonicalize();
+
+   if( !( a_oAbsolutePathToFile.FileExists() ) )
+   {
+      return;
+   }
+   
+   auto StrList a_slFiles;
+   string a_sFilter = "All Files (*.* )|*.*|";
+   string a_sTitle = "Choose files:";   
+
+   if( Application.BrowseFileOpen( 3, 1, a_sFilter, a_oAbsolutePathToFile.GetFilePath(), a_sTitle, a_slFiles ) == "" )
+   {
+      // User cancelled.
+      return;
+   }
+
+   auto Str a_oBase = new Str( a_oBasePath.GetPath() + "\\" );
+
+   for( int i = 0; i < a_slFiles.GetCount(); ++i )
+   {
+      auto FilePath a_oNewResource = new FilePath( a_slFiles.Get( i ) );
+      a_oNewResource.Canonicalize();
+      auto Str a_oPath = new Str( a_oNewResource.GetPath() );
+
+      InstallerDeclarationNode a_oNewDeclaration =
+         (InstallerDeclarationNode)a_oInstallerDeclarationNode.Clone();
+      a_oNewDeclaration.Name = a_oNewResource.GetFileName();
+      InstallerParameterNode a_oInstallerParameter =
+         (InstallerParameterNode)a_oNewDeclaration.Children[ 0 ];
+      a_oInstallerParameter.Value = "\"" + a_oPath.Right( a_oBase.Length() ) + "\"";
+      a_oInstallerParameter.Name = a_oInstallerParameter.GenerateParameter();
+      Model.AddNode( a_oNewDeclaration, a_oInstallerDeclarationNode.Parent(), -1 );
+   }
+   //SpaStrListUtil.Out( a_slFiles );
+   //Console.Out( a_oAbsolutePathToFile.GetFilePath() );
+}

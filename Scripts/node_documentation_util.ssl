@@ -1,0 +1,1877 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             NODE_DOCUMENTATION_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements node documentation utilities.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2013 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+// This script library is generated code. Do not make changes to this file.
+library SpaNodeDocumentationUtil;
+
+function void GenerateNodeForDocumentation( Group p_oContainer, string p_sNodeName )
+{
+   if( p_sNodeName == "AcceleratorElementNode" )
+   {
+      AcceleratorElementNode a_oAcceleratorElementNode = new AcceleratorElementNode;
+      a_oAcceleratorElementNode.Name = "AcceleratorElementNode";
+      Model.AddNode( a_oAcceleratorElementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "AccessControlNode" )
+   {
+      AccessControlNode a_oAccessControlNode = new AccessControlNode;
+      a_oAccessControlNode.Name = "AccessControlNode";
+      Model.AddNode( a_oAccessControlNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ActiveViewElementNode" )
+   {
+      ActiveViewElementNode a_oActiveViewElementNode = new ActiveViewElementNode;
+      a_oActiveViewElementNode.Name = "ActiveViewElementNode";
+      Model.AddNode( a_oActiveViewElementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "AddChannelModifier" )
+   {
+      AddChannelModifier a_oAddChannelModifier = new AddChannelModifier;
+      a_oAddChannelModifier.Name = "AddChannelModifier";
+      Model.AddNode( a_oAddChannelModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "AppDefinitionNode" )
+   {
+      AppDefinitionNode a_oAppDefinitionNode = new AppDefinitionNode;
+      a_oAppDefinitionNode.Name = "AppDefinitionNode";
+      Model.AddNode( a_oAppDefinitionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "AppScaffoldNode" )
+   {
+      AppScaffoldNode a_oAppScaffoldNode = new AppScaffoldNode;
+      a_oAppScaffoldNode.Name = "AppScaffoldNode";
+      Model.AddNode( a_oAppScaffoldNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ApplicationConfigNode" )
+   {
+      ApplicationConfigNode a_oApplicationConfigNode = new ApplicationConfigNode;
+      a_oApplicationConfigNode.Name = "ApplicationConfigNode";
+      Model.AddNode( a_oApplicationConfigNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "AttributeModifier" )
+   {
+      AttributeModifier a_oAttributeModifier = new AttributeModifier;
+      a_oAttributeModifier.Name = "AttributeModifier";
+      Model.AddNode( a_oAttributeModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "BevelModifier" )
+   {
+      BevelModifier a_oBevelModifier = new BevelModifier;
+      a_oBevelModifier.Name = "BevelModifier";
+      Model.AddNode( a_oBevelModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "BevelVertexModifier" )
+   {
+      BevelVertexModifier a_oBevelVertexModifier = new BevelVertexModifier;
+      a_oBevelVertexModifier.Name = "BevelVertexModifier";
+      Model.AddNode( a_oBevelVertexModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "BinaryOperatorNode" )
+   {
+      BinaryOperatorNode a_oBinaryOperatorNode = new BinaryOperatorNode;
+      a_oBinaryOperatorNode.Name = "BinaryOperatorNode";
+      Model.AddNode( a_oBinaryOperatorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "BooleanArrayExpressionNode" )
+   {
+      BooleanArrayExpressionNode a_oBooleanArrayExpressionNode = new BooleanArrayExpressionNode;
+      a_oBooleanArrayExpressionNode.Name = "BooleanArrayExpressionNode";
+      Model.AddNode( a_oBooleanArrayExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "BooleanArrayNode" )
+   {
+      BooleanArrayNode a_oBooleanArrayNode = new BooleanArrayNode;
+      a_oBooleanArrayNode.Name = "BooleanArrayNode";
+      Model.AddNode( a_oBooleanArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "BooleanExpressionNode" )
+   {
+      BooleanExpressionNode a_oBooleanExpressionNode = new BooleanExpressionNode;
+      a_oBooleanExpressionNode.Name = "BooleanExpressionNode";
+      Model.AddNode( a_oBooleanExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "BooleanNode" )
+   {
+      BooleanNode a_oBooleanNode = new BooleanNode;
+      a_oBooleanNode.Name = "BooleanNode";
+      Model.AddNode( a_oBooleanNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "BooleanVectorArrayExpressionNode" )
+   {
+      BooleanVectorArrayExpressionNode a_oBooleanVectorArrayExpressionNode = new BooleanVectorArrayExpressionNode;
+      a_oBooleanVectorArrayExpressionNode.Name = "BooleanVectorArrayExpressionNode";
+      Model.AddNode( a_oBooleanVectorArrayExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "BooleanVectorArrayNode" )
+   {
+      BooleanVectorArrayNode a_oBooleanVectorArrayNode = new BooleanVectorArrayNode;
+      a_oBooleanVectorArrayNode.Name = "BooleanVectorArrayNode";
+      Model.AddNode( a_oBooleanVectorArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "BooleanVectorExpressionNode" )
+   {
+      BooleanVectorExpressionNode a_oBooleanVectorExpressionNode = new BooleanVectorExpressionNode;
+      a_oBooleanVectorExpressionNode.Name = "BooleanVectorExpressionNode";
+      Model.AddNode( a_oBooleanVectorExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "BooleanVectorNode" )
+   {
+      BooleanVectorNode a_oBooleanVectorNode = new BooleanVectorNode;
+      a_oBooleanVectorNode.Name = "BooleanVectorNode";
+      Model.AddNode( a_oBooleanVectorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "BoxPrimitive" )
+   {
+      BoxPrimitive a_oBoxPrimitive = new BoxPrimitive;
+      a_oBoxPrimitive.Name = "BoxPrimitive";
+      Model.AddNode( a_oBoxPrimitive, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "CalculateNormalsModifier" )
+   {
+      CalculateNormalsModifier a_oCalculateNormalsModifier = new CalculateNormalsModifier;
+      a_oCalculateNormalsModifier.Name = "CalculateNormalsModifier";
+      Model.AddNode( a_oCalculateNormalsModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "Camera" )
+   {
+      Camera a_oCamera = new Camera;
+      a_oCamera.Name = "Camera";
+      Model.AddNode( a_oCamera, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "CameraStateNode" )
+   {
+      CameraStateNode a_oCameraStateNode = new CameraStateNode;
+      a_oCameraStateNode.Name = "CameraStateNode";
+      Model.AddNode( a_oCameraStateNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "CategoryGroup" )
+   {
+      CategoryGroup a_oCategoryGroup = new CategoryGroup;
+      a_oCategoryGroup.Name = "CategoryGroup";
+      Model.AddNode( a_oCategoryGroup, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "CirclePrimitive" )
+   {
+      CirclePrimitive a_oCirclePrimitive = new CirclePrimitive;
+      a_oCirclePrimitive.Name = "CirclePrimitive";
+      Model.AddNode( a_oCirclePrimitive, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ClearBuffersNode" )
+   {
+      ClearBuffersNode a_oClearBuffersNode = new ClearBuffersNode;
+      a_oClearBuffersNode.Name = "ClearBuffersNode";
+      Model.AddNode( a_oClearBuffersNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "CollapseVertexModifier" )
+   {
+      CollapseVertexModifier a_oCollapseVertexModifier = new CollapseVertexModifier;
+      a_oCollapseVertexModifier.Name = "CollapseVertexModifier";
+      Model.AddNode( a_oCollapseVertexModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "CollectionNode" )
+   {
+      CollectionNode a_oCollectionNode = new CollectionNode;
+      a_oCollectionNode.Name = "CollectionNode";
+      Model.AddNode( a_oCollectionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ColorArrayNode" )
+   {
+      ColorArrayNode a_oColorArrayNode = new ColorArrayNode;
+      a_oColorArrayNode.Name = "ColorArrayNode";
+      Model.AddNode( a_oColorArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ColorNode" )
+   {
+      ColorNode a_oColorNode = new ColorNode;
+      a_oColorNode.Name = "ColorNode";
+      Model.AddNode( a_oColorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "CommandConfigNode" )
+   {
+      CommandConfigNode a_oCommandConfigNode = new CommandConfigNode;
+      a_oCommandConfigNode.Name = "CommandConfigNode";
+      Model.AddNode( a_oCommandConfigNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "CommandRepNode" )
+   {
+      CommandRepNode a_oCommandRepNode = new CommandRepNode;
+      a_oCommandRepNode.Name = "CommandRepNode";
+      Model.AddNode( a_oCommandRepNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ConditionNode" )
+   {
+      ConditionNode a_oConditionNode = new ConditionNode;
+      a_oConditionNode.Name = "ConditionNode";
+      Model.AddNode( a_oConditionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ConfigNode" )
+   {
+      ConfigNode a_oConfigNode = new ConfigNode;
+      a_oConfigNode.Name = "ConfigNode";
+      Model.AddNode( a_oConfigNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ConnectModifier" )
+   {
+      ConnectModifier a_oConnectModifier = new ConnectModifier;
+      a_oConnectModifier.Name = "ConnectModifier";
+      Model.AddNode( a_oConnectModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ContainerNode" )
+   {
+      ContainerNode a_oContainerNode = new ContainerNode;
+      a_oContainerNode.Name = "ContainerNode";
+      Model.AddNode( a_oContainerNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ContextMenuElementNode" )
+   {
+      ContextMenuElementNode a_oContextMenuElementNode = new ContextMenuElementNode;
+      a_oContextMenuElementNode.Name = "ContextMenuElementNode";
+      Model.AddNode( a_oContextMenuElementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ControlDeclarationNode" )
+   {
+      ControlDeclarationNode a_oControlDeclarationNode = new ControlDeclarationNode;
+      a_oControlDeclarationNode.Name = "ControlDeclarationNode";
+      Model.AddNode( a_oControlDeclarationNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ControlShaderLayoutNode" )
+   {
+      ControlShaderLayoutNode a_oControlShaderLayoutNode = new ControlShaderLayoutNode;
+      a_oControlShaderLayoutNode.Name = "ControlShaderLayoutNode";
+      Model.AddNode( a_oControlShaderLayoutNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ControlSourceNode" )
+   {
+      ControlSourceNode a_oControlSourceNode = new ControlSourceNode;
+      a_oControlSourceNode.Name = "ControlSourceNode";
+      Model.AddNode( a_oControlSourceNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "CylinderPrimitive" )
+   {
+      CylinderPrimitive a_oCylinderPrimitive = new CylinderPrimitive;
+      a_oCylinderPrimitive.Name = "CylinderPrimitive";
+      Model.AddNode( a_oCylinderPrimitive, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DataConfigNode" )
+   {
+      DataConfigNode a_oDataConfigNode = new DataConfigNode;
+      a_oDataConfigNode.Name = "DataConfigNode";
+      Model.AddNode( a_oDataConfigNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DataMemberNode" )
+   {
+      DataMemberNode a_oDataMemberNode = new DataMemberNode;
+      a_oDataMemberNode.Name = "DataMemberNode";
+      Model.AddNode( a_oDataMemberNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DataPaletteNode" )
+   {
+      DataPaletteNode a_oDataPaletteNode = new DataPaletteNode;
+      a_oDataPaletteNode.Name = "DataPaletteNode";
+      Model.AddNode( a_oDataPaletteNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DeclarationNode" )
+   {
+      DeclarationNode a_oDeclarationNode = new DeclarationNode;
+      a_oDeclarationNode.Name = "DeclarationNode";
+      Model.AddNode( a_oDeclarationNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DeclareFunctionNode" )
+   {
+      DeclareFunctionNode a_oDeclareFunctionNode = new DeclareFunctionNode;
+      a_oDeclareFunctionNode.Name = "DeclareFunctionNode";
+      Model.AddNode( a_oDeclareFunctionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DelaunayModifier" )
+   {
+      DelaunayModifier a_oDelaunayModifier = new DelaunayModifier;
+      a_oDelaunayModifier.Name = "DelaunayModifier";
+      Model.AddNode( a_oDelaunayModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DelaunayTrimModifier" )
+   {
+      DelaunayTrimModifier a_oDelaunayTrimModifier = new DelaunayTrimModifier;
+      a_oDelaunayTrimModifier.Name = "DelaunayTrimModifier";
+      Model.AddNode( a_oDelaunayTrimModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DeleteFaceModifier" )
+   {
+      DeleteFaceModifier a_oDeleteFaceModifier = new DeleteFaceModifier;
+      a_oDeleteFaceModifier.Name = "DeleteFaceModifier";
+      Model.AddNode( a_oDeleteFaceModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DependencyGroup" )
+   {
+      DependencyGroup a_oDependencyGroup = new DependencyGroup;
+      a_oDependencyGroup.Name = "DependencyGroup";
+      Model.AddNode( a_oDependencyGroup, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DependencyNode" )
+   {
+      DependencyNode a_oDependencyNode = new DependencyNode;
+      a_oDependencyNode.Name = "DependencyNode";
+      Model.AddNode( a_oDependencyNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DisplaceModifier" )
+   {
+      DisplaceModifier a_oDisplaceModifier = new DisplaceModifier;
+      a_oDisplaceModifier.Name = "DisplaceModifier";
+      Model.AddNode( a_oDisplaceModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DissolveFaceModifier" )
+   {
+      DissolveFaceModifier a_oDissolveFaceModifier = new DissolveFaceModifier;
+      a_oDissolveFaceModifier.Name = "DissolveFaceModifier";
+      Model.AddNode( a_oDissolveFaceModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DissolveModifier" )
+   {
+      DissolveModifier a_oDissolveModifier = new DissolveModifier;
+      a_oDissolveModifier.Name = "DissolveModifier";
+      Model.AddNode( a_oDissolveModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DissolveTriangleEdgesModifier" )
+   {
+      DissolveTriangleEdgesModifier a_oDissolveTriangleEdgesModifier = new DissolveTriangleEdgesModifier;
+      a_oDissolveTriangleEdgesModifier.Name = "DissolveTriangleEdgesModifier";
+      Model.AddNode( a_oDissolveTriangleEdgesModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DockbarElementNode" )
+   {
+      DockbarElementNode a_oDockbarElementNode = new DockbarElementNode;
+      a_oDockbarElementNode.Name = "DockbarElementNode";
+      Model.AddNode( a_oDockbarElementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DockedViewElementNode" )
+   {
+      DockedViewElementNode a_oDockedViewElementNode = new DockedViewElementNode;
+      a_oDockedViewElementNode.Name = "DockedViewElementNode";
+      Model.AddNode( a_oDockedViewElementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DynamicBooleanNode" )
+   {
+      DynamicBooleanNode a_oDynamicBooleanNode = new DynamicBooleanNode;
+      a_oDynamicBooleanNode.Name = "DynamicBooleanNode";
+      Model.AddNode( a_oDynamicBooleanNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DynamicColorNode" )
+   {
+      DynamicColorNode a_oDynamicColorNode = new DynamicColorNode;
+      a_oDynamicColorNode.Name = "DynamicColorNode";
+      Model.AddNode( a_oDynamicColorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DynamicFloatNode" )
+   {
+      DynamicFloatNode a_oDynamicFloatNode = new DynamicFloatNode;
+      a_oDynamicFloatNode.Name = "DynamicFloatNode";
+      Model.AddNode( a_oDynamicFloatNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DynamicIntegerNode" )
+   {
+      DynamicIntegerNode a_oDynamicIntegerNode = new DynamicIntegerNode;
+      a_oDynamicIntegerNode.Name = "DynamicIntegerNode";
+      Model.AddNode( a_oDynamicIntegerNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DynamicLightArrayNode" )
+   {
+      DynamicLightArrayNode a_oDynamicLightArrayNode = new DynamicLightArrayNode;
+      a_oDynamicLightArrayNode.Name = "DynamicLightArrayNode";
+      Model.AddNode( a_oDynamicLightArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DynamicMatrixNode" )
+   {
+      DynamicMatrixNode a_oDynamicMatrixNode = new DynamicMatrixNode;
+      a_oDynamicMatrixNode.Name = "DynamicMatrixNode";
+      Model.AddNode( a_oDynamicMatrixNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DynamicSamplerNode" )
+   {
+      DynamicSamplerNode a_oDynamicSamplerNode = new DynamicSamplerNode;
+      a_oDynamicSamplerNode.Name = "DynamicSamplerNode";
+      Model.AddNode( a_oDynamicSamplerNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DynamicTextureModifier" )
+   {
+      DynamicTextureModifier a_oDynamicTextureModifier = new DynamicTextureModifier;
+      a_oDynamicTextureModifier.Name = "DynamicTextureModifier";
+      Model.AddNode( a_oDynamicTextureModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "DynamicVectorNode" )
+   {
+      DynamicVectorNode a_oDynamicVectorNode = new DynamicVectorNode;
+      a_oDynamicVectorNode.Name = "DynamicVectorNode";
+      Model.AddNode( a_oDynamicVectorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "EdgeModifier" )
+   {
+      EdgeModifier a_oEdgeModifier = new EdgeModifier;
+      a_oEdgeModifier.Name = "EdgeModifier";
+      Model.AddNode( a_oEdgeModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "EvaluationDeclarationNode" )
+   {
+      EvaluationDeclarationNode a_oEvaluationDeclarationNode = new EvaluationDeclarationNode;
+      a_oEvaluationDeclarationNode.Name = "EvaluationDeclarationNode";
+      Model.AddNode( a_oEvaluationDeclarationNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "EvaluationShaderLayoutNode" )
+   {
+      EvaluationShaderLayoutNode a_oEvaluationShaderLayoutNode = new EvaluationShaderLayoutNode;
+      a_oEvaluationShaderLayoutNode.Name = "EvaluationShaderLayoutNode";
+      Model.AddNode( a_oEvaluationShaderLayoutNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "EvaluationSourceNode" )
+   {
+      EvaluationSourceNode a_oEvaluationSourceNode = new EvaluationSourceNode;
+      a_oEvaluationSourceNode.Name = "EvaluationSourceNode";
+      Model.AddNode( a_oEvaluationSourceNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ExportOptionsModifier" )
+   {
+      ExportOptionsModifier a_oExportOptionsModifier = new ExportOptionsModifier;
+      a_oExportOptionsModifier.Name = "ExportOptionsModifier";
+      Model.AddNode( a_oExportOptionsModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ExpressionNode" )
+   {
+      ExpressionNode a_oExpressionNode = new ExpressionNode;
+      a_oExpressionNode.Name = "ExpressionNode";
+      Model.AddNode( a_oExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ExtensionNode" )
+   {
+      ExtensionNode a_oExtensionNode = new ExtensionNode;
+      a_oExtensionNode.Name = "ExtensionNode";
+      Model.AddNode( a_oExtensionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ExtractGeotiffModifier" )
+   {
+      ExtractGeotiffModifier a_oExtractGeotiffModifier = new ExtractGeotiffModifier;
+      a_oExtractGeotiffModifier.Name = "ExtractGeotiffModifier";
+      Model.AddNode( a_oExtractGeotiffModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ExtractMrSidModifier" )
+   {
+      ExtractMrSidModifier a_oExtractMrSidModifier = new ExtractMrSidModifier;
+      a_oExtractMrSidModifier.Name = "ExtractMrSidModifier";
+      Model.AddNode( a_oExtractMrSidModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ExtrudeModifier" )
+   {
+      ExtrudeModifier a_oExtrudeModifier = new ExtrudeModifier;
+      a_oExtrudeModifier.Name = "ExtrudeModifier";
+      Model.AddNode( a_oExtrudeModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FaceAttributeModifier" )
+   {
+      FaceAttributeModifier a_oFaceAttributeModifier = new FaceAttributeModifier;
+      a_oFaceAttributeModifier.Name = "FaceAttributeModifier";
+      Model.AddNode( a_oFaceAttributeModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FileConfigNode" )
+   {
+      FileConfigNode a_oFileConfigNode = new FileConfigNode;
+      a_oFileConfigNode.Name = "FileConfigNode";
+      Model.AddNode( a_oFileConfigNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FileNode" )
+   {
+      FileNode a_oFileNode = new FileNode;
+      a_oFileNode.Name = "FileNode";
+      Model.AddNode( a_oFileNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FloatArrayExpressionNode" )
+   {
+      FloatArrayExpressionNode a_oFloatArrayExpressionNode = new FloatArrayExpressionNode;
+      a_oFloatArrayExpressionNode.Name = "FloatArrayExpressionNode";
+      Model.AddNode( a_oFloatArrayExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FloatArrayNode" )
+   {
+      FloatArrayNode a_oFloatArrayNode = new FloatArrayNode;
+      a_oFloatArrayNode.Name = "FloatArrayNode";
+      Model.AddNode( a_oFloatArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FloatExpressionNode" )
+   {
+      FloatExpressionNode a_oFloatExpressionNode = new FloatExpressionNode;
+      a_oFloatExpressionNode.Name = "FloatExpressionNode";
+      Model.AddNode( a_oFloatExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FloatNode" )
+   {
+      FloatNode a_oFloatNode = new FloatNode;
+      a_oFloatNode.Name = "FloatNode";
+      Model.AddNode( a_oFloatNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FolderConfigNode" )
+   {
+      FolderConfigNode a_oFolderConfigNode = new FolderConfigNode;
+      a_oFolderConfigNode.Name = "FolderConfigNode";
+      Model.AddNode( a_oFolderConfigNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FolderGroup" )
+   {
+      FolderGroup a_oFolderGroup = new FolderGroup;
+      a_oFolderGroup.Name = "FolderGroup";
+      Model.AddNode( a_oFolderGroup, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FragmentDeclarationNode" )
+   {
+      FragmentDeclarationNode a_oFragmentDeclarationNode = new FragmentDeclarationNode;
+      a_oFragmentDeclarationNode.Name = "FragmentDeclarationNode";
+      Model.AddNode( a_oFragmentDeclarationNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FragmentShaderLayoutNode" )
+   {
+      FragmentShaderLayoutNode a_oFragmentShaderLayoutNode = new FragmentShaderLayoutNode;
+      a_oFragmentShaderLayoutNode.Name = "FragmentShaderLayoutNode";
+      Model.AddNode( a_oFragmentShaderLayoutNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FragmentSourceNode" )
+   {
+      FragmentSourceNode a_oFragmentSourceNode = new FragmentSourceNode;
+      a_oFragmentSourceNode.Name = "FragmentSourceNode";
+      Model.AddNode( a_oFragmentSourceNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FrameBuffer" )
+   {
+      FrameBuffer a_oFrameBuffer = new FrameBuffer;
+      a_oFrameBuffer.Name = "FrameBuffer";
+      Model.AddNode( a_oFrameBuffer, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FrameBufferBind" )
+   {
+      FrameBufferBind a_oFrameBufferBind = new FrameBufferBind;
+      a_oFrameBufferBind.Name = "FrameBufferBind";
+      Model.AddNode( a_oFrameBufferBind, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FrameReferenceNode" )
+   {
+      FrameReferenceNode a_oFrameReferenceNode = new FrameReferenceNode;
+      a_oFrameReferenceNode.Name = "FrameReferenceNode";
+      Model.AddNode( a_oFrameReferenceNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "FunctionParameterNode" )
+   {
+      FunctionParameterNode a_oFunctionParameterNode = new FunctionParameterNode;
+      a_oFunctionParameterNode.Name = "FunctionParameterNode";
+      Model.AddNode( a_oFunctionParameterNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "GeographicProjectionModifier" )
+   {
+      GeographicProjectionModifier a_oGeographicProjectionModifier = new GeographicProjectionModifier;
+      a_oGeographicProjectionModifier.Name = "GeographicProjectionModifier";
+      Model.AddNode( a_oGeographicProjectionModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "GeographicTextureModifier" )
+   {
+      GeographicTextureModifier a_oGeographicTextureModifier = new GeographicTextureModifier;
+      a_oGeographicTextureModifier.Name = "GeographicTextureModifier";
+      Model.AddNode( a_oGeographicTextureModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "GeometryDeclarationNode" )
+   {
+      GeometryDeclarationNode a_oGeometryDeclarationNode = new GeometryDeclarationNode;
+      a_oGeometryDeclarationNode.Name = "GeometryDeclarationNode";
+      Model.AddNode( a_oGeometryDeclarationNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "GeometryPaletteNode" )
+   {
+      GeometryPaletteNode a_oGeometryPaletteNode = new GeometryPaletteNode;
+      a_oGeometryPaletteNode.Name = "GeometryPaletteNode";
+      Model.AddNode( a_oGeometryPaletteNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "GeometryShaderLayoutNode" )
+   {
+      GeometryShaderLayoutNode a_oGeometryShaderLayoutNode = new GeometryShaderLayoutNode;
+      a_oGeometryShaderLayoutNode.Name = "GeometryShaderLayoutNode";
+      Model.AddNode( a_oGeometryShaderLayoutNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "GeometrySourceNode" )
+   {
+      GeometrySourceNode a_oGeometrySourceNode = new GeometrySourceNode;
+      a_oGeometrySourceNode.Name = "GeometrySourceNode";
+      Model.AddNode( a_oGeometrySourceNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "GraphMemberNode" )
+   {
+      GraphMemberNode a_oGraphMemberNode = new GraphMemberNode;
+      a_oGraphMemberNode.Name = "GraphMemberNode";
+      Model.AddNode( a_oGraphMemberNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "Group" )
+   {
+      Group a_oGroup = new Group;
+      a_oGroup.Name = "Group";
+      Model.AddNode( a_oGroup, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "HelpConfigNode" )
+   {
+      HelpConfigNode a_oHelpConfigNode = new HelpConfigNode;
+      a_oHelpConfigNode.Name = "HelpConfigNode";
+      Model.AddNode( a_oHelpConfigNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "IncludePaletteNode" )
+   {
+      IncludePaletteNode a_oIncludePaletteNode = new IncludePaletteNode;
+      a_oIncludePaletteNode.Name = "IncludePaletteNode";
+      Model.AddNode( a_oIncludePaletteNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "IncludeSourceNode" )
+   {
+      IncludeSourceNode a_oIncludeSourceNode = new IncludeSourceNode;
+      a_oIncludeSourceNode.Name = "IncludeSourceNode";
+      Model.AddNode( a_oIncludeSourceNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "InitializationNode" )
+   {
+      InitializationNode a_oInitializationNode = new InitializationNode;
+      a_oInitializationNode.Name = "InitializationNode";
+      Model.AddNode( a_oInitializationNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "InputNode" )
+   {
+      InputNode a_oInputNode = new InputNode;
+      a_oInputNode.Name = "InputNode";
+      Model.AddNode( a_oInputNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "InsertQuadCenterVertexModifier" )
+   {
+      InsertQuadCenterVertexModifier a_oInsertQuadCenterVertexModifier = new InsertQuadCenterVertexModifier;
+      a_oInsertQuadCenterVertexModifier.Name = "InsertQuadCenterVertexModifier";
+      Model.AddNode( a_oInsertQuadCenterVertexModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "InsertTriangleIntoTriangleModifier" )
+   {
+      InsertTriangleIntoTriangleModifier a_oInsertTriangleIntoTriangleModifier = new InsertTriangleIntoTriangleModifier;
+      a_oInsertTriangleIntoTriangleModifier.Name = "InsertTriangleIntoTriangleModifier";
+      Model.AddNode( a_oInsertTriangleIntoTriangleModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "InsertVertexModifier" )
+   {
+      InsertVertexModifier a_oInsertVertexModifier = new InsertVertexModifier;
+      a_oInsertVertexModifier.Name = "InsertVertexModifier";
+      Model.AddNode( a_oInsertVertexModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "InstallerConfigNode" )
+   {
+      InstallerConfigNode a_oInstallerConfigNode = new InstallerConfigNode;
+      a_oInstallerConfigNode.Name = "InstallerConfigNode";
+      Model.AddNode( a_oInstallerConfigNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "InstallerDirectiveNode" )
+   {
+      InstallerDirectiveNode a_oInstallerDirectiveNode = new InstallerDirectiveNode;
+      a_oInstallerDirectiveNode.Name = "InstallerDirectiveNode";
+      Model.AddNode( a_oInstallerDirectiveNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "IntegerArrayExpressionNode" )
+   {
+      IntegerArrayExpressionNode a_oIntegerArrayExpressionNode = new IntegerArrayExpressionNode;
+      a_oIntegerArrayExpressionNode.Name = "IntegerArrayExpressionNode";
+      Model.AddNode( a_oIntegerArrayExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "IntegerArrayNode" )
+   {
+      IntegerArrayNode a_oIntegerArrayNode = new IntegerArrayNode;
+      a_oIntegerArrayNode.Name = "IntegerArrayNode";
+      Model.AddNode( a_oIntegerArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "IntegerExpressionNode" )
+   {
+      IntegerExpressionNode a_oIntegerExpressionNode = new IntegerExpressionNode;
+      a_oIntegerExpressionNode.Name = "IntegerExpressionNode";
+      Model.AddNode( a_oIntegerExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "IntegerNode" )
+   {
+      IntegerNode a_oIntegerNode = new IntegerNode;
+      a_oIntegerNode.Name = "IntegerNode";
+      Model.AddNode( a_oIntegerNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "IntegerVectorArrayExpressionNode" )
+   {
+      IntegerVectorArrayExpressionNode a_oIntegerVectorArrayExpressionNode = new IntegerVectorArrayExpressionNode;
+      a_oIntegerVectorArrayExpressionNode.Name = "IntegerVectorArrayExpressionNode";
+      Model.AddNode( a_oIntegerVectorArrayExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "IntegerVectorArrayNode" )
+   {
+      IntegerVectorArrayNode a_oIntegerVectorArrayNode = new IntegerVectorArrayNode;
+      a_oIntegerVectorArrayNode.Name = "IntegerVectorArrayNode";
+      Model.AddNode( a_oIntegerVectorArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "IntegerVectorExpressionNode" )
+   {
+      IntegerVectorExpressionNode a_oIntegerVectorExpressionNode = new IntegerVectorExpressionNode;
+      a_oIntegerVectorExpressionNode.Name = "IntegerVectorExpressionNode";
+      Model.AddNode( a_oIntegerVectorExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "IntegerVectorNode" )
+   {
+      IntegerVectorNode a_oIntegerVectorNode = new IntegerVectorNode;
+      a_oIntegerVectorNode.Name = "IntegerVectorNode";
+      Model.AddNode( a_oIntegerVectorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "InterfaceBlockNode" )
+   {
+      InterfaceBlockNode a_oInterfaceBlockNode = new InterfaceBlockNode;
+      a_oInterfaceBlockNode.Name = "InterfaceBlockNode";
+      Model.AddNode( a_oInterfaceBlockNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "InterfaceElementNode" )
+   {
+      InterfaceElementNode a_oInterfaceElementNode = new InterfaceElementNode;
+      a_oInterfaceElementNode.Name = "InterfaceElementNode";
+      Model.AddNode( a_oInterfaceElementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "InterfaceSectionNode" )
+   {
+      InterfaceSectionNode a_oInterfaceSectionNode = new InterfaceSectionNode;
+      a_oInterfaceSectionNode.Name = "InterfaceSectionNode";
+      Model.AddNode( a_oInterfaceSectionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ItemElementNode" )
+   {
+      ItemElementNode a_oItemElementNode = new ItemElementNode;
+      a_oItemElementNode.Name = "ItemElementNode";
+      Model.AddNode( a_oItemElementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "IteratorNode" )
+   {
+      IteratorNode a_oIteratorNode = new IteratorNode;
+      a_oIteratorNode.Name = "IteratorNode";
+      Model.AddNode( a_oIteratorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "JumpStatementNode" )
+   {
+      JumpStatementNode a_oJumpStatementNode = new JumpStatementNode;
+      a_oJumpStatementNode.Name = "JumpStatementNode";
+      Model.AddNode( a_oJumpStatementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "KeyboardElementNode" )
+   {
+      KeyboardElementNode a_oKeyboardElementNode = new KeyboardElementNode;
+      a_oKeyboardElementNode.Name = "KeyboardElementNode";
+      Model.AddNode( a_oKeyboardElementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LOD" )
+   {
+      LOD a_oLOD = new LOD;
+      a_oLOD.Name = "LOD";
+      Model.AddNode( a_oLOD, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LayoutNode" )
+   {
+      LayoutNode a_oLayoutNode = new LayoutNode;
+      a_oLayoutNode.Name = "LayoutNode";
+      Model.AddNode( a_oLayoutNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LibraryConfigNode" )
+   {
+      LibraryConfigNode a_oLibraryConfigNode = new LibraryConfigNode;
+      a_oLibraryConfigNode.Name = "LibraryConfigNode";
+      Model.AddNode( a_oLibraryConfigNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "Light" )
+   {
+      Light a_oLight = new Light;
+      a_oLight.Name = "Light";
+      Model.AddNode( a_oLight, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightArrayNode" )
+   {
+      LightArrayNode a_oLightArrayNode = new LightArrayNode;
+      a_oLightArrayNode.Name = "LightArrayNode";
+      Model.AddNode( a_oLightArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightBooleanNode" )
+   {
+      LightBooleanNode a_oLightBooleanNode = new LightBooleanNode;
+      a_oLightBooleanNode.Name = "LightBooleanNode";
+      Model.AddNode( a_oLightBooleanNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightCameraStateNode" )
+   {
+      LightCameraStateNode a_oLightCameraStateNode = new LightCameraStateNode;
+      a_oLightCameraStateNode.Name = "LightCameraStateNode";
+      Model.AddNode( a_oLightCameraStateNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightColorNode" )
+   {
+      LightColorNode a_oLightColorNode = new LightColorNode;
+      a_oLightColorNode.Name = "LightColorNode";
+      Model.AddNode( a_oLightColorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightCountNode" )
+   {
+      LightCountNode a_oLightCountNode = new LightCountNode;
+      a_oLightCountNode.Name = "LightCountNode";
+      Model.AddNode( a_oLightCountNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightFloatNode" )
+   {
+      LightFloatNode a_oLightFloatNode = new LightFloatNode;
+      a_oLightFloatNode.Name = "LightFloatNode";
+      Model.AddNode( a_oLightFloatNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightIntegerNode" )
+   {
+      LightIntegerNode a_oLightIntegerNode = new LightIntegerNode;
+      a_oLightIntegerNode.Name = "LightIntegerNode";
+      Model.AddNode( a_oLightIntegerNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightMatrixNode" )
+   {
+      LightMatrixNode a_oLightMatrixNode = new LightMatrixNode;
+      a_oLightMatrixNode.Name = "LightMatrixNode";
+      Model.AddNode( a_oLightMatrixNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightModelViewCameraMatrixNode" )
+   {
+      LightModelViewCameraMatrixNode a_oLightModelViewCameraMatrixNode = new LightModelViewCameraMatrixNode;
+      a_oLightModelViewCameraMatrixNode.Name = "LightModelViewCameraMatrixNode";
+      Model.AddNode( a_oLightModelViewCameraMatrixNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightModelViewMatrixNode" )
+   {
+      LightModelViewMatrixNode a_oLightModelViewMatrixNode = new LightModelViewMatrixNode;
+      a_oLightModelViewMatrixNode.Name = "LightModelViewMatrixNode";
+      Model.AddNode( a_oLightModelViewMatrixNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightProjectionCameraMatrixNode" )
+   {
+      LightProjectionCameraMatrixNode a_oLightProjectionCameraMatrixNode = new LightProjectionCameraMatrixNode;
+      a_oLightProjectionCameraMatrixNode.Name = "LightProjectionCameraMatrixNode";
+      Model.AddNode( a_oLightProjectionCameraMatrixNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightProjectionMatrixNode" )
+   {
+      LightProjectionMatrixNode a_oLightProjectionMatrixNode = new LightProjectionMatrixNode;
+      a_oLightProjectionMatrixNode.Name = "LightProjectionMatrixNode";
+      Model.AddNode( a_oLightProjectionMatrixNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightStackNode" )
+   {
+      LightStackNode a_oLightStackNode = new LightStackNode;
+      a_oLightStackNode.Name = "LightStackNode";
+      Model.AddNode( a_oLightStackNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LightVectorNode" )
+   {
+      LightVectorNode a_oLightVectorNode = new LightVectorNode;
+      a_oLightVectorNode.Name = "LightVectorNode";
+      Model.AddNode( a_oLightVectorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ListNode" )
+   {
+      ListNode a_oListNode = new ListNode;
+      a_oListNode.Name = "ListNode";
+      Model.AddNode( a_oListNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LoftPrimitive" )
+   {
+      LoftPrimitive a_oLoftPrimitive = new LoftPrimitive;
+      a_oLoftPrimitive.Name = "LoftPrimitive";
+      Model.AddNode( a_oLoftPrimitive, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "LoopNode" )
+   {
+      LoopNode a_oLoopNode = new LoopNode;
+      a_oLoopNode.Name = "LoopNode";
+      Model.AddNode( a_oLoopNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "MainFunctionNode" )
+   {
+      MainFunctionNode a_oMainFunctionNode = new MainFunctionNode;
+      a_oMainFunctionNode.Name = "MainFunctionNode";
+      Model.AddNode( a_oMainFunctionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "Material" )
+   {
+      Material a_oMaterial = new Material;
+      a_oMaterial.Name = "Material";
+      Model.AddNode( a_oMaterial, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "MaterialArrayNode" )
+   {
+      MaterialArrayNode a_oMaterialArrayNode = new MaterialArrayNode;
+      a_oMaterialArrayNode.Name = "MaterialArrayNode";
+      Model.AddNode( a_oMaterialArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "MaterialColorNode" )
+   {
+      MaterialColorNode a_oMaterialColorNode = new MaterialColorNode;
+      a_oMaterialColorNode.Name = "MaterialColorNode";
+      Model.AddNode( a_oMaterialColorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "MaterialFloatNode" )
+   {
+      MaterialFloatNode a_oMaterialFloatNode = new MaterialFloatNode;
+      a_oMaterialFloatNode.Name = "MaterialFloatNode";
+      Model.AddNode( a_oMaterialFloatNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "MaterialIntegerNode" )
+   {
+      MaterialIntegerNode a_oMaterialIntegerNode = new MaterialIntegerNode;
+      a_oMaterialIntegerNode.Name = "MaterialIntegerNode";
+      Model.AddNode( a_oMaterialIntegerNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "MaterialModifier" )
+   {
+      MaterialModifier a_oMaterialModifier = new MaterialModifier;
+      a_oMaterialModifier.Name = "MaterialModifier";
+      Model.AddNode( a_oMaterialModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "MaterialPaletteNode" )
+   {
+      MaterialPaletteNode a_oMaterialPaletteNode = new MaterialPaletteNode;
+      a_oMaterialPaletteNode.Name = "MaterialPaletteNode";
+      Model.AddNode( a_oMaterialPaletteNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "MatrixExpressionNode" )
+   {
+      MatrixExpressionNode a_oMatrixExpressionNode = new MatrixExpressionNode;
+      a_oMatrixExpressionNode.Name = "MatrixExpressionNode";
+      Model.AddNode( a_oMatrixExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "MatrixNode" )
+   {
+      MatrixNode a_oMatrixNode = new MatrixNode;
+      a_oMatrixNode.Name = "MatrixNode";
+      Model.AddNode( a_oMatrixNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "MenuElementNode" )
+   {
+      MenuElementNode a_oMenuElementNode = new MenuElementNode;
+      a_oMenuElementNode.Name = "MenuElementNode";
+      Model.AddNode( a_oMenuElementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "MergeFacesModifier" )
+   {
+      MergeFacesModifier a_oMergeFacesModifier = new MergeFacesModifier;
+      a_oMergeFacesModifier.Name = "MergeFacesModifier";
+      Model.AddNode( a_oMergeFacesModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "Mesh" )
+   {
+      Mesh a_oMesh = new Mesh;
+      a_oMesh.Name = "Mesh";
+      Model.AddNode( a_oMesh, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "Model3D" )
+   {
+      Model3D a_oModel3D = new Model3D;
+      a_oModel3D.Name = "Model3D";
+      Model.AddNode( a_oModel3D, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "Modifier" )
+   {
+      Modifier a_oModifier = new Modifier;
+      a_oModifier.Name = "Modifier";
+      Model.AddNode( a_oModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "Node" )
+   {
+      Node a_oNode = new Node;
+      a_oNode.Name = "Node";
+      Model.AddNode( a_oNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "NodeLink" )
+   {
+      NodeLink a_oNodeLink = new NodeLink;
+      a_oNodeLink.Name = "NodeLink";
+      Model.AddNode( a_oNodeLink, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "NodeLinkDependency" )
+   {
+      NodeLinkDependency a_oNodeLinkDependency = new NodeLinkDependency;
+      a_oNodeLinkDependency.Name = "NodeLinkDependency";
+      Model.AddNode( a_oNodeLinkDependency, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "NormalTranslateModifier" )
+   {
+      NormalTranslateModifier a_oNormalTranslateModifier = new NormalTranslateModifier;
+      a_oNormalTranslateModifier.Name = "NormalTranslateModifier";
+      Model.AddNode( a_oNormalTranslateModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "OperatorNode" )
+   {
+      OperatorNode a_oOperatorNode = new OperatorNode;
+      a_oOperatorNode.Name = "OperatorNode";
+      Model.AddNode( a_oOperatorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "OrthoProjectionMatrixNode" )
+   {
+      OrthoProjectionMatrixNode a_oOrthoProjectionMatrixNode = new OrthoProjectionMatrixNode;
+      a_oOrthoProjectionMatrixNode.Name = "OrthoProjectionMatrixNode";
+      Model.AddNode( a_oOrthoProjectionMatrixNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ParameterListNode" )
+   {
+      ParameterListNode a_oParameterListNode = new ParameterListNode;
+      a_oParameterListNode.Name = "ParameterListNode";
+      Model.AddNode( a_oParameterListNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ParametricMesh" )
+   {
+      ParametricMesh a_oParametricMesh = new ParametricMesh;
+      a_oParametricMesh.Name = "ParametricMesh";
+      Model.AddNode( a_oParametricMesh, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "Path" )
+   {
+      Path a_oPath = new Path;
+      a_oPath.Name = "Path";
+      Model.AddNode( a_oPath, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "PlanarProjectTexturePrimitive" )
+   {
+      PlanarProjectTexturePrimitive a_oPlanarProjectTexturePrimitive = new PlanarProjectTexturePrimitive;
+      a_oPlanarProjectTexturePrimitive.Name = "PlanarProjectTexturePrimitive";
+      Model.AddNode( a_oPlanarProjectTexturePrimitive, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "PopupElementNode" )
+   {
+      PopupElementNode a_oPopupElementNode = new PopupElementNode;
+      a_oPopupElementNode.Name = "PopupElementNode";
+      Model.AddNode( a_oPopupElementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "PreprocessorNode" )
+   {
+      PreprocessorNode a_oPreprocessorNode = new PreprocessorNode;
+      a_oPreprocessorNode.Name = "PreprocessorNode";
+      Model.AddNode( a_oPreprocessorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "Program" )
+   {
+      Program a_oProgram = new Program;
+      a_oProgram.Name = "Program";
+      Model.AddNode( a_oProgram, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ProgramOptions" )
+   {
+      ProgramOptions a_oProgramOptions = new ProgramOptions;
+      a_oProgramOptions.Name = "ProgramOptions";
+      Model.AddNode( a_oProgramOptions, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ProgramVariationNode" )
+   {
+      ProgramVariationNode a_oProgramVariationNode = new ProgramVariationNode;
+      a_oProgramVariationNode.Name = "ProgramVariationNode";
+      Model.AddNode( a_oProgramVariationNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ProjectFileNode" )
+   {
+      ProjectFileNode a_oProjectFileNode = new ProjectFileNode;
+      a_oProjectFileNode.Name = "ProjectFileNode";
+      Model.AddNode( a_oProjectFileNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ProjectGroup" )
+   {
+      ProjectGroup a_oProjectGroup = new ProjectGroup;
+      a_oProjectGroup.Name = "ProjectGroup";
+      Model.AddNode( a_oProjectGroup, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ProjectionModifier" )
+   {
+      ProjectionModifier a_oProjectionModifier = new ProjectionModifier;
+      a_oProjectionModifier.Name = "ProjectionModifier";
+      Model.AddNode( a_oProjectionModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "QualifierNode" )
+   {
+      QualifierNode a_oQualifierNode = new QualifierNode;
+      a_oQualifierNode.Name = "QualifierNode";
+      Model.AddNode( a_oQualifierNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "RectanglePrimitive" )
+   {
+      RectanglePrimitive a_oRectanglePrimitive = new RectanglePrimitive;
+      a_oRectanglePrimitive.Name = "RectanglePrimitive";
+      Model.AddNode( a_oRectanglePrimitive, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "RectanglePrimitiveVectorNode" )
+   {
+      RectanglePrimitiveVectorNode a_oRectanglePrimitiveVectorNode = new RectanglePrimitiveVectorNode;
+      a_oRectanglePrimitiveVectorNode.Name = "RectanglePrimitiveVectorNode";
+      Model.AddNode( a_oRectanglePrimitiveVectorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ReferenceGroup" )
+   {
+      ReferenceGroup a_oReferenceGroup = new ReferenceGroup;
+      a_oReferenceGroup.Name = "ReferenceGroup";
+      Model.AddNode( a_oReferenceGroup, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "RemoveChannelModifier" )
+   {
+      RemoveChannelModifier a_oRemoveChannelModifier = new RemoveChannelModifier;
+      a_oRemoveChannelModifier.Name = "RemoveChannelModifier";
+      Model.AddNode( a_oRemoveChannelModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "RenderStateNode" )
+   {
+      RenderStateNode a_oRenderStateNode = new RenderStateNode;
+      a_oRenderStateNode.Name = "RenderStateNode";
+      Model.AddNode( a_oRenderStateNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "RenderTraversalNode" )
+   {
+      RenderTraversalNode a_oRenderTraversalNode = new RenderTraversalNode;
+      a_oRenderTraversalNode.Name = "RenderTraversalNode";
+      Model.AddNode( a_oRenderTraversalNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ResampleGeotiffModifier" )
+   {
+      ResampleGeotiffModifier a_oResampleGeotiffModifier = new ResampleGeotiffModifier;
+      a_oResampleGeotiffModifier.Name = "ResampleGeotiffModifier";
+      Model.AddNode( a_oResampleGeotiffModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "SamplerExpressionNode" )
+   {
+      SamplerExpressionNode a_oSamplerExpressionNode = new SamplerExpressionNode;
+      a_oSamplerExpressionNode.Name = "SamplerExpressionNode";
+      Model.AddNode( a_oSamplerExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "SamplerNode" )
+   {
+      SamplerNode a_oSamplerNode = new SamplerNode;
+      a_oSamplerNode.Name = "SamplerNode";
+      Model.AddNode( a_oSamplerNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ScalarExpressionNode" )
+   {
+      ScalarExpressionNode a_oScalarExpressionNode = new ScalarExpressionNode;
+      a_oScalarExpressionNode.Name = "ScalarExpressionNode";
+      Model.AddNode( a_oScalarExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ScreenAlignedGeometryNode" )
+   {
+      ScreenAlignedGeometryNode a_oScreenAlignedGeometryNode = new ScreenAlignedGeometryNode;
+      a_oScreenAlignedGeometryNode.Name = "ScreenAlignedGeometryNode";
+      Model.AddNode( a_oScreenAlignedGeometryNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ScriptNode" )
+   {
+      ScriptNode a_oScriptNode = new ScriptNode;
+      a_oScriptNode.Name = "ScriptNode";
+      Model.AddNode( a_oScriptNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "SectionConfigNode" )
+   {
+      SectionConfigNode a_oSectionConfigNode = new SectionConfigNode;
+      a_oSectionConfigNode.Name = "SectionConfigNode";
+      Model.AddNode( a_oSectionConfigNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "SeparatorElementNode" )
+   {
+      SeparatorElementNode a_oSeparatorElementNode = new SeparatorElementNode;
+      a_oSeparatorElementNode.Name = "SeparatorElementNode";
+      Model.AddNode( a_oSeparatorElementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ShaderBufferNode" )
+   {
+      ShaderBufferNode a_oShaderBufferNode = new ShaderBufferNode;
+      a_oShaderBufferNode.Name = "ShaderBufferNode";
+      Model.AddNode( a_oShaderBufferNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ShaderCommentNode" )
+   {
+      ShaderCommentNode a_oShaderCommentNode = new ShaderCommentNode;
+      a_oShaderCommentNode.Name = "ShaderCommentNode";
+      Model.AddNode( a_oShaderCommentNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ShaderDeclarationNode" )
+   {
+      ShaderDeclarationNode a_oShaderDeclarationNode = new ShaderDeclarationNode;
+      a_oShaderDeclarationNode.Name = "ShaderDeclarationNode";
+      Model.AddNode( a_oShaderDeclarationNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ShaderDefineNode" )
+   {
+      ShaderDefineNode a_oShaderDefineNode = new ShaderDefineNode;
+      a_oShaderDefineNode.Name = "ShaderDefineNode";
+      Model.AddNode( a_oShaderDefineNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ShaderEndifNode" )
+   {
+      ShaderEndifNode a_oShaderEndifNode = new ShaderEndifNode;
+      a_oShaderEndifNode.Name = "ShaderEndifNode";
+      Model.AddNode( a_oShaderEndifNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ShaderIfndefNode" )
+   {
+      ShaderIfndefNode a_oShaderIfndefNode = new ShaderIfndefNode;
+      a_oShaderIfndefNode.Name = "ShaderIfndefNode";
+      Model.AddNode( a_oShaderIfndefNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ShaderImportNode" )
+   {
+      ShaderImportNode a_oShaderImportNode = new ShaderImportNode;
+      a_oShaderImportNode.Name = "ShaderImportNode";
+      Model.AddNode( a_oShaderImportNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ShaderIncludeNode" )
+   {
+      ShaderIncludeNode a_oShaderIncludeNode = new ShaderIncludeNode;
+      a_oShaderIncludeNode.Name = "ShaderIncludeNode";
+      Model.AddNode( a_oShaderIncludeNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ShaderPaletteNode" )
+   {
+      ShaderPaletteNode a_oShaderPaletteNode = new ShaderPaletteNode;
+      a_oShaderPaletteNode.Name = "ShaderPaletteNode";
+      Model.AddNode( a_oShaderPaletteNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ShaderPragmaNode" )
+   {
+      ShaderPragmaNode a_oShaderPragmaNode = new ShaderPragmaNode;
+      a_oShaderPragmaNode.Name = "ShaderPragmaNode";
+      Model.AddNode( a_oShaderPragmaNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ShaderSourceNode" )
+   {
+      ShaderSourceNode a_oShaderSourceNode = new ShaderSourceNode;
+      a_oShaderSourceNode.Name = "ShaderSourceNode";
+      Model.AddNode( a_oShaderSourceNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ShaderUndefNode" )
+   {
+      ShaderUndefNode a_oShaderUndefNode = new ShaderUndefNode;
+      a_oShaderUndefNode.Name = "ShaderUndefNode";
+      Model.AddNode( a_oShaderUndefNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ShaderVersionNode" )
+   {
+      ShaderVersionNode a_oShaderVersionNode = new ShaderVersionNode;
+      a_oShaderVersionNode.Name = "ShaderVersionNode";
+      Model.AddNode( a_oShaderVersionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "SimplifyModifier" )
+   {
+      SimplifyModifier a_oSimplifyModifier = new SimplifyModifier;
+      a_oSimplifyModifier.Name = "SimplifyModifier";
+      Model.AddNode( a_oSimplifyModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "SmoothModifier" )
+   {
+      SmoothModifier a_oSmoothModifier = new SmoothModifier;
+      a_oSmoothModifier.Name = "SmoothModifier";
+      Model.AddNode( a_oSmoothModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "SpherePrimitive" )
+   {
+      SpherePrimitive a_oSpherePrimitive = new SpherePrimitive;
+      a_oSpherePrimitive.Name = "SpherePrimitive";
+      Model.AddNode( a_oSpherePrimitive, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "StatementBlockNode" )
+   {
+      StatementBlockNode a_oStatementBlockNode = new StatementBlockNode;
+      a_oStatementBlockNode.Name = "StatementBlockNode";
+      Model.AddNode( a_oStatementBlockNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "StatementNode" )
+   {
+      StatementNode a_oStatementNode = new StatementNode;
+      a_oStatementNode.Name = "StatementNode";
+      Model.AddNode( a_oStatementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "StencilNode" )
+   {
+      StencilNode a_oStencilNode = new StencilNode;
+      a_oStencilNode.Name = "StencilNode";
+      Model.AddNode( a_oStencilNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "StringArrayNode" )
+   {
+      StringArrayNode a_oStringArrayNode = new StringArrayNode;
+      a_oStringArrayNode.Name = "StringArrayNode";
+      Model.AddNode( a_oStringArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "StringNode" )
+   {
+      StringNode a_oStringNode = new StringNode;
+      a_oStringNode.Name = "StringNode";
+      Model.AddNode( a_oStringNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "StructExpressionNode" )
+   {
+      StructExpressionNode a_oStructExpressionNode = new StructExpressionNode;
+      a_oStructExpressionNode.Name = "StructExpressionNode";
+      Model.AddNode( a_oStructExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "StructInstanceNode" )
+   {
+      StructInstanceNode a_oStructInstanceNode = new StructInstanceNode;
+      a_oStructInstanceNode.Name = "StructInstanceNode";
+      Model.AddNode( a_oStructInstanceNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "StructNode" )
+   {
+      StructNode a_oStructNode = new StructNode;
+      a_oStructNode.Name = "StructNode";
+      Model.AddNode( a_oStructNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "StructureGroup" )
+   {
+      StructureGroup a_oStructureGroup = new StructureGroup;
+      a_oStructureGroup.Name = "StructureGroup";
+      Model.AddNode( a_oStructureGroup, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "SubdivideGeotiffModifier" )
+   {
+      SubdivideGeotiffModifier a_oSubdivideGeotiffModifier = new SubdivideGeotiffModifier;
+      a_oSubdivideGeotiffModifier.Name = "SubdivideGeotiffModifier";
+      Model.AddNode( a_oSubdivideGeotiffModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "SubdivideMrSidModifier" )
+   {
+      SubdivideMrSidModifier a_oSubdivideMrSidModifier = new SubdivideMrSidModifier;
+      a_oSubdivideMrSidModifier.Name = "SubdivideMrSidModifier";
+      Model.AddNode( a_oSubdivideMrSidModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "SubdivideQuadModifier" )
+   {
+      SubdivideQuadModifier a_oSubdivideQuadModifier = new SubdivideQuadModifier;
+      a_oSubdivideQuadModifier.Name = "SubdivideQuadModifier";
+      Model.AddNode( a_oSubdivideQuadModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "SubroutineIntegerNode" )
+   {
+      SubroutineIntegerNode a_oSubroutineIntegerNode = new SubroutineIntegerNode;
+      a_oSubroutineIntegerNode.Name = "SubroutineIntegerNode";
+      Model.AddNode( a_oSubroutineIntegerNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "SweepPrimitive" )
+   {
+      SweepPrimitive a_oSweepPrimitive = new SweepPrimitive;
+      a_oSweepPrimitive.Name = "SweepPrimitive";
+      Model.AddNode( a_oSweepPrimitive, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "TerrainOptionsModifier" )
+   {
+      TerrainOptionsModifier a_oTerrainOptionsModifier = new TerrainOptionsModifier;
+      a_oTerrainOptionsModifier.Name = "TerrainOptionsModifier";
+      Model.AddNode( a_oTerrainOptionsModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "Texture" )
+   {
+      Texture a_oTexture = new Texture;
+      a_oTexture.Name = "Texture";
+      Model.AddNode( a_oTexture, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "TextureArrayNode" )
+   {
+      TextureArrayNode a_oTextureArrayNode = new TextureArrayNode;
+      a_oTextureArrayNode.Name = "TextureArrayNode";
+      Model.AddNode( a_oTextureArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "TextureCoordsModifier" )
+   {
+      TextureCoordsModifier a_oTextureCoordsModifier = new TextureCoordsModifier;
+      a_oTextureCoordsModifier.Name = "TextureCoordsModifier";
+      Model.AddNode( a_oTextureCoordsModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "TexturePaletteNode" )
+   {
+      TexturePaletteNode a_oTexturePaletteNode = new TexturePaletteNode;
+      a_oTexturePaletteNode.Name = "TexturePaletteNode";
+      Model.AddNode( a_oTexturePaletteNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "TimerNode" )
+   {
+      TimerNode a_oTimerNode = new TimerNode;
+      a_oTimerNode.Name = "TimerNode";
+      Model.AddNode( a_oTimerNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ToggleVertexSpokeEdgesModifier" )
+   {
+      ToggleVertexSpokeEdgesModifier a_oToggleVertexSpokeEdgesModifier = new ToggleVertexSpokeEdgesModifier;
+      a_oToggleVertexSpokeEdgesModifier.Name = "ToggleVertexSpokeEdgesModifier";
+      Model.AddNode( a_oToggleVertexSpokeEdgesModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ToolbarElementNode" )
+   {
+      ToolbarElementNode a_oToolbarElementNode = new ToolbarElementNode;
+      a_oToolbarElementNode.Name = "ToolbarElementNode";
+      Model.AddNode( a_oToolbarElementNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "TransformFeedbackLayoutNode" )
+   {
+      TransformFeedbackLayoutNode a_oTransformFeedbackLayoutNode = new TransformFeedbackLayoutNode;
+      a_oTransformFeedbackLayoutNode.Name = "TransformFeedbackLayoutNode";
+      Model.AddNode( a_oTransformFeedbackLayoutNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "TransformModifier" )
+   {
+      TransformModifier a_oTransformModifier = new TransformModifier;
+      a_oTransformModifier.Name = "TransformModifier";
+      Model.AddNode( a_oTransformModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "TraversalGuardNode" )
+   {
+      TraversalGuardNode a_oTraversalGuardNode = new TraversalGuardNode;
+      a_oTraversalGuardNode.Name = "TraversalGuardNode";
+      Model.AddNode( a_oTraversalGuardNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "TriangulateModifier" )
+   {
+      TriangulateModifier a_oTriangulateModifier = new TriangulateModifier;
+      a_oTriangulateModifier.Name = "TriangulateModifier";
+      Model.AddNode( a_oTriangulateModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "TurnEdgeModifier" )
+   {
+      TurnEdgeModifier a_oTurnEdgeModifier = new TurnEdgeModifier;
+      a_oTurnEdgeModifier.Name = "TurnEdgeModifier";
+      Model.AddNode( a_oTurnEdgeModifier, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "TypeAggregatorNode" )
+   {
+      TypeAggregatorNode a_oTypeAggregatorNode = new TypeAggregatorNode;
+      a_oTypeAggregatorNode.Name = "TypeAggregatorNode";
+      Model.AddNode( a_oTypeAggregatorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "TypeConfigNode" )
+   {
+      TypeConfigNode a_oTypeConfigNode = new TypeConfigNode;
+      a_oTypeConfigNode.Name = "TypeConfigNode";
+      Model.AddNode( a_oTypeConfigNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "TypeRepNode" )
+   {
+      TypeRepNode a_oTypeRepNode = new TypeRepNode;
+      a_oTypeRepNode.Name = "TypeRepNode";
+      Model.AddNode( a_oTypeRepNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "UniformArrayNode" )
+   {
+      UniformArrayNode a_oUniformArrayNode = new UniformArrayNode;
+      a_oUniformArrayNode.Name = "UniformArrayNode";
+      Model.AddNode( a_oUniformArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "UniformBufferBindNode" )
+   {
+      UniformBufferBindNode a_oUniformBufferBindNode = new UniformBufferBindNode;
+      a_oUniformBufferBindNode.Name = "UniformBufferBindNode";
+      Model.AddNode( a_oUniformBufferBindNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "UniformBufferNode" )
+   {
+      UniformBufferNode a_oUniformBufferNode = new UniformBufferNode;
+      a_oUniformBufferNode.Name = "UniformBufferNode";
+      Model.AddNode( a_oUniformBufferNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "UniformPaletteNode" )
+   {
+      UniformPaletteNode a_oUniformPaletteNode = new UniformPaletteNode;
+      a_oUniformPaletteNode.Name = "UniformPaletteNode";
+      Model.AddNode( a_oUniformPaletteNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "UnsignedIntegerArrayExpressionNode" )
+   {
+      UnsignedIntegerArrayExpressionNode a_oUnsignedIntegerArrayExpressionNode = new UnsignedIntegerArrayExpressionNode;
+      a_oUnsignedIntegerArrayExpressionNode.Name = "UnsignedIntegerArrayExpressionNode";
+      Model.AddNode( a_oUnsignedIntegerArrayExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "UnsignedIntegerArrayNode" )
+   {
+      UnsignedIntegerArrayNode a_oUnsignedIntegerArrayNode = new UnsignedIntegerArrayNode;
+      a_oUnsignedIntegerArrayNode.Name = "UnsignedIntegerArrayNode";
+      Model.AddNode( a_oUnsignedIntegerArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "UnsignedIntegerExpressionNode" )
+   {
+      UnsignedIntegerExpressionNode a_oUnsignedIntegerExpressionNode = new UnsignedIntegerExpressionNode;
+      a_oUnsignedIntegerExpressionNode.Name = "UnsignedIntegerExpressionNode";
+      Model.AddNode( a_oUnsignedIntegerExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "UnsignedIntegerNode" )
+   {
+      UnsignedIntegerNode a_oUnsignedIntegerNode = new UnsignedIntegerNode;
+      a_oUnsignedIntegerNode.Name = "UnsignedIntegerNode";
+      Model.AddNode( a_oUnsignedIntegerNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "UnsignedIntegerVectorArrayExpressionNode" )
+   {
+      UnsignedIntegerVectorArrayExpressionNode a_oUnsignedIntegerVectorArrayExpressionNode = new UnsignedIntegerVectorArrayExpressionNode;
+      a_oUnsignedIntegerVectorArrayExpressionNode.Name = "UnsignedIntegerVectorArrayExpressionNode";
+      Model.AddNode( a_oUnsignedIntegerVectorArrayExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "UnsignedIntegerVectorArrayNode" )
+   {
+      UnsignedIntegerVectorArrayNode a_oUnsignedIntegerVectorArrayNode = new UnsignedIntegerVectorArrayNode;
+      a_oUnsignedIntegerVectorArrayNode.Name = "UnsignedIntegerVectorArrayNode";
+      Model.AddNode( a_oUnsignedIntegerVectorArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "UnsignedIntegerVectorExpressionNode" )
+   {
+      UnsignedIntegerVectorExpressionNode a_oUnsignedIntegerVectorExpressionNode = new UnsignedIntegerVectorExpressionNode;
+      a_oUnsignedIntegerVectorExpressionNode.Name = "UnsignedIntegerVectorExpressionNode";
+      Model.AddNode( a_oUnsignedIntegerVectorExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "UnsignedIntegerVectorNode" )
+   {
+      UnsignedIntegerVectorNode a_oUnsignedIntegerVectorNode = new UnsignedIntegerVectorNode;
+      a_oUnsignedIntegerVectorNode.Name = "UnsignedIntegerVectorNode";
+      Model.AddNode( a_oUnsignedIntegerVectorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "VariableArrayNode" )
+   {
+      VariableArrayNode a_oVariableArrayNode = new VariableArrayNode;
+      a_oVariableArrayNode.Name = "VariableArrayNode";
+      Model.AddNode( a_oVariableArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "VariableExpressionNode" )
+   {
+      VariableExpressionNode a_oVariableExpressionNode = new VariableExpressionNode;
+      a_oVariableExpressionNode.Name = "VariableExpressionNode";
+      Model.AddNode( a_oVariableExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "VariableNode" )
+   {
+      VariableNode a_oVariableNode = new VariableNode;
+      a_oVariableNode.Name = "VariableNode";
+      Model.AddNode( a_oVariableNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "VectorArrayExpressionNode" )
+   {
+      VectorArrayExpressionNode a_oVectorArrayExpressionNode = new VectorArrayExpressionNode;
+      a_oVectorArrayExpressionNode.Name = "VectorArrayExpressionNode";
+      Model.AddNode( a_oVectorArrayExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "VectorArrayNode" )
+   {
+      VectorArrayNode a_oVectorArrayNode = new VectorArrayNode;
+      a_oVectorArrayNode.Name = "VectorArrayNode";
+      Model.AddNode( a_oVectorArrayNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "VectorExpressionNode" )
+   {
+      VectorExpressionNode a_oVectorExpressionNode = new VectorExpressionNode;
+      a_oVectorExpressionNode.Name = "VectorExpressionNode";
+      Model.AddNode( a_oVectorExpressionNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "VectorNode" )
+   {
+      VectorNode a_oVectorNode = new VectorNode;
+      a_oVectorNode.Name = "VectorNode";
+      Model.AddNode( a_oVectorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "VertexDeclarationNode" )
+   {
+      VertexDeclarationNode a_oVertexDeclarationNode = new VertexDeclarationNode;
+      a_oVertexDeclarationNode.Name = "VertexDeclarationNode";
+      Model.AddNode( a_oVertexDeclarationNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "VertexSourceNode" )
+   {
+      VertexSourceNode a_oVertexSourceNode = new VertexSourceNode;
+      a_oVertexSourceNode.Name = "VertexSourceNode";
+      Model.AddNode( a_oVertexSourceNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ViewMatrixNode" )
+   {
+      ViewMatrixNode a_oViewMatrixNode = new ViewMatrixNode;
+      a_oViewMatrixNode.Name = "ViewMatrixNode";
+      Model.AddNode( a_oViewMatrixNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ViewStateNode" )
+   {
+      ViewStateNode a_oViewStateNode = new ViewStateNode;
+      a_oViewStateNode.Name = "ViewStateNode";
+      Model.AddNode( a_oViewStateNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ViewportFloatNode" )
+   {
+      ViewportFloatNode a_oViewportFloatNode = new ViewportFloatNode;
+      a_oViewportFloatNode.Name = "ViewportFloatNode";
+      Model.AddNode( a_oViewportFloatNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "ViewportVectorNode" )
+   {
+      ViewportVectorNode a_oViewportVectorNode = new ViewportVectorNode;
+      a_oViewportVectorNode.Name = "ViewportVectorNode";
+      Model.AddNode( a_oViewportVectorNode, p_oContainer, -1 );
+   }
+   else
+   if( p_sNodeName == "WeldVertexModifier" )
+   {
+      WeldVertexModifier a_oWeldVertexModifier = new WeldVertexModifier;
+      a_oWeldVertexModifier.Name = "WeldVertexModifier";
+      Model.AddNode( a_oWeldVertexModifier, p_oContainer, -1 );
+   }
+}

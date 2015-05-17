@@ -1,0 +1,207 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             DEPENDENCY_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements basic mesh utility functions.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "list_util.ssl";
+import library "str_list_util.ssl";
+import library "message_util.ssl";
+
+library SpaDependencyUtil;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ShowNoDependencies()
+{
+   Console.Info( "This node has no outgoing dependencies." );
+   return;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ShowNoReferences()
+{
+   Console.Info( "This node is not referenced by any other node." );
+   return;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void NodeClearDependencies()
+{
+   int selectCount = Model.GetSelectCount();
+   for( int s = 0; s < selectCount; ++s )
+   {
+      Node node = Model.GetSelectedNode( s ).GetNode();
+      node = (Node)Model.EditNode( node );
+      node.ClearDependencies();
+   }
+
+   Model.UpdateViews();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void NodeSelectReferences()
+{
+   int selectCount = Model.GetSelectCount();
+   if( selectCount > 0 )
+   {
+      Model.DeselectAll();
+      Node node = Model.GetSelectedNode( 0 ).GetNode();
+
+      List references = node.GetReferences( Node );
+
+      for( int i = 0; i < references.GetCount(); ++i )
+      {
+         Node reference = (Node)references.Get( i );
+         Model.Select( reference );
+      }
+
+      delete references;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void NodeSelectDependencies()
+{
+   int selectCount = Model.GetSelectCount();
+   if( selectCount > 0 )
+   {
+      Model.DeselectAll();
+      Node node = Model.GetSelectedNode( 0 ).GetNode();
+      
+      List dependencies = node.GetDependencies();
+      
+      for( int i = 0; i < dependencies.GetCount(); ++i )
+      {
+         Node dependency = (Node)dependencies.Get( i );
+         Model.Select( dependency );
+      }
+
+      delete dependencies;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void NodeCreateSetFromReferences()
+{
+   int selectCount = Model.GetSelectCount();
+   if( selectCount > 0 )
+   {
+      Model.DeselectAll();
+      Node node = Model.GetSelectedNode( 0 ).GetNode();
+
+      List dependencies = node.GetDependencies();
+
+      for( int i = 0; i < dependencies.GetCount(); ++i )
+      {
+         Node dependency = (Node)dependencies.Get( i );
+         Model.Select( dependency );
+         Model3DSelectBuffer selBuffer = Model.GetSelectBuffer();
+         List selNodes = selBuffer.GetSelectedNodes();
+         Group defaultParent = Model.GetActiveParent();
+
+         CollectionNode collectionNode = new CollectionNode;
+         collectionNode.Name = "NewSelectionSetNode";
+         
+         collectionNode.SetCollection( selNodes );
+         
+         Model.DeselectAll();
+         Model.AddNode( collectionNode, defaultParent, -1 );
+         Model.Select( collectionNode );
+      }
+
+      delete dependencies;
+      Model.UpdateViews();
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddPointerGraphToModel( List p_lNodes, Node p_oSelectedNode, string p_sTitle, string p_sDescription )
+{
+   Group a_oContainerGroup = new Group;
+   a_oContainerGroup.Name = p_sTitle + p_oSelectedNode.Name;
+   a_oContainerGroup.Visible = false;
+
+   for( int i = 0; i < p_lNodes.GetCount(); ++i )
+   {
+      NodeLink a_oNodeLink = new NodeLink;
+      Node a_oDependency = (Node)p_lNodes.Get( i );
+
+      a_oNodeLink.Name = "This " + p_oSelectedNode.GetType().GetTypeName() + p_sDescription + a_oDependency.Name;
+      a_oNodeLink.Visible = false;
+      a_oNodeLink.Node = a_oDependency;
+      a_oNodeLink.LinkType = a_oDependency.GetType();
+
+      Model.AddNode( a_oNodeLink, a_oContainerGroup, -1 );
+   }
+
+   Model.AddNode( a_oContainerGroup, Model, -1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void NodeCreateReferenceGraph()
+{
+   if( Model.GetSelectCount() )
+   {
+      Node a_oSelectedNode = Model.GetFirstSelectedNode().GetNode();
+      auto List a_lReferences = a_oSelectedNode.GetReferences( Node );
+
+      if( a_lReferences.GetCount() )
+      {
+         AddPointerGraphToModel( a_lReferences, a_oSelectedNode, "Reference Graph For: ", " references " );
+      }
+      else
+      {
+         ShowNoReferences();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void NodeCreateDependencyGraph()
+{
+   if( Model.GetSelectCount() )
+   {
+      Node a_oSelectedNode = Model.GetFirstSelectedNode().GetNode();
+      auto List a_lDependencies = a_oSelectedNode.GetDependencies();
+
+      if( a_lDependencies.GetCount() )
+      {
+         AddPointerGraphToModel( a_lDependencies, a_oSelectedNode, "Dependency Graph For: ", " points at " );
+      }
+      else
+      {
+         ShowNoDependencies();
+      }
+   }
+}

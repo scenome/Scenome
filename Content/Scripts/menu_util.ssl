@@ -1,0 +1,742 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file         :   MENU_UTIL.SSL
+// $author       :   Scenomics
+// $privacy      :   PUBLIC
+// $description  :   This script implements basic menu creation functions.
+// $legal        :   Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////
+
+import library "application_util.ssl";
+import library "message_util.ssl";
+import library "graph_util.ssl";
+import library "type_util.ssl";
+
+library SpaMenuUtil;
+
+bool bDebug = false;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function CommandItem GetItemByName( CommandBarEvent event, string p_sItemName )
+{
+   CommandItem a_oCommandItem;
+   a_oCommandItem = event.Bar.GetItemByText( 0, p_sItemName );
+   return a_oCommandItem;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void BuildMenuFromStringListWithCookie(
+
+   CommandBar menu,
+   int insertIndex,
+   string insertGuid,
+   ScriptSource eventHandlerSrc,
+   string eventHandler,
+   StrList titles,
+   StrList itemData,
+   TypeArray itemImages,
+   int p_iCookie
+
+   )
+{
+   CommandBarManager cmdBarMan = Application.Window.CommandBarManager;
+
+   // If the caller didn't specify an image list
+   // then look up the image based on the GUID.
+   int imageIndex = -1;
+   if( itemImages == null )
+   {
+      imageIndex = Application.Window.CommandBarManager.GetImageIndex( insertGuid );
+   }
+
+   if( titles.GetCount() < 1 )
+   {
+      titles.Add( "No files or nodes found" );
+      itemData.Add( "No files or nodes found" );
+   }
+
+   for( int f = 0; f < titles.GetCount() && f < itemData.GetCount(); ++f )
+   {
+      string title = titles.GetAt( f );
+
+      int itemIndex = menu.InsertItem( insertIndex,
+                           title,
+                           insertGuid,
+                           imageIndex,
+                           true,
+                           true );
+
+      if( insertIndex != -1 )
+      {
+         ++insertIndex;
+      }
+
+      // If the caller specified an image for the item, assign it.
+      if( itemImages && f < itemImages.Count && itemImages.Objects[f] )
+      {
+         menu.Items[itemIndex].Image = (Image)itemImages.Objects[f];
+      }
+
+      // Associate the item data string with the item
+      // so we know which file was selected when the
+      // command is executed.
+      string itemDataValue = itemData.GetAt( f );
+      auto VariantArray params;
+
+      if( p_iCookie != -1 )
+      {
+         params.Count = 2;
+         params.Objects[0].String = itemDataValue;
+         params.Objects[1].Int = p_iCookie;
+      }
+      else
+      {
+         params.Count = 1;
+         params.Objects[0].String = itemDataValue;
+      }
+      menu.Items[itemIndex].AddSink(
+         CommandExecutionEvent,
+         new ScriptEventHandler( eventHandlerSrc.FindFunction( eventHandler ), params ) );
+
+      if( p_iCookie != -1 )
+      {
+         params.Count = 2;
+         params.Objects[0].String = itemDataValue;
+         params.Objects[1].Int = p_iCookie;
+      }
+      else
+      {
+         params.Count = 1;
+         params.Objects[0].String = itemDataValue;
+      }
+      menu.Items[itemIndex].AddSink(
+         CommandUpdateEvent,
+         new ScriptEventHandler( eventHandlerSrc.FindFunction( eventHandler + "_OnUpdate" ), params ) );
+   }
+
+   // Insert a separator after the dynamic items if a
+   // separator is not already present.
+   if( f > 0 && f < menu.Items.Length && !menu.Items[f].IsSeparator )
+   {
+      menu.InsertSeparator( f );
+   }
+}
+
+function void BuildMenuFromStringList(
+
+   CommandBar menu,
+   int insertIndex,
+   string insertGuid,
+   ScriptSource eventHandlerSrc,
+   string eventHandler,
+   StrList titles,
+   StrList itemData,
+   TypeArray itemImages
+
+   )
+{
+   BuildMenuFromStringListWithCookie(
+      menu,
+      insertIndex,
+      insertGuid,
+      eventHandlerSrc,
+      eventHandler,
+      titles,
+      itemData,
+      itemImages,
+      -1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void BuildMenuFromIntArray(
+
+   CommandBar menu,
+   int insertIndex,
+   string insertGuid,
+   ScriptSource eventHandlerSrc,
+   string eventHandler,
+   StrList titles,
+   IntArray itemData,
+   TypeArray itemImages
+
+   )
+{
+
+   CommandBarManager cmdBarMan = Application.Window.CommandBarManager;
+
+   // If the caller didn't specify an image list
+   // then look up the image based on the GUID.
+   int imageIndex = -1;
+   if( itemImages == null )
+   {
+      imageIndex = Application.Window.CommandBarManager.GetImageIndex( insertGuid );
+   }
+
+   for( int f = 0; f < titles.GetCount() && f < itemData.Count; ++f )
+   {
+      string title = titles.GetAt( f );
+
+      int itemIndex = menu.InsertItem( insertIndex,
+                           title,
+                           insertGuid,
+                           imageIndex,
+                           true,
+                           true );
+
+      if( insertIndex != -1 )
+      {
+         ++insertIndex;
+      }
+
+      // If the caller specified an image for the item, assign it.
+      if( itemImages && f < itemImages.Count && itemImages.Objects[f] )
+      {
+         menu.Items[itemIndex].Image = (Image)itemImages.Objects[f];
+      }
+
+      // Associate the title and item data integer with the item
+      // so we know which item was selected when the command is executed.
+      int itemDataValue = itemData.Objects[f];
+      auto VariantArray params;
+
+      params.Count = 2;
+      params.Objects[0].String = title;
+      params.Objects[1].Int = itemDataValue;
+      menu.Items[itemIndex].AddSink(
+         CommandExecutionEvent,
+         new ScriptEventHandler( eventHandlerSrc.FindFunction( eventHandler ), params ) );
+
+      params.Count = 2;
+      params.Objects[0].String = title;
+      params.Objects[1].Int = itemDataValue;
+      menu.Items[itemIndex].AddSink(
+         CommandUpdateEvent,
+         new ScriptEventHandler( eventHandlerSrc.FindFunction( eventHandler + "_OnUpdate" ), params ) );
+   }
+
+   // Insert a separator after the dynamic items if a
+   // separator is not already present.
+   if( f > 0 && f < menu.Items.Length && !menu.Items[f].IsSeparator )
+   {
+      menu.InsertSeparator( f );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void BuildVariableMenuFromIntArray(
+
+   CommandBar menu,
+   int insertIndex,
+   string insertGuid,
+   ScriptSource eventHandlerSrc,
+   string eventHandler,
+   StrList titles,
+   List nodes,
+   StrList memberNames,
+   IntArray itemData,
+   TypeArray itemImages
+
+   )
+{
+   CommandBarManager cmdBarMan = Application.Window.CommandBarManager;
+
+   // If the caller didn't specify an image list
+   // then look up the image based on the GUID.
+   int imageIndex = -1;
+   if( itemImages == null )
+   {
+      imageIndex = Application.Window.CommandBarManager.GetImageIndex( insertGuid );
+   }
+
+   for( int f = 0; f < titles.GetCount() && f < itemData.Count; ++f )
+   {
+      // Declare a new node that we're going
+      // to use as a temp object in case the
+      // List nodes is empty.
+      Node a_oNode = new Node;
+      
+      string title = titles.GetAt( f );
+      string memberName = memberNames.GetAt( f );
+
+      // Assign to 'node' a node from
+      // the List if the List isn't
+      // empty.
+      Node node;
+      if( nodes.GetCount() )
+      {
+         node = (Node)nodes.Get( f );
+      }
+
+      // DEBUG
+      //Console.Out( "title -> " + title );
+      //Console.Out( "memberName -> " + memberName );
+
+      // If that didn't work, just assign
+      // our temporary node for now. It won't
+      // matter because we're not going to
+      // show anything in this menu if this
+      // happens - we just can't leave 'node'
+      // with a NULL value.
+      if( node == null )
+      {
+         node = a_oNode;
+      }
+
+      int itemIndex = menu.InsertItem( insertIndex,
+                                       title,
+                                       insertGuid,
+                                       imageIndex,
+                                       true,
+                                       true );
+
+      if( insertIndex != -1 )
+      {
+         ++insertIndex;
+      }
+
+      // If the caller specified an image for the item, assign it.
+      if( itemImages && itemImages.Count && itemImages.Objects[f] )
+      {
+         menu.Items[itemIndex].Image = (Image)itemImages.Objects[f];
+      }
+
+      // Associate the title, item data integer with the item, and node
+      // so we know which item was selected when the command is executed.
+      int itemDataValue = itemData.Objects[f];
+      auto VariantArray params;
+
+      params.Count = 4;
+      params.Objects[0].String = title;
+      params.Objects[1].Int = itemDataValue;
+      params.Objects[2].SetObject( node, node.GetType() );
+      params.Objects[3].String = memberName;
+      menu.Items[itemIndex].AddSink(
+         CommandExecutionEvent,
+         new ScriptEventHandler( eventHandlerSrc.FindFunction( eventHandler ), params ) );
+
+      params.Count = 4;
+      params.Objects[0].String = title;
+      params.Objects[1].Int = itemDataValue;
+      params.Objects[2].SetObject( node, node.GetType() );
+      params.Objects[3].String = memberName;
+      menu.Items[itemIndex].AddSink(
+         CommandUpdateEvent,
+         new ScriptEventHandler( eventHandlerSrc.FindFunction( eventHandler + "_OnUpdate" ), params ) );
+
+      // Clean up; otherwise the we will leak memory.
+      if( nodes.GetCount() )
+      {
+         delete a_oNode;
+      }
+   }
+
+   // Insert a separator after the dynamic items if a
+   // separator is not already present.
+   if( f > 0 && f < menu.Items.Length && !menu.Items[f].IsSeparator )
+   {
+      menu.InsertSeparator( f );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void BuildMenuFromFileSearch(
+
+   CommandBar menu,
+   int insertIndex,
+   string insertGuid,
+   ScriptSource eventHandlerSrc,
+   string eventHandler,
+   FilePath path,
+   string spec
+
+   )
+{
+   auto StrList files;
+   auto StrList titles;
+   auto TypeArray itemImages;
+
+   path.FindFiles( files, spec, true, false );
+   itemImages.Count = files.GetCount();
+   for( int f = 0; f < files.GetCount(); ++f )
+   {
+
+      // Format a name for the item that will be displayed
+      // in the UI.  We assign the index of the file to
+      // the accelerator for the item using the ampersand,
+      // so the user can click the number on the keyboard
+      // to execute the command.
+      // FIXME
+      // This won't handle if there are
+      // greater than 10 files in the file list.
+      // Maybe just show the first 10 files then
+      // show an item that brings up the browse dialog?
+      string fileName = files.GetAt( f );
+      string text = "&" + /* (f + 1) + " - " + */ Application.GetStrippedFileName( fileName );
+
+      titles.Add( text );
+
+      // Attempt to load an icon for the template.
+      auto FilePath imagePath;
+      Image fileImage;
+      imagePath.SetPath( fileName );
+      imagePath.RemoveFileName();
+      imagePath.AppendPath( "Icons" );
+      imagePath.AppendPath( Application.GetFileName( fileName ) + ".bmp" );
+      if( imagePath.FileExists() )
+      {
+         fileImage = new Image;
+         if( fileImage.OpenFile( imagePath.GetPath() ) == 0 )
+         {
+            Log.DebugString( "Failed to open image file " + imagePath.GetPath() + "\n" );
+            delete fileImage;
+         }
+         //else
+         //{
+         //   Log.DebugString( "Opened image file " + imagePath.GetPath() + ":\n" );
+         //   Log.DebugString( "   " + fileImage.Width + " x " + fileImage.Height + ", " + fileImage.PixelFormat + "\n" );
+         //}
+      }
+
+      itemImages.Objects[f] = fileImage;
+   }
+
+   BuildMenuFromStringList(
+      menu,
+      insertIndex,
+      insertGuid,
+      eventHandlerSrc,
+      eventHandler,
+      titles,
+      files,
+      itemImages );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void BuildContextMenuFromDirectoryContents(
+
+   CommandBar menu,
+   string commandGuid,
+   string folderPath,
+   ScriptSource eventHandlerSrc,
+   string eventHandler,
+   string fileType
+
+   )
+{
+   CommandBarManager cmdBarMan = Application.Window.CommandBarManager;
+   menu.RemoveAllItems();
+
+   auto FilePath filePath = new FilePath( folderPath );
+   if( filePath.IsRelative() )
+   {
+      filePath.SetToDirectoryFile( 1, folderPath );
+   }
+   //Log.DebugString( "Searching in " + filePath.GetPath() + "\n" );
+
+   // Remove existing dynamic items from the menu, since
+   // we will rebuild it from scratch.
+   CommandItem baseItem = menu.GetItemByGuid( commandGuid );
+   int insertIndex = menu.GetItemIndex( baseItem );
+   while( baseItem )
+   {
+      menu.RemoveItemByGuid( baseItem.Guid );
+      baseItem = menu.GetItemByGuid( commandGuid );
+   }
+
+   BuildMenuFromFileSearch(
+      menu,
+      0,
+      commandGuid,
+      eventHandlerSrc,
+      eventHandler,
+      filePath,
+      fileType );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void FindNodesTraverse(
+
+   Node node,
+   TypeInformation nodeType,
+   string nodeClass,
+   StrList nodePaths,
+   StrList titles,
+   bool bFilterLinkNodes,
+   bool p_bIncludeTypeName
+
+   )
+{
+   if( bFilterLinkNodes == false )
+   {
+      if( node.IsDerived( nodeType ) && ( nodeClass == "" || nodeClass == node.GetType().GetTypeName() ) )
+      {
+         nodePaths.Add( node.GetPathToNode() );
+         string a_sTypeName;
+         if( p_bIncludeTypeName )
+         {
+            a_sTypeName = "<" + node.GetType().GetTypeName() + "> ";
+         }
+         titles.Add( a_sTypeName + node.Name );
+      }
+      else
+      if( node.IsDerived( NodeLink ) )
+      {
+         NodeLink a_oNodeLink = (NodeLink)node;
+         Node a_oLinkTarget = (Node)a_oNodeLink.Node;
+         if( a_oLinkTarget && a_oLinkTarget.IsDerived( nodeType ) )
+         {
+            nodePaths.Add( node.GetPathToNode() );
+            titles.Add( node.Name );
+         }
+      }
+
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)node;
+         for( int c = 0; c < group.ChildCount; ++c )
+         {
+            FindNodesTraverse(
+               group.Children[c],
+               nodeType,
+               nodeClass,
+               nodePaths,
+               titles,
+               bFilterLinkNodes,
+               p_bIncludeTypeName );
+         }
+      }
+   }
+   else
+   {
+      if( node.IsDerived( NodeLink ) &&
+          ( nodeClass == "" || nodeClass == node.Class ) )
+      {
+         NodeLink a_oNodeLink = (NodeLink)node;
+         if( a_oNodeLink.LinkType.GetTypeName() != "NodeLink" )
+         {
+            nodePaths.Add( node.GetPathToNode() );
+            titles.Add( node.Name );
+         }
+      }
+
+      if( node.IsDerived( Group ) )
+      {
+         Group group = (Group)node;
+         for( int c = 0; c < group.ChildCount; ++c )
+         {
+            FindNodesTraverse(
+               group.Children[c],
+               nodeType,
+               nodeClass,
+               nodePaths,
+               titles,
+               bFilterLinkNodes,
+               p_bIncludeTypeName );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void BuildMenuFromNodeSet(
+
+   CommandBar menu,
+   string insertGuid,
+   ScriptSource eventHandlerSrc,
+   string eventHandler,
+   Node node,
+   TypeInformation nodeType,
+   string nodeClass,
+   bool p_bIncludeTypeName
+
+   )
+{
+   //Log.DebugString( "Searching for nodes of type " + nodeType.GetTypeName() + "\n" );
+
+   // Remove existing dynamic items from the menu, since we will rebuild it from scratch.
+   CommandItem baseItem = menu.GetItemByGuid( insertGuid );
+   int insertIndex = menu.GetItemIndex( baseItem );
+   /*
+   while( baseItem )
+   {
+      menu.RemoveItemByGuid( baseItem.Guid );
+      baseItem = menu.GetItemByGuid( insertGuid );
+   }
+   */
+
+   auto StrList nodePaths;
+   auto StrList titles;
+
+   if( nodeType.IsDerived( NodeLink ) )
+   {
+      FindNodesTraverse(
+         node,
+         nodeType,
+         nodeClass,
+         nodePaths,
+         titles,
+         true,
+         p_bIncludeTypeName );
+   }
+   else
+   {
+      FindNodesTraverse(
+         node,
+         nodeType,
+         nodeClass,
+         nodePaths,
+         titles,
+         false,
+         p_bIncludeTypeName );
+   }
+
+   BuildMenuFromStringList( 
+      menu,
+      insertIndex,
+      insertGuid,
+      eventHandlerSrc,
+      eventHandler,
+      titles,
+      nodePaths,
+      null );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void BuildMenuFromNodeList(
+
+   CommandBar menu,
+   string insertGuid,
+   ScriptSource eventHandlerSrc,
+   string eventHandler,
+   List nodeList,
+   int p_iCookie
+
+   )
+{
+   CommandItem baseItem = menu.GetItemByGuid( insertGuid );
+   int insertIndex = menu.GetItemIndex( baseItem );
+
+   auto StrList nodePaths;
+   auto StrList titles;
+
+   for( int i = 0; i < nodeList.GetCount(); ++i )
+   {
+      Node node = (Node)nodeList.Get(i);
+      nodePaths.Add( new Str( node.GetPathToNode() ) );
+      titles.Add( new Str( node.Name ) );
+   }
+
+   BuildMenuFromStringListWithCookie(
+      menu,
+      insertIndex,
+      insertGuid,
+      eventHandlerSrc,
+      eventHandler,
+      titles,
+      nodePaths,
+      null,
+      p_iCookie );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GetIconImages( TypeInfoArray p_oItemTypes, TypeArray p_oItemImages )
+{
+   if( !p_oItemTypes || !p_oItemImages || !( p_oItemTypes.Count ) )
+   {
+      return;
+   }
+
+   p_oItemImages.Count = p_oItemTypes.Count;
+   Image a_oFileImage;
+
+   auto TypeInfoArray a_aoTypes;
+   SpaTypeUtil.GetTypes( a_aoTypes );
+
+   auto StrList a_slTypeIcons;
+   SpaTypeUtil.GetTypeIcons( a_slTypeIcons );
+
+   if( a_aoTypes.Count != a_slTypeIcons.GetCount() )
+   {
+      string a_sMessage = "a_aoTypes.Count != a_slTypeIcons.Count in MENU_UTIL::GetIconImages()";
+      Console.Assert( a_sMessage );
+   }
+
+   // We have two possible paths depending on how the user
+   // has configured their installation. We may find the icons
+   // in \\{ApplicationPath}\\Icons or we may find the icons in
+   // \\{ApplicationDataPath}\\Icons.
+   // For this reason we need to try both.
+   auto FilePath a_oTempPathTest;
+   a_oTempPathTest.SetPath( Application.GetApplicationPath() + "Icons" );
+   a_oTempPathTest.Canonicalize();
+
+   // If the icons folder doesn't exist at this path, try .GetApplicationDataPath().
+   if( !(a_oTempPathTest.FileExists() ) )
+   {
+      a_oTempPathTest.SetPath( Application.GetApplicationDataPath() + "Icons" );
+   }
+
+   for( int a_nIndex = 0; a_nIndex < p_oItemTypes.Count; ++a_nIndex )
+   {
+      auto TypeInformation a_oInfo = (TypeInformation)p_oItemTypes.Objects[a_nIndex];
+      auto FilePath a_oImagePath;
+      a_oImagePath.SetPath( a_oTempPathTest.GetPath() );
+      if( !a_oInfo )
+      {
+         a_oImagePath.AppendPath( "exclaim.bmp" );
+      }
+      else
+      {
+         for( int a_nType = 0; a_nType < a_aoTypes.Count; ++a_nType )
+         {
+            if( a_oInfo.IsDerived( a_aoTypes.Objects[ a_nType ] ) )
+            {
+               a_oImagePath.AppendPath( a_slTypeIcons.GetAt( a_nType ) );
+            }
+         }
+      }
+
+      if( a_oImagePath.FileExists() )
+      {
+         a_oFileImage = new Image;
+         if( !( a_oFileImage.OpenFile( a_oImagePath.GetPath() ) ) )
+         {
+            delete a_oFileImage;
+         }
+      }
+
+      p_oItemImages.Objects[a_nIndex] = a_oFileImage;
+   }
+}

@@ -1,0 +1,750 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             PROJECT_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements commands for working with meshes projected into UTM or LCC coordinate space.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "graph_util.ssl";
+import library "message_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ValidateModelSaved( CommandPresentationModuleInfo commandInfo )
+{
+   if( Model.Filename == "" )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "This command cannot be executed when the model is unsaved" );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int AddNode( Node new_node, Group parentNode )
+{
+   Model.AddNode( new_node, parentNode, -1 );
+   Model.Deselect( parentNode );
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Handles common UI update functionality for commands.
+
+function void HandleProjectGroupOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, ProjectGroup, hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Handles common UI update functionality for commands.
+
+function void HandleCategoryGroupOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, CategoryGroup, hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Handles common UI update functionality for commands.
+
+function void HandleFolderGroupOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, FolderGroup, hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Handles common UI update functionality for commands.
+
+function void HandleFileNodeOnUpdate( CommandPresentationModuleInfo commandInfo, string hint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, FileNode, hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Update the UI state for commands that only depend on a TerrainOptionsModifier being selected.
+
+function void HandleTerrainOptionsModifierOnUpdate( CommandPresentationModuleInfo commandInfo, string commandHint )
+{
+   ValidateNodeCommandContext.TestContext( commandInfo, TerrainOptionsModifier, commandHint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Validates the preview mesh palette structure.
+
+function int ValidatePreviewMeshPalette( ParametricMesh mesh )
+{
+   // Return immediately if the mesh is not linked to a palette group.
+   if( !mesh.PaletteLink )
+   {
+      string a_sMessage = "The mesh is not linked a palette group.";
+      Console.GenerateOutputMessage( a_sMessage, "ERROR" );
+      return 0;
+   }
+   else
+   if( mesh.PaletteLink )
+   {
+      // Check the type of node to which the mesh is linked: texture node, group node, or link node.
+      Node a_oCheckPaletteGroupType = mesh.PaletteLink;
+      if( a_oCheckPaletteGroupType.IsDerived ( NodeLink ) )
+      {
+         string a_sMessage = "The mesh palette is of type <NodeLink>. This is not allowed. Mesh palettes must be of type <Group>.";
+         Console.GenerateOutputMessage( a_sMessage, "ERROR" );
+         return 0;
+      }
+      else
+      if( a_oCheckPaletteGroupType.IsDerived ( Group ) )
+      {
+         // Check the child count of the palette group
+         Group a_oPaletteGroup = (Group)a_oCheckPaletteGroupType;
+         int checkPaletteGroupChildCount = a_oPaletteGroup.ChildCount;
+         if( checkPaletteGroupChildCount == 0 )
+         {
+            string a_sMessage = "Palette has no material nodes!";
+            Console.Error( a_sMessage );
+            return 0;
+         }
+         else
+         if( checkPaletteGroupChildCount > 1 )
+         {
+            string a_sMessage = "Palette must have at least one <Material> node!";
+            Console.Error( a_sMessage );
+            return 0;
+         }
+         else
+         {
+            // Check the type of the child nodes
+            Node a_oCheckNodeType = (Node)((Group)a_oPaletteGroup).Children[ 0 ];
+            if( !a_oCheckNodeType.IsDerived( Material ) )
+            {
+               string a_sMessage = "At least one child of the palette is not a <Material> node!";
+               Console.Error( a_sMessage );
+               return 0;
+            }
+            else
+            {
+               // Check if the material node is linked to a texture node, group node, or link node.
+               Material a_oValidateMaterial = (Material)a_oCheckNodeType;
+               if( !a_oValidateMaterial.TextureLink )
+               {
+                  string a_sMessage = "The <Material> is not linked to a <TexturePaletteNode>";
+                  Console.Error( a_sMessage );
+                  return 0;
+               }
+               else
+               if( a_oValidateMaterial.TextureLink )
+               {
+                  // Check the type of node from which the material obtains its textures.
+                  Node a_oCheckTextureLinkNodeType = a_oValidateMaterial.TextureLink;
+                  if( a_oCheckTextureLinkNodeType.IsDerived ( NodeLink ) )
+                  {
+                     string a_sMessage = "The <Material> is not linked to a <TexturePaletteNode>";
+                     Console.Error( a_sMessage );
+                     return 0;
+                  }
+                  else
+                  if( a_oCheckTextureLinkNodeType.IsDerived ( Texture ) )
+                  {
+                     string a_sMessage = "The <Material> is not linked to a <TexturePaletteNode>";
+                     Console.Error( a_sMessage );
+                     return 0;
+                  }
+                  else
+                  if( a_oCheckTextureLinkNodeType.IsDerived ( Group ) )
+                  {
+                     // Check if the texture group contains any children.
+                     Group a_oCheckTextureCount = (Group)a_oCheckTextureLinkNodeType;
+                     int checkTextureCount = a_oCheckTextureCount.ChildCount;
+                     if( checkTextureCount == 0 )
+                     {
+                        string a_sMessage = "The <TexturePaletteNode> is empty.";
+                        Console.Error( a_sMessage );
+                        return 0;
+                     }
+                     else
+                     for( int tnc = 0; tnc < checkTextureCount; ++tnc )
+                     {
+                        // Make sure all the texture group child nodes are of type Texture.
+                        Node a_oCheckTextureNodeType = (Node)((Group)a_oCheckTextureLinkNodeType).Children[ tnc ];
+                        if( !a_oCheckTextureNodeType.IsDerived( Texture ) )
+                        {
+                           string a_sMessage = "At least one child of the <TexturePaletteNode> is not a <Texture> node.";
+                           Console.Error( a_sMessage );
+                           return 0;
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Configures the preview mesh for export according to the input parameters.
+
+function int ConfigureForExport( ParametricMesh mesh, int textureSize, int rectangleTessellationValue, int tileTessellationValue, int outputLODCount )
+{
+   Group a_oPaletteGroup = (Group)mesh.PaletteLink;
+   Material a_oMaterial = (Material)a_oPaletteGroup.Children[ 0 ];
+   Group a_oTextureGroup = (Group)a_oMaterial.TextureLink;
+   Texture a_oTexture = (Texture)a_oTextureGroup.Children[ 0 ];
+
+   ExportOptionsModifier findExport = (ExportOptionsModifier)mesh.GetChildByType( ExportOptionsModifier );
+   TerrainOptionsModifier findImagery = (TerrainOptionsModifier)mesh.GetChildByType( TerrainOptionsModifier );
+   RectangleGeometryModifier findGeometry = (RectangleGeometryModifier)mesh.GetChildByType( RectangleGeometryModifier );
+
+   if( !findExport )
+   {
+      string a_sMessage = "Mesh does not contain required <ExportOptionsModifier>.";
+      Console.Error( a_sMessage );
+      return 0;
+   }
+   else
+   if( !findImagery )
+   {
+      string a_sMessage = "Mesh does not contain required <ImageryOptionsModifier>.";
+      Console.Error( a_sMessage );
+      return 0;
+   }
+   else
+   if( !findGeometry )
+   {
+      string a_sMessage = "Mesh does not contain required <RectangleGeometryModifier>.";
+      Console.Error( a_sMessage );
+      return 0;
+   }
+   else
+   {
+      int a_iTextureCount = a_oTextureGroup.ChildCount;
+      for( int i = 0; i < a_iTextureCount; ++i )
+      {
+         Texture a_oEditTexture = (Texture)((Group)a_oTextureGroup).Children[ i ];
+         if( i == 0 )
+         {
+            // Update the source width when modifying the base texture - which is always texture[0].
+            a_oEditTexture.SourceWidth = textureSize;
+            a_oEditTexture.SourceHeight = textureSize;
+         }
+         a_oEditTexture.RenderWidth = textureSize;
+         a_oEditTexture.RenderHeight = textureSize;
+      }
+
+      ExportOptionsModifier a_oEditExport = (ExportOptionsModifier)Model.EditNode( findExport );
+      TerrainOptionsModifier a_oEditImagery = (TerrainOptionsModifier)Model.EditNode( findImagery );
+      RectangleGeometryModifier a_oEditGeometry = (RectangleGeometryModifier)Model.EditNode( findGeometry );
+
+      // Configure the ExportOptionsModifier
+      a_oEditExport.LODCount = outputLODCount;
+      a_oEditExport.TileTessellationX = tileTessellationValue;
+      a_oEditExport.TileTessellationY = tileTessellationValue;
+
+      // Configure the ImageryOptionsModifier
+      a_oEditImagery.PreviewTextureWidth = textureSize;
+      a_oEditImagery.PreviewTextureHeight = textureSize;
+      a_oEditImagery.TileTextureWidth = textureSize;
+      a_oEditImagery.TileTextureHeight = textureSize;
+
+      // Configure the RectangleGeometryModifier
+      a_oEditGeometry.XSubdivision = rectangleTessellationValue;
+      a_oEditGeometry.YSubdivision = rectangleTessellationValue;
+   }
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+// Generates a preview mesh from a file node.
+
+function void GeneratePreviewMesh( Node selectedNode, FileNode fileNode )
+{
+   // Construct a list of the files.
+   StrList a_slFileList = new StrList;
+   string a_sElevationFile = Application.ResolveModelRelativePath( fileNode.FilePath );
+   a_slFileList.Add( a_sElevationFile );
+
+   // Construct linked lists for storage.
+   List a_lOutputMeshes = new List;
+   List a_lOutputGroups = new List;
+
+   // Traverse to the correct targets and create a preview category.
+   CategoryGroup a_oElevationFolderGroup = (CategoryGroup)selectedNode.Parent();
+   ProjectGroup a_oProjectFolder = (ProjectGroup)a_oElevationFolderGroup.Parent();
+   CategoryGroup a_oPreviewGroup = new CategoryGroup;
+   Group a_oRoot = new Group;
+
+   a_oPreviewGroup.Name = "Preview";
+   SpaNodeUtil.AddNode( a_oPreviewGroup, a_oProjectFolder );
+   GIS.CreatePreviewMeshes( a_lOutputGroups, a_lOutputMeshes, a_slFileList, a_oPreviewGroup, Model ); 
+
+   for( int mesh_c = 0; mesh_c < a_lOutputMeshes.GetCount(); ++mesh_c )
+   {
+      Node a_oNode = (Node)a_lOutputMeshes.Get(mesh_c);
+      Console.Message( a_oNode.Name );
+   }
+
+   /*
+   for( int mesh_c = 0; mesh_c < a_lOutputMeshes.GetCount(); ++mesh_c )
+   {
+      ParametricMesh a_oEditMesh = (ParametricMesh)a_lOutputMeshes.Get(mesh_c);
+
+      // Find the first texture node.
+      Group a_oPaletteGroup = (Group)a_oEditMesh.PaletteLink;
+      Material a_oMaterial = (Material)a_oPaletteGroup.Children[ 0 ];
+      Group a_oTextureGroup = (Group)a_oMaterial.TextureLink;
+      Texture a_oTexture = (Texture)a_oTextureGroup.Children[ 0 ];
+      
+      GenerateTextures( a_oEditMesh, a_oTextureGroup, a_oTexture, a_oTexture.Name );
+      FindParametricMeshes( a_oEditMesh );
+   }
+   */
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateTerrainProject_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCreateContext.TestContext( commandInfo, "terrain project." );
+}
+
+macro CreateTerrainProject()
+[Category="Create Commands", Guid="{121536AD-DE8B-4C0E-8F92-3374C81D0175}", Image=".\\icons\\create_terrain.bmp"]
+{
+   List nodes;
+   ValidateNodeCreateContext.CreateNodesFromTemplate( Model, "TerrainProject", nodes, false );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddFilesToFolderGroup_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleFolderGroupOnUpdate( commandInfo, "Add files to this folder group." );
+}
+
+macro AddFilesToFolderGroup()
+[Category="Project Commands", Guid="{F5FD6117-422D-4F25-B927-A2821A7D3100}", Image=".\\icons\\add_files_to_folder_icon.bmp"]
+{
+   if( SpaFileUtil.ValidateCurrentFileState( "" ) )
+   {
+      if( Model.GetSelectCount() > 1 )
+      {
+         Console.Error( "You can only add files to one folder at a time." );
+         return;
+      }
+
+      if( Model.GetSelectCount() )
+      {
+         for( int i = 0; i < Model.GetSelectCount(); ++i )
+         {
+            Node selNode = Model.GetSelectedNode( i ).GetNode(); 
+            if( !selNode.IsDerived( FolderGroup ) || selNode.Name != "Files" )
+            {
+               continue;
+            }
+
+            Node a_oParentNode = selNode.Parent();
+            bool a_bIsImageryData = false;
+            bool a_bIsElevationData = false;
+            string a_sFilter;
+            string a_sTitle;
+            if( a_oParentNode.Name == "Imagery" )
+            {
+               a_bIsImageryData = true;
+               a_sFilter = "All Imagery Files (*.tif; *.sid)|*.tif;*.sid|All Files (*.*)|*.*||";
+               a_sTitle = "Select an imagery file";
+            }
+            else
+            if( a_oParentNode.Name == "Elevation" )
+            {
+               a_bIsElevationData = true;
+               a_sFilter = "All Elevation Files (*.tif; *.dem)|*.tif; *.dem|All Files (*.*)|*.*||";
+               a_sTitle = "Select an elevation data file";
+            }
+            else
+            {
+               a_sFilter = "All Files (*.*)|*.*||";
+               a_sTitle = "Select a file";
+            }
+
+            StrList files = new StrList;
+            Application.BrowseFileOpen( 3, 1, a_sFilter, "", a_sTitle, files );
+
+            for( int file = 0; file < files.GetCount(); ++file )
+            {
+               string a_sFile       = files.Get( file );
+               string a_sPath       = Application.GetFilePath( a_sFile );
+               string a_sName       = Application.GetFileName( a_sFile );
+               string a_sExtension  = Application.GetFileExtension( a_sFile );
+               if( a_sFile == "" )
+               {
+                  // User cancelled.
+                  continue;
+               }
+
+               FileNode a_oFileNode = new FileNode;
+               a_oFileNode.Name = a_sName;
+               a_oFileNode.FilePath = Application.MakeRelativePath( a_sFile, Model.Filename );
+               AddNode( a_oFileNode, (Group)selNode );
+
+               if( a_bIsElevationData )
+               {
+                  GeneratePreviewMesh( selNode, a_oFileNode );
+               }
+            }
+
+            delete files;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro MeshConfigureForLowResolutionTerrainExport()
+[Category="Project Commands", Guid="{35112DE5-1D6C-4EA7-9855-0C23AFE88870}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( ParametricMesh ) )
+      {
+         ParametricMesh parametricMesh = (ParametricMesh)node;
+         if( !ValidatePreviewMeshPalette( parametricMesh ) )
+         {
+            Console.Error( "Part of the palette and texture group structure is invalid." );
+            return;
+         }
+         else
+         {
+            ConfigureForExport( parametricMesh, 256, 4, 4, 1 );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro MeshConfigureForHighResolutionTerrainExport()
+[Category="Project Commands", Guid="{FB543A52-4163-491A-979E-5AE05DD1BE61}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( ParametricMesh ) )
+      {
+         ParametricMesh parametricMesh = (ParametricMesh)node;
+         if( !ValidatePreviewMeshPalette( parametricMesh ) )
+         {
+            Console.Error( "Part of the palette and texture group structure is invalid." );
+            return;
+         }
+         else
+         {
+            ConfigureForExport( parametricMesh, 1024, 8, 32, 3 );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+macro MeshFitToFaceSelectionBoundary()
+[Category="Project Commands", Guid="{35C0190C-593B-4417-B207-A7D3DD87FA32}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node node = Model.GetSelectedNode( i ).GetNode();
+      if( node.IsDerived( ParametricMesh ) )
+      {
+         ParametricMesh parametricMesh = (ParametricMesh)node;
+         if( !ValidatePreviewMeshPalette( parametricMesh ) )
+         {
+            Console.Error( "Part of the palette and texture group structure is invalid." );
+            return;
+         }
+         else
+         {
+            GeographicProjectionModifier inputGPM = (GeographicProjectionModifier)parametricMesh.GetChildByType( GeographicProjectionModifier );
+            RectangleGeometryModifier inputRGM = (RectangleGeometryModifier)parametricMesh.GetChildByType( RectangleGeometryModifier );
+
+            Vec lowerLeft = new Vec;
+            Vec lowerRight = new Vec;
+            Vec upperLeft = new Vec;
+            Vec upperRight = new Vec;
+
+            lowerLeft.X = inputRGM.XMin;
+            lowerLeft.Y = inputRGM.YMin;
+            upperRight.X = inputRGM.XMax;
+            upperRight.Y = inputRGM.YMax;
+
+            ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( lowerLeft.X + " " + lowerLeft.Y );
+            ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( upperRight.X + " " + upperRight.Y );
+
+            Vec minTileExtent = new Vec;
+            Vec maxTileExtent = new Vec;
+
+            inputGPM.InverseProject( lowerLeft );
+            inputGPM.InverseProject( upperRight );
+
+            double a_dMinLatitude  = lowerLeft.X;
+            double a_dMaxLatitude  = upperRight.X;
+            double a_dMinLongitude = lowerLeft.Y;
+            double a_dMaxLongitude = upperRight.Y;
+
+            ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( a_dMinLatitude + " " + a_dMaxLatitude );
+            ((OutputViewEditor)Application.GetEditor( "{1F922109-F612-46D4-A453-4B81096121A9}" )).LogString( a_dMinLongitude + " " + a_dMaxLongitude );
+
+            delete lowerLeft;
+            delete lowerRight;
+            delete upperLeft;
+            delete upperRight;
+
+            delete minTileExtent;
+            delete maxTileExtent;
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetCurrentTextureSize64x64_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the preview mesh texture size to 64x64 pixels." );
+}
+
+macro TerrainOptionsModifierSetCurrentTextureSize64x64()
+[Category="Terrain Commands", Guid="{1F91FB0B-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.ConfigureTerrainOptionsModifierTextureSize( 64 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetCurrentTextureSize128x128_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the preview mesh texture size to 128x128 pixels." );
+}
+
+macro TerrainOptionsModifierSetCurrentTextureSize128x128()
+[Category="Terrain Commands", Guid="{1F91FB0C-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.ConfigureTerrainOptionsModifierTextureSize( 128 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetCurrentTextureSize256x256_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the preview mesh texture size to 256x256 pixels." );
+}
+
+macro TerrainOptionsModifierSetCurrentTextureSize256x256()
+[Category="Terrain Commands", Guid="{1F91FACD-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.ConfigureTerrainOptionsModifierTextureSize( 256 );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetCurrentTextureSize512x512_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the preview mesh texture size to 512x512 pixels." );
+}
+
+macro TerrainOptionsModifierSetCurrentTextureSize512x512()
+[Category="Terrain Commands", Guid="{1F91FACC-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.ConfigureTerrainOptionsModifierTextureSize( 512 );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetCurrentTextureSize1024x1024_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the preview mesh texture size to 1024x1024 pixels." );
+}
+
+macro TerrainOptionsModifierSetCurrentTextureSize1024x1024()
+[Category="Terrain Commands", Guid="{1F91FAA4-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.ConfigureTerrainOptionsModifierTextureSize( 1024 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetCurrentTextureSize2048x2048_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the preview mesh texture size to 2048x2048 pixels." );
+}
+
+macro TerrainOptionsModifierSetCurrentTextureSize2048x2048()
+[Category="Terrain Commands", Guid="{1F91FAD7-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.ConfigureTerrainOptionsModifierTextureSize( 2048 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetCurrentTextureSize4096x4096_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the preview mesh texture size to 4096x4096 pixels." );
+}
+
+macro TerrainOptionsModifierSetCurrentTextureSize4096x4096()
+[Category="Terrain Commands", Guid="{B37E699E-1E2E-4B2B-8004-5E8635798B87}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.ConfigureTerrainOptionsModifierTextureSize( 4096 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetOutputTextureSize64x64_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the output mesh texture size to 64x64 pixels." );
+}
+
+macro TerrainOptionsModifierSetOutputTextureSize64x64()
+[Category="Terrain Commands", Guid="{1F91FB13-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.TerrainOptionsModifierSetOutputTextureSize( 64 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetOutputTextureSize128x128_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the output mesh texture size to 128x128 pixels." );
+}
+
+macro TerrainOptionsModifierSetOutputTextureSize128x128()
+[Category="Terrain Commands", Guid="{8013FA94-C5F0-4E58-9906-98C1A7134584}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.TerrainOptionsModifierSetOutputTextureSize( 128 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetOutputTextureSize256x256_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the output mesh texture size to 256x256 pixels." );
+}
+
+macro TerrainOptionsModifierSetOutputTextureSize256x256()
+[
+ Category="Terrain Commands", Guid="{1F91FAA3-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.TerrainOptionsModifierSetOutputTextureSize( 256 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetOutputTextureSize512x512_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the output mesh texture size to 512x512 pixels." );
+}
+
+macro TerrainOptionsModifierSetOutputTextureSize512x512()
+[
+ Category="Terrain Commands", Guid="{F16609A3-8816-4423-974B-67842FF510AA}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.TerrainOptionsModifierSetOutputTextureSize( 512 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void TerrainOptionsModifierSetOutputTextureSize1024x1024_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleTerrainOptionsModifierOnUpdate( commandInfo, "Set the output mesh texture size to 1024x1024 pixels." );
+}
+
+macro TerrainOptionsModifierSetOutputTextureSize1024x1024()
+[
+ Category="Terrain Commands", Guid="{11B3924D-BE3D-4FD7-8ED4-B57D2F5988D0}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Graph.TerrainOptionsModifierSetOutputTextureSize( 1024 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreatePlaneTemplate_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   ValidateNodeCreateContext.TestContext( commandInfo, "plane template." );
+   ValidateModelSaved( commandInfo );
+}
+
+macro CreatePlaneTemplate()
+[Category="Create Commands", Guid="{5AA5E325-9C2C-4D76-B5AA-B51C615328DF}", Image=".\\icons\\create_sheet.bmp"]
+{
+   List nodes;
+   ValidateNodeCreateContext.CreateNodesFromTemplate( Model, "\\Meshes\\Plane", nodes, true );
+}

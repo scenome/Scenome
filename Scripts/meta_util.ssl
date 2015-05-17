@@ -1,0 +1,3043 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// $file             META_UTIL.SSL
+// $author           Scenomics LLC
+// $description      This script implements SSL meta-programming features.
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+//
+////////////////////////////////////////////////////////////////////////////////
+
+import library "application_util.ssl";
+import library "build_util.ssl";
+import library "message_util.ssl";
+import library "parse_util.ssl";
+import library "performance_util.ssl";
+
+library Meta;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateHeader( string p_sTitle )
+{
+   string a_sFunctionHeader;
+
+   a_sFunctionHeader += "////////////////////////////////////////////////////////////////////////////////\n";
+   a_sFunctionHeader += "// " + p_sTitle + "\n";
+   a_sFunctionHeader += "////////////////////////////////////////////////////////////////////////////////\n\n";
+
+   return a_sFunctionHeader;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateLibraryHeader( string p_sLibraryFile, string p_sLibraryDescription )
+{
+   string a_sLibraryHeader;
+
+   a_sLibraryHeader += "////////////////////////////////////////////////////////////////////////////////\n";
+   a_sLibraryHeader += "//\n";
+   a_sLibraryHeader += "// $file             " + p_sLibraryFile + "\n";
+   a_sLibraryHeader += "// $author           Scenomics LLC\n";
+   a_sLibraryHeader += "// $description      " + p_sLibraryDescription + ".\n";
+   a_sLibraryHeader += "//\n";
+   a_sLibraryHeader += "// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.\n";
+   a_sLibraryHeader += "//\n";
+   a_sLibraryHeader += "////////////////////////////////////////////////////////////////////////////////\n\n";
+
+   return a_sLibraryHeader;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateFunctionHeader()
+{
+   return GenerateHeader( "function" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateMacroHeader()
+{
+   return GenerateHeader( "macro" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateClassHeader()
+{
+   return GenerateHeader( "class" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetEnumerations()
+{
+   string a_sEnumerations;
+
+   // Build the file path to the templates file ( template_scripts.ssl ).
+   auto FilePath a_oEnumerationDocumentPath = new FilePath( Application.GetApplicationDataPath() );
+   a_oEnumerationDocumentPath.AppendPath( "scripts\\enumerations_util.ssl" );
+   a_oEnumerationDocumentPath.Canonicalize();
+   // DEBUG
+   //Console.Out( a_oEnumerationDocumentPath.GetPath() );
+   TextFile a_oTemplateFile = new TextFile;
+
+   if( a_oTemplateFile.Open( a_oEnumerationDocumentPath.GetPath(), true ) )
+   {
+      while( !a_oTemplateFile.IsEndOfFile() )
+      {
+         a_sEnumerations += a_oTemplateFile.ReadLine() + "\n";
+      }
+      a_oTemplateFile.Close();
+   }
+   delete a_oTemplateFile;
+
+   a_sEnumerations += "\n";
+   return a_sEnumerations;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string ImportFunction( string p_sFunctionName )
+{
+   string a_sFunction;
+   a_sFunction += GenerateFunctionHeader();
+
+   if( p_sFunctionName == "ConvertBindingToQualifier" )
+   {
+      a_sFunction += "function int ConvertBindingToQualifier( int p_iBindingType )\n";
+      a_sFunction += "{\n";
+      a_sFunction += "   if( p_iBindingType == Enum.Binding_Local() )\n";
+      a_sFunction += "   {\n";
+      a_sFunction += "      return -1;\n";
+      a_sFunction += "   }\n";
+      a_sFunction += "   else\n";
+      a_sFunction += "   if( p_iBindingType == Enum.Binding_Constant() )\n";
+      a_sFunction += "   {\n";
+      a_sFunction += "      return Enum.GLSL_Qualifier_Const();\n";
+      a_sFunction += "   }\n";
+      a_sFunction += "   else\n";
+      a_sFunction += "   if( p_iBindingType == Enum.Binding_Uniform() )\n";
+      a_sFunction += "   {\n";
+      a_sFunction += "      return Enum.GLSL_Qualifier_Uniform();\n";
+      a_sFunction += "   }\n";
+      a_sFunction += "   else\n";
+      a_sFunction += "   if( p_iBindingType == Enum.Binding_Attribute() )\n";
+      a_sFunction += "   {\n";
+      a_sFunction += "      return Enum.GLSL_Qualifier_Attribute();\n";
+      a_sFunction += "   }\n";
+      a_sFunction += "   else\n";
+      a_sFunction += "   if( p_iBindingType == Enum.Binding_Varying() )\n";
+      a_sFunction += "   {\n";
+      a_sFunction += "      return Enum.GLSL_Qualifier_Varying();\n";
+      a_sFunction += "   }\n";
+      a_sFunction += "   else\n";
+      a_sFunction += "   if( p_iBindingType == Enum.Binding_CompileDirective() )\n";
+      a_sFunction += "   {\n";
+      a_sFunction += "      return Enum.GLSL_Qualifier_CompileDirective();\n";
+      a_sFunction += "   }\n";
+      a_sFunction += "   else\n";
+      a_sFunction += "   if( p_iBindingType == Enum.Binding_Input() )\n";
+      a_sFunction += "   {\n";
+      a_sFunction += "      return Enum.GLSL_Qualifier_In();\n";
+      a_sFunction += "   }\n";
+      a_sFunction += "   else\n";
+      a_sFunction += "   if( p_iBindingType == Enum.Binding_Output() )\n";
+      a_sFunction += "   {\n";
+      a_sFunction += "      return Enum.GLSL_Qualifier_Out();\n";
+      a_sFunction += "   }\n";
+      a_sFunction += "   else\n";
+      a_sFunction += "   if( p_iBindingType == Enum.Binding_None() )\n";
+      a_sFunction += "   {\n";
+      a_sFunction += "      return -1;\n";
+      a_sFunction += "   }\n";
+      a_sFunction += "   else\n";
+      a_sFunction += "   if( p_iBindingType == Enum.Binding_Buffer() )\n";
+      a_sFunction += "   {\n";
+      a_sFunction += "      return Enum.GLSL_Qualifier_Buffer();\n";
+      a_sFunction += "   }\n";
+      a_sFunction += "   else\n";
+      a_sFunction += "   if( p_iBindingType == Enum.Binding_Subroutine() )\n";
+      a_sFunction += "   {\n";
+      a_sFunction += "      return Enum.GLSL_Qualifier_Subroutine();\n";
+      a_sFunction += "   }\n";
+      a_sFunction += "\n";
+      a_sFunction += "   return -1;\n";
+      a_sFunction += "}\n";
+   }
+   else
+   if( p_sFunctionName == "GetBindingTypeFromSelectionContext" )
+   {
+      a_sFunction += "function int GetBindingTypeFromSelectionContext()\n";
+      a_sFunction += "{\n";
+      a_sFunction += "   int a_nBindingType = Enum.Binding_Local();\n";
+      a_sFunction += "   for( int a_nSelIndex = 0; a_nSelIndex < Model.GetSelectCount(); ++a_nSelIndex )\n";
+      a_sFunction += "   {\n";
+      a_sFunction += "      Node a_oSelectedNode = (Node)Model.GetSelectedNode( a_nSelIndex ).GetNode();\n";
+      a_sFunction += "      if(   a_oSelectedNode && a_oSelectedNode.IsDerived( UniformPaletteNode ) ||\n";
+      a_sFunction += "            a_oSelectedNode && a_oSelectedNode.IsDerived( Program ) ||\n";
+      a_sFunction += "            a_oSelectedNode && a_oSelectedNode.IsDerived( UniformArrayNode ) ||\n";
+      a_sFunction += "            a_oSelectedNode && a_oSelectedNode.IsDerived( UniformBufferBindNode ) )\n";
+      a_sFunction += "      {\n";
+      a_sFunction += "         a_nBindingType = Enum.Binding_Uniform();\n";
+      a_sFunction += "      }\n";
+      a_sFunction += "   }\n";
+      a_sFunction += "   return a_nBindingType;\n";
+      a_sFunction += "}\n\n";
+   }
+   else
+   if( p_sFunctionName == "ConfigureVariableNodeForSelectionContext" )
+   {
+      a_sFunction += "function void ConfigureVariableNodeForSelectionContext( List p_lNodes, int p_iBindingType )\n";
+      a_sFunction += "{\n";
+      a_sFunction += "   for( int i = 0; i < p_lNodes.GetCount(); ++i )\n";
+      a_sFunction += "   {\n";
+      a_sFunction += "      VariableNode a_oVariableNode = (VariableNode)p_lNodes.Get( i );\n";
+      a_sFunction += "      a_oVariableNode.BindingType = p_iBindingType;\n";
+      a_sFunction += "      a_oVariableNode.QualifierList.ModifyQualifier( true, ConvertBindingToQualifier( p_iBindingType ) );\n";
+      a_sFunction += "      a_oVariableNode.Name = GetVariableName( a_oVariableNode );\n";
+      a_sFunction += "   }\n";
+      a_sFunction += "}\n";
+   }
+
+   return a_sFunction;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateUpdateVariableNameT( TypeInfoArray p_oTypeInfoArray )
+{
+   string a_sExpression;
+
+   a_sExpression += "function string GetVariableName( VariableNode p_oVariableNode )\n";
+   a_sExpression += "{\n";
+
+   for( int a_nType = 0; a_nType < p_oTypeInfoArray.Count; ++a_nType )
+   {
+      string a_sTemp;
+      TypeInformation a_oTypeInfo = p_oTypeInfoArray.Objects[ a_nType ];
+      string T_VT = a_oTypeInfo.GetTypeName();
+      string T_VN = "a_o" + T_VT;
+      a_sTemp += "   if( p_oVariableNode.IsDerived( T_VT ) )\n";
+      a_sTemp += "   {\n";
+      a_sTemp += "      T_VT T_VN = ( T_VT )p_oVariableNode;\n";
+      a_sTemp += "      return T_VN.GetDeclarationString();\n";
+      a_sTemp += "   }\n";
+      if( a_nType < p_oTypeInfoArray.Count - 1 )
+      {
+         a_sTemp += "   else\n";
+      }
+
+      auto Str a_oGen = new Str( a_sTemp );
+      a_oGen.Value = a_oGen.Replace( "T_VT", T_VT );
+      a_oGen.Value = a_oGen.Replace( "T_VN", T_VN );
+      a_sExpression += a_oGen.Value;
+   }
+
+   a_sExpression += "   return \"UNKNOWN_VARIABLE_TYPE\";\n";
+   a_sExpression += "}\n\n";
+   // DEBUG
+   //Console.Out( a_sExpression );
+
+   return a_sExpression;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateSetModeOfT( TypeInfoArray p_oTypeInfoArray, ref string p_sExpression )
+{
+   for( int a_nType = 0; a_nType < p_oTypeInfoArray.Count; ++a_nType )
+   {
+      string a_sExpression;
+      TypeInformation a_oTypeInfo = p_oTypeInfoArray.Objects[ a_nType ];
+      string T_VariableType = a_oTypeInfo.GetTypeName();
+      string T_VariableName = "a_o" + T_VariableType;
+      a_sExpression += GenerateFunctionHeader();
+      a_sExpression +="function void " + T_VariableType + "SetMode( int p_iMode )\n";
+      a_sExpression +="{\n";
+      a_sExpression +="   for( int i = 0; i < Model.GetSelectCount(); ++i )\n";
+      a_sExpression +="   {\n";
+      a_sExpression +="      Node a_oNode = Model.GetSelectedNode( i ).GetNode();\n";
+      a_sExpression +="\n";
+      a_sExpression +="      if( a_oNode.IsDerived( T_VariableType ) )\n";
+      a_sExpression +="      {\n";
+      a_sExpression +="         T_VariableType T_VariableName = (T_VariableType)Model.EditNode( a_oNode );\n";
+      a_sExpression +="         T_VariableName.Mode = p_iMode;\n";
+      //a_sExpression +="         T_VariableName.Variable = p_iMode;\n";
+      a_sExpression +="         T_VariableName.Name = GetVariableName( T_VariableName );\n";
+      a_sExpression +="      }\n";
+      a_sExpression +="   }\n";
+      a_sExpression +="}\n\n";
+
+      // DEBUG
+      //Console.Out( a_sExpression );
+
+      auto Str a_oGen = new Str( a_sExpression );
+      a_oGen.Value = a_oGen.Replace( "T_VariableType", T_VariableType );
+      a_oGen.Value = a_oGen.Replace( "T_VariableName", T_VariableName );
+      // DEBUG
+      //Console.Out( a_oGen.Value );
+      p_sExpression += a_oGen.Value;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateIsModeOfT( TypeInfoArray p_oTypeInfoArray, ref string p_sExpression )
+{
+   for( int a_nType = 0; a_nType < p_oTypeInfoArray.Count; ++a_nType )
+   {
+      string a_sExpression;
+      TypeInformation a_oTypeInfo = p_oTypeInfoArray.Objects[ a_nType ];
+      string T_VariableType = a_oTypeInfo.GetTypeName();
+      a_sExpression += GenerateFunctionHeader();
+      //a_sExpression += GetFunctionTemplate( "Is_T_VariableType_Mode" );
+      a_sExpression +="function bool Is" + T_VariableType + "Mode( string p_sTitle, ref int p_iMode )\n";
+      a_sExpression +="{\n";
+      a_sExpression +="   bool a_bIsModeOf;\n";
+      a_sExpression +="   auto StrList a_slT_VariableTypeModes;\n";
+      a_sExpression +="   auto T_VariableType a_oT_VariableType;\n";
+      a_sExpression +="   a_oT_VariableType.GetModeNames( a_slT_VariableTypeModes );\n";
+      a_sExpression +="   int a_iIndex = a_slT_VariableTypeModes.Find( p_sTitle );\n";
+      a_sExpression +="   if( a_iIndex != -1 )\n";
+      a_sExpression +="   {\n";
+      a_sExpression +="      a_bIsModeOf = true;\n";
+      a_sExpression +="      p_iMode = a_iIndex + 1;\n";
+      a_sExpression +="   }\n";
+      a_sExpression +="   return a_bIsModeOf;\n";
+      a_sExpression +="}\n\n";
+
+      auto Str a_oGen = new Str( a_sExpression );
+      a_oGen.Value = a_oGen.Replace( "<T_VariableType>", T_VariableType );
+      a_oGen.Value = a_oGen.Replace( "T_VariableType", T_VariableType );
+      // DEBUG
+      //Console.Out( a_oGen.Value );
+      p_sExpression += a_oGen.Value;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateFormatDynamicUniformT( TypeInfoArray p_oTypeInfoArray, ref string p_sExpression )
+{
+   for( int a_nType = 0; a_nType < p_oTypeInfoArray.Count; ++a_nType )
+   {
+      string a_sExpression;
+      TypeInformation a_oTypeInfo = p_oTypeInfoArray.Objects[ a_nType ];
+      string T_VariableType = a_oTypeInfo.GetTypeName();
+      string T_VariableName = "a_o" + a_oTypeInfo.GetTypeName();
+
+      a_sExpression += GenerateFunctionHeader();
+      a_sExpression += "function void Format" + T_VariableType + "( Node p_oNode, string p_sNodeName, string p_sNodeClass, int p_nBindingType, string p_sVariableName, ";
+
+      // Do variadic for VectorNode and MatrixNode!
+      if( a_oTypeInfo.IsDerived( VectorNode ) )
+      {
+         a_sExpression += "int p_iDimension, ";
+      }
+      else
+      if( a_oTypeInfo.IsDerived( MatrixNode ) )
+      {
+         a_sExpression += "int p_iCols, int p_iRows, ";
+      }
+      
+      a_sExpression += "int p_iMode, bool p_bUpdateName )\n";
+      a_sExpression += "{\n";
+      a_sExpression += "   if( p_oNode.IsDerived( T_VariableType ) )\n";
+      a_sExpression += "   {\n";
+      a_sExpression += "      T_VariableType T_VariableName = (T_VariableType)p_oNode;\n";
+      a_sExpression += "      T_VariableName.Name = p_sNodeName;\n";
+      a_sExpression += "      T_VariableName.Class = p_sNodeClass;\n";
+      a_sExpression += "      T_VariableName.BindingType = p_nBindingType;\n";
+      a_sExpression += "      T_VariableName.Variable = p_sVariableName;\n";
+
+      // Do variadic for VectorNode and MatrixNode!
+      if( a_oTypeInfo.IsDerived( VectorNode ) )
+      {
+         a_sExpression += "      T_VariableName.Dimension = p_iDimension;\n";
+      }
+      else
+      if( a_oTypeInfo.IsDerived( MatrixNode ) )
+      {
+         a_sExpression += "      T_VariableName.Cols = p_iCols;\n";
+         a_sExpression += "      T_VariableName.Rows = p_iRows;\n";
+      }
+
+      a_sExpression += "      T_VariableName.Mode = p_iMode;\n";
+      a_sExpression += "      if( p_bUpdateName )\n";
+      a_sExpression += "      {\n";
+      a_sExpression += "         T_VariableName.Name = GetVariableName( T_VariableName );\n";
+      a_sExpression += "      }\n";
+      a_sExpression += "   }\n";
+      a_sExpression += "}\n\n";
+
+      auto Str a_oGen = new Str( a_sExpression );
+      a_oGen.Value = a_oGen.Replace( "T_VariableType", T_VariableType );
+      a_oGen.Value = a_oGen.Replace( "T_VariableName", T_VariableName );
+      // DEBUG
+      //Console.Out( a_oGen.Value );
+      p_sExpression += a_oGen.Value;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateCreateDynamicUniformT( TypeInfoArray p_oTypeInfoArray, ref string p_sExpression )
+{
+   for( int a_nType = 0; a_nType < p_oTypeInfoArray.Count; ++a_nType )
+   {
+      string a_sExpression;
+      TypeInformation a_oTypeInfo = p_oTypeInfoArray.Objects[ a_nType ];
+      string T_VariableType = a_oTypeInfo.GetTypeName();
+      string T_VariableName = "a_o" + a_oTypeInfo.GetTypeName();
+
+      a_sExpression += GenerateFunctionHeader();
+      a_sExpression += "function void CreateFormatted" + T_VariableType + "( string p_sVariableClass, Group p_oStruct, int p_nMode, string p_sVariableName, ";
+
+      // Do variadic for VectorNode and MatrixNode!
+      if( a_oTypeInfo.IsDerived( VectorNode ) )
+      {
+         a_sExpression += "int p_nDimension, ";
+      }
+      else
+      if( a_oTypeInfo.IsDerived( MatrixNode ) )
+      {
+         a_sExpression += "int p_nCols, int p_nRows, ";
+      }
+      
+      a_sExpression += "int p_nBindingType )\n";
+      a_sExpression += "{\n";
+      a_sExpression += "   T_VariableType T_VariableName = new T_VariableType;\n";
+      a_sExpression += "   bool a_bUpdateName = true;\n";
+      a_sExpression += "   FormatT_VariableType( ";
+      a_sExpression += "T_VariableName, ";
+      a_sExpression += "p_sVariableName, ";
+      a_sExpression += "p_sVariableClass, ";
+      a_sExpression += "p_nBindingType, ";
+      a_sExpression += "p_sVariableName, ";
+
+      // Do variadic for VectorNode and MatrixNode!
+      if( a_oTypeInfo.IsDerived( VectorNode ) )
+      {
+         a_sExpression += "p_nDimension, ";
+      }
+      else
+      if( a_oTypeInfo.IsDerived( MatrixNode ) )
+      {
+         a_sExpression += "p_nCols, p_nRows, ";
+      }
+
+      a_sExpression += "p_nMode, ";
+      a_sExpression += "a_bUpdateName ";
+      a_sExpression += ");\n";
+      a_sExpression += "   if( Model.Filename != p_oStruct.GetModel().Filename )\n";
+      a_sExpression += "   {\n";
+      a_sExpression += "      p_oStruct.AddChild( T_VariableName );\n";
+      a_sExpression += "   }\n";
+      a_sExpression += "   else\n";
+      a_sExpression += "   {\n";
+      a_sExpression += "      Model.AddNode( T_VariableName, p_oStruct, -1 );\n";
+      a_sExpression += "   }\n";
+
+      a_sExpression += "}\n\n";
+
+
+      auto Str a_oGen = new Str( a_sExpression );
+      a_oGen.Value = a_oGen.Replace( "T_VariableType", T_VariableType );
+      a_oGen.Value = a_oGen.Replace( "T_VariableName", T_VariableName );
+      // DEBUG
+      //Console.Out( a_oGen.Value );
+      p_sExpression += a_oGen.Value;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GenerateExpressionVariableComparisonT(
+
+   string T_FunctionName,
+   string T_ExpressionNodeType,
+   string T_VariableNodeType
+
+   )
+{
+   string a_sExpression;
+
+   a_sExpression +="function bool Evaluate" + T_FunctionName + "Expression( Node p_oSelNode, VariableNode p_oVariableNode )\n";
+   a_sExpression +="{\n";
+   a_sExpression +="   T_ExpressionNodeType a_oExpressionSelected =\n";
+   a_sExpression +="      (T_ExpressionNodeType)p_oSelNode;\n";
+   a_sExpression +="   T_VariableNodeType a_oVariable =\n";
+   a_sExpression +="      (T_VariableNodeType)p_oVariableNode;\n";
+   a_sExpression +="   if( a_oExpressionSelected.Count == 0 )\n";
+   a_sExpression +="   {\n";
+   a_sExpression +="      return true;\n";
+   a_sExpression +="   }\n";
+   a_sExpression +="   else\n";
+   a_sExpression +="   if( a_oExpressionSelected.Count == a_oVariable.Count )\n";
+   a_sExpression +="   {\n";
+   a_sExpression +="      return true;\n";
+   a_sExpression +="   }\n\n";
+   a_sExpression +="   return false;\n";
+   a_sExpression +="}\n\n";
+
+   // DEBUG
+   //Console.Out( a_sExpression );
+
+   auto Str a_oGen = new Str( a_sExpression );
+   a_oGen.Value = a_oGen.Replace( "T_ExpressionNodeType", T_ExpressionNodeType );
+   a_oGen.Value = a_oGen.Replace( "T_VariableNodeType", T_VariableNodeType );
+   // DEBUG
+   //Console.Out( a_oGen.Value );
+   return a_oGen.Value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateCreateVariableExpressionNodeAssignmentT(
+
+   TypeInfoArray p_oTypeInfoArray,
+   TypeInfoArray p_oVariableExpressionGeneratorTypes,
+   ref string p_sExpression
+
+   )
+{
+   for( int a_nType = 0; a_nType < p_oTypeInfoArray.Count; ++a_nType )
+   {
+      string a_sExpression;
+      TypeInformation a_oTypeInfo = p_oTypeInfoArray.Objects[ a_nType ];
+      string T_VariableType = a_oTypeInfo.GetTypeName();
+      string T_VariableNameLeft = "a_o" + a_oTypeInfo.GetTypeName() + "Left";
+      string T_VariableNameRight = "a_o" + a_oTypeInfo.GetTypeName() + "Right";
+
+      TypeInformation a_oGeneratorTypeInfo = p_oVariableExpressionGeneratorTypes.Objects[ a_nType ];
+      string T_GeneratorType = a_oGeneratorTypeInfo.GetTypeName();
+
+      a_sExpression += GenerateFunctionHeader();
+      a_sExpression += "function void Create" + T_VariableType + "Assignment(";
+
+      // Do variadic support for nodes that need function parameters.
+      if(   a_oTypeInfo.IsDerived( BooleanVectorExpressionNode )           ||
+            a_oTypeInfo.IsDerived( IntegerVectorExpressionNode )           ||
+            a_oTypeInfo.IsDerived( UnsignedIntegerVectorExpressionNode )   ||
+            a_oTypeInfo.IsDerived( VectorExpressionNode ) )
+      {
+         a_sExpression += " int p_nDimension ";
+      }
+      else
+      if(   a_oTypeInfo.IsDerived( BooleanArrayExpressionNode )         ||
+            a_oTypeInfo.IsDerived( IntegerArrayExpressionNode )         ||
+            a_oTypeInfo.IsDerived( UnsignedIntegerArrayExpressionNode ) ||
+            a_oTypeInfo.IsDerived( FloatArrayExpressionNode ) )
+      {
+         a_sExpression += " int p_nArrayDimension ";
+      }
+      else
+      if(   a_oTypeInfo.IsDerived( BooleanVectorArrayExpressionNode )         ||
+            a_oTypeInfo.IsDerived( IntegerVectorArrayExpressionNode )         ||
+            a_oTypeInfo.IsDerived( UnsignedIntegerVectorArrayExpressionNode ) ||
+            a_oTypeInfo.IsDerived( VectorArrayExpressionNode ) )
+      {
+         a_sExpression += "int p_nVectorDimension, int p_nArrayDimension ";
+      }
+      else
+      if( a_oTypeInfo.IsDerived( MatrixExpressionNode ) )
+      {
+         a_sExpression += " int p_nCols, int p_nRows ";
+      }
+
+      a_sExpression += ")\n";
+      a_sExpression += "{\n";
+      a_sExpression += "   // First selected node index.\n";
+      a_sExpression += "   Group a_oSelectedGroup = (Group)Model.GetFirstSelectedNode().GetNode();\n";
+      a_sExpression += "   // Create a new ExpressionNode to contain the expression elements.\n";
+      a_sExpression += "   ExpressionNode a_oExpressionNode = new ExpressionNode;\n";
+      a_sExpression += "   a_oExpressionNode.Name = \"Assignment Expression\";\n";
+
+      a_sExpression += "   // Create a new left side expression. Make sure we set its ExpressionSide flag, as we can only do this once.\n";
+      a_sExpression += "   T_VariableType T_VariableNameLeft = new T_VariableType;\n";
+      a_sExpression += "   T_VariableNameLeft.Name = \"Input A\";\n";
+      a_sExpression += "   T_VariableNameLeft.ExpressionSide = Enum.ExpressionSide_Left();\n";
+      a_sExpression += "   T_VariableNameLeft.NodeSelector.SetContainer( Model );\n";
+
+      if(   a_oTypeInfo.IsDerived( BooleanArrayExpressionNode ) ||
+            a_oTypeInfo.IsDerived( IntegerArrayExpressionNode ) ||
+            a_oTypeInfo.IsDerived( UnsignedIntegerArrayExpressionNode ) ||
+            a_oTypeInfo.IsDerived( FloatArrayExpressionNode ) )
+      {
+         a_sExpression += "   T_VariableNameLeft.Count = p_nArrayDimension;\n";
+      }
+      else
+      if(   a_oTypeInfo.IsDerived( BooleanVectorExpressionNode )           ||
+            a_oTypeInfo.IsDerived( IntegerVectorExpressionNode )           ||
+            a_oTypeInfo.IsDerived( UnsignedIntegerVectorExpressionNode )   ||
+            a_oTypeInfo.IsDerived( VectorExpressionNode ) )
+      {
+         a_sExpression += "   T_VariableNameLeft.Dimension = p_nDimension;\n";
+      }
+      else
+      if(   a_oTypeInfo.IsDerived( BooleanVectorArrayExpressionNode )         || 
+            a_oTypeInfo.IsDerived( IntegerVectorArrayExpressionNode )         ||
+            a_oTypeInfo.IsDerived( UnsignedIntegerVectorArrayExpressionNode ) ||
+            a_oTypeInfo.IsDerived( VectorArrayExpressionNode ) )
+      {
+         a_sExpression += "   T_VariableNameLeft.Count = p_nArrayDimension;\n";
+         a_sExpression += "   T_VariableNameLeft.Dimension = p_nVectorDimension;\n";
+      }
+      else
+      if( a_oTypeInfo.IsDerived( MatrixExpressionNode ) )
+      {
+         a_sExpression += "   T_VariableNameLeft.Cols = p_nCols;\n";
+         a_sExpression += "   T_VariableNameLeft.Rows = p_nRows;\n";
+      }
+
+      a_sExpression += "   // Create a new BinaryOperatorNode for assignment.\n";
+      a_sExpression += "   BinaryOperatorNode a_oBinaryOperatorNode = new BinaryOperatorNode;\n";
+      a_sExpression += "   a_oBinaryOperatorNode.Name = \"Assign\";\n";
+
+      a_sExpression += "   // Create a new right side expression. Make sure we set its ExpressionSide flag, as we can only do this once.\n";
+      a_sExpression += "   T_VariableType T_VariableNameRight = new T_VariableType;\n";
+      a_sExpression += "   T_VariableNameRight.Name = \"Input B\";\n";
+      a_sExpression += "   T_VariableNameRight.ExpressionSide = Enum.ExpressionSide_Right();\n";
+      a_sExpression += "   T_VariableNameRight.NodeSelector.SetContainer( Model );\n";
+
+      if(   a_oTypeInfo.IsDerived( BooleanArrayExpressionNode ) ||
+            a_oTypeInfo.IsDerived( IntegerArrayExpressionNode ) ||
+            a_oTypeInfo.IsDerived( UnsignedIntegerArrayExpressionNode ) ||
+            a_oTypeInfo.IsDerived( FloatArrayExpressionNode ) )
+      {
+         a_sExpression += "   T_VariableNameRight.Count = p_nArrayDimension;\n";
+      }
+      else
+      if(   a_oTypeInfo.IsDerived( BooleanVectorExpressionNode )           ||
+            a_oTypeInfo.IsDerived( IntegerVectorExpressionNode )           ||
+            a_oTypeInfo.IsDerived( UnsignedIntegerVectorExpressionNode )   ||
+            a_oTypeInfo.IsDerived( VectorExpressionNode ) )
+      {
+         a_sExpression += "   T_VariableNameRight.Dimension = p_nDimension;\n";
+      }
+      else
+      if(   a_oTypeInfo.IsDerived( BooleanVectorArrayExpressionNode )         ||
+            a_oTypeInfo.IsDerived( IntegerVectorArrayExpressionNode )         ||
+            a_oTypeInfo.IsDerived( UnsignedIntegerVectorArrayExpressionNode ) ||
+            a_oTypeInfo.IsDerived( VectorArrayExpressionNode ) )
+      {
+         a_sExpression += "   T_VariableNameRight.Count = p_nArrayDimension;\n";
+         a_sExpression += "   T_VariableNameRight.Dimension = p_nVectorDimension;\n";
+      }
+      else
+      if( a_oTypeInfo.IsDerived( MatrixExpressionNode ) )
+      {
+         a_sExpression += "   T_VariableNameRight.Cols = p_nCols;\n";
+         a_sExpression += "   T_VariableNameRight.Rows = p_nRows;\n";
+      }
+
+      a_sExpression += "   // Wire the expression correctly. Connect each expression to the operator and connect the operator to each expression.\n";
+      a_sExpression += "   T_VariableNameLeft.OperatorDataSource = a_oBinaryOperatorNode;\n";
+      a_sExpression += "   T_VariableNameRight.OperatorDataSource = a_oBinaryOperatorNode;\n";
+      a_sExpression += "   a_oBinaryOperatorNode.LeftDataSource = T_VariableNameLeft;\n";
+      a_sExpression += "   a_oBinaryOperatorNode.RightDataSource = T_VariableNameRight;\n";
+      a_sExpression += "   // Generate the left/right side expressions.\n";
+      a_sExpression += "   T_VariableNameLeft.GenerateExpression( T_GeneratorType );\n";
+      a_sExpression += "   T_VariableNameRight.GenerateExpression( T_GeneratorType );\n";
+      a_sExpression += "   // Parent the new nodes in correct order and add the ExpressionNode to the document.\n";
+      a_sExpression += "   Model.AddNode( T_VariableNameLeft, a_oExpressionNode, -1 );\n";
+      a_sExpression += "   Model.AddNode( a_oBinaryOperatorNode, a_oExpressionNode, -1 );\n";
+      a_sExpression += "   Model.AddNode( T_VariableNameRight, a_oExpressionNode, -1 );\n";
+      a_sExpression += "   Model.AddNode( a_oExpressionNode, a_oSelectedGroup, -1 );\n";
+
+      a_sExpression += "}\n\n";
+
+
+      auto Str a_oGen = new Str( a_sExpression );
+      a_oGen.Value = a_oGen.Replace( "T_VariableType", T_VariableType );
+      a_oGen.Value = a_oGen.Replace( "T_VariableNameLeft", T_VariableNameLeft );
+      a_oGen.Value = a_oGen.Replace( "T_VariableNameRight", T_VariableNameRight );
+      a_oGen.Value = a_oGen.Replace( "T_GeneratorType", T_GeneratorType );
+
+      // DEBUG
+      //Console.Out( a_oGen.Value );
+      p_sExpression += a_oGen.Value;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateSetVariableArrayExpressionT(
+
+   TypeInfoArray p_oExpressionTypeInfoArray,
+   TypeInfoArray p_oVariableTypeInfoArray,
+   TypeInfoArray p_oArrayExpressionGeneratorTypes,
+   ref string p_sExpression
+
+   )
+{
+   for( int a_nType = 0; a_nType < p_oExpressionTypeInfoArray.Count; ++a_nType )
+   {
+      string a_sExpression;
+      TypeInformation a_oExpressionTypeInfo = p_oExpressionTypeInfoArray.Objects[ a_nType ];
+      string T_VariableType = a_oExpressionTypeInfo.GetTypeName();
+      string T_VariableName = "a_o" + T_VariableType;
+      string T_VariableNameEdited = "a_oEditedExpression";
+
+      TypeInformation a_oVariableTypeInfo = p_oVariableTypeInfoArray.Objects[ a_nType ];
+      string T_VariableNodeType = a_oVariableTypeInfo.GetTypeName();
+      string T_VariableNodeName = "a_o" + a_oVariableTypeInfo.GetTypeName();
+
+      TypeInformation a_oGeneratorTypeInfo = p_oArrayExpressionGeneratorTypes.Objects[ a_nType ];
+      string T_GeneratorType = a_oGeneratorTypeInfo.GetTypeName();
+
+      a_sExpression += GenerateFunctionHeader();
+      a_sExpression += "function void Configure" + T_VariableType + "( VariableExpressionNode p_oVariableExpressionNode, Node p_oNotEditedExpression, Node p_oIsVariable )\n";
+      a_sExpression += "{\n";
+
+      a_sExpression += "   T_VariableType T_VariableName =\n";
+      a_sExpression += "      (T_VariableType)p_oNotEditedExpression;\n";
+      a_sExpression += "   T_VariableType T_VariableNameEdited =\n";
+      a_sExpression += "      (T_VariableType)p_oVariableExpressionNode;\n";
+      a_sExpression += "   // If we're setting a left side for the first time, we need to\n";
+      a_sExpression += "   // make sure that we change the right side dimension to match.\n";
+      a_sExpression += "   // Conversely, do not ever change the left side as a result of\n";
+      a_sExpression += "   // changes to the right side.\n";
+
+      if(   a_oVariableTypeInfo.IsDerived( BooleanVectorArrayNode )           ||
+            a_oVariableTypeInfo.IsDerived( IntegerVectorArrayNode )           ||
+            a_oVariableTypeInfo.IsDerived( UnsignedIntegerVectorArrayNode )   ||
+            a_oVariableTypeInfo.IsDerived( VectorArrayNode ) )
+      {
+         a_sExpression += "   // Make sure we clear member selection.\n";
+         a_sExpression += "   T_VariableNameEdited.ClearMemberSelection();\n";
+      }
+
+      a_sExpression += "   if( p_oIsVariable.IsDerived( T_VariableNodeType ) )\n";
+      a_sExpression += "   {\n";
+      a_sExpression += "      int a_nDimension;\n";
+
+      if(   a_oVariableTypeInfo.IsDerived( BooleanVectorArrayNode )           ||
+            a_oVariableTypeInfo.IsDerived( IntegerVectorArrayNode )           ||
+            a_oVariableTypeInfo.IsDerived( UnsignedIntegerVectorArrayNode )   ||
+            a_oVariableTypeInfo.IsDerived( VectorArrayNode ) )
+      {
+         a_sExpression += "      int a_nVectorDimension;\n";
+      }
+
+      a_sExpression += "      T_VariableNodeType T_VariableNodeName = (T_VariableNodeType)p_oIsVariable;\n";
+
+      if(   a_oVariableTypeInfo.IsDerived( BooleanArrayNode ) ||
+            a_oVariableTypeInfo.IsDerived( IntegerArrayNode ) ||
+            a_oVariableTypeInfo.IsDerived( UnsignedIntegerArrayNode ) ||
+            a_oVariableTypeInfo.IsDerived( FloatArrayNode ) )
+      {
+         a_sExpression += "      a_nDimension = T_VariableNodeName.Count;\n";
+      }
+      else
+      if(   a_oVariableTypeInfo.IsDerived( BooleanVectorArrayNode )           ||
+            a_oVariableTypeInfo.IsDerived( IntegerVectorArrayNode )           ||
+            a_oVariableTypeInfo.IsDerived( UnsignedIntegerVectorArrayNode )   ||
+            a_oVariableTypeInfo.IsDerived( VectorArrayNode ) )
+      {
+         a_sExpression += "      a_nVectorDimension = T_VariableNodeName.VectorDimension;\n";
+      }
+
+      a_sExpression += "      if( T_VariableName.IsLeftOperand() )\n";
+      a_sExpression += "      {\n";
+      a_sExpression += "         Node a_oIsOpposite = (Node)T_VariableName.GetOppositeExpression();\n";
+      a_sExpression += "         if( a_oIsOpposite && a_oIsOpposite.IsDerived( T_VariableType ) )\n";
+      a_sExpression += "         {\n";
+      a_sExpression += "            T_VariableType a_oOpposite = (T_VariableType)a_oIsOpposite;\n";
+      a_sExpression += "            if( p_oIsVariable && p_oIsVariable.IsDerived( T_VariableNodeType ) )\n";
+      a_sExpression += "            {\n";
+      a_sExpression += "               a_nDimension = T_VariableNodeName.Count;\n";
+      a_sExpression += "               a_oOpposite.Count = T_VariableNodeName.Count;\n";
+      a_sExpression += "               T_VariableType a_oEdit = (T_VariableType)Model.EditNode( a_oOpposite );\n";
+      a_sExpression += "               a_oEdit.Count = T_VariableNodeName.Count;\n";
+      a_sExpression += "               a_oEdit.GenerateExpression( T_GeneratorType );\n";
+      a_sExpression += "            }\n";
+      a_sExpression += "         }\n";
+      a_sExpression += "         T_VariableNameEdited.Count = a_nDimension;\n";
+      a_sExpression += "      }\n";
+      a_sExpression += "      else\n";
+      a_sExpression += "      {\n";
+      a_sExpression += "         a_nDimension = T_VariableNodeName.Count;\n";
+      a_sExpression += "      }\n";
+
+      a_sExpression += "      for( int a_nInfoRe = 0; a_nInfoRe < T_VariableNameEdited.CodeObjectNodeNames.GetCount(); ++a_nInfoRe )\n";
+      a_sExpression += "      {\n";
+      a_sExpression += "         string a_sVariableName = T_VariableNameEdited.CodeObjectNodeNames.GetAt( a_nInfoRe );\n";
+      a_sExpression += "         int a_nArrayInfo = T_VariableNameEdited.CodeObjectDimensions.Objects[ a_nInfoRe ];\n";
+
+      if(   a_oVariableTypeInfo.IsDerived( BooleanArrayNode ) ||
+            a_oVariableTypeInfo.IsDerived( IntegerArrayNode ) ||
+            a_oVariableTypeInfo.IsDerived( UnsignedIntegerArrayNode ) ||
+            a_oVariableTypeInfo.IsDerived( FloatArrayNode ) )
+      {
+         a_sExpression += "         if( a_nDimension == T_VariableName.Count || T_VariableName.Count == 0 )\n";
+         a_sExpression += "         {\n";
+         a_sExpression += "            a_nArrayInfo = 0;\n";
+         a_sExpression += "         }\n";
+      }
+      else
+      if(   a_oVariableTypeInfo.IsDerived( BooleanVectorArrayNode )           ||
+            a_oVariableTypeInfo.IsDerived( IntegerVectorArrayNode )           ||
+            a_oVariableTypeInfo.IsDerived( UnsignedIntegerVectorArrayNode )   ||
+            a_oVariableTypeInfo.IsDerived( VectorArrayNode ) )
+      {
+         a_sExpression += "         if( a_nVectorDimension == T_VariableName.Dimension )\n";
+         a_sExpression += "         {\n";
+         a_sExpression += "            a_nArrayInfo = 0;\n";
+         a_sExpression += "         }\n";
+      }
+
+      a_sExpression += "         if( a_sVariableName == T_VariableNodeName.Variable )\n";
+      a_sExpression += "         {\n";
+      a_sExpression += "            T_VariableNameEdited.CodeObjectDimensions.Objects[ a_nInfoRe ] = a_nArrayInfo;\n";
+      a_sExpression += "         }\n";
+      a_sExpression += "         // DEBUG\n";
+      a_sExpression += "         //Console.Out( a_sVariableName + \" \" + a_nArrayInfo );\n";
+      a_sExpression += "      }\n";
+      a_sExpression += "   }\n";
+
+      a_sExpression += "   T_VariableNameEdited.GenerateExpression( T_GeneratorType );\n";
+      a_sExpression += "}\n\n";
+
+      auto Str a_oGen = new Str( a_sExpression );
+      a_oGen.Value = a_oGen.Replace( "T_VariableType", T_VariableType );
+      a_oGen.Value = a_oGen.Replace( "T_VariableName", T_VariableName );
+      a_oGen.Value = a_oGen.Replace( "T_VariableNameEdited", T_VariableNameEdited );
+      a_oGen.Value = a_oGen.Replace( "T_VariableNodeType", T_VariableNodeType );
+      a_oGen.Value = a_oGen.Replace( "T_VariableNodeName", T_VariableNodeName );
+      a_oGen.Value = a_oGen.Replace( "T_GeneratorType", T_GeneratorType );
+
+      // DEBUG
+      //Console.Out( a_oGen.Value );
+      p_sExpression += a_oGen.Value;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateSetVariableExpressionT(
+
+   TypeInfoArray p_oTypeInfoArray,
+   TypeInfoArray p_oVariableExpressionGeneratorTypes,
+   ref string p_sExpression
+
+   )
+{
+   p_sExpression += GenerateFunctionHeader();
+   p_sExpression += "function bool GenerateExpressionT( VariableExpressionNode p_oVariableExpressionNode )\n";
+   p_sExpression += "{\n";
+
+   for( int a_nType = 0; a_nType < p_oTypeInfoArray.Count; ++a_nType )
+   {
+      TypeInformation a_oGeneratorTypeInfo = p_oVariableExpressionGeneratorTypes.Objects[ a_nType ];
+      string T_GeneratorType = a_oGeneratorTypeInfo.GetTypeName();
+
+      string a_sExpression;
+      TypeInformation a_oTypeInfo = p_oTypeInfoArray.Objects[ a_nType ];
+      string T_VariableType = a_oTypeInfo.GetTypeName();
+      string T_VariableName = "a_o" + a_oTypeInfo.GetTypeName();
+
+      a_sExpression += "   if( p_oVariableExpressionNode.IsDerived( T_VariableType ) )\n";
+      a_sExpression += "   {\n";
+      a_sExpression += "      T_VariableType T_VariableName =\n";
+      a_sExpression += "         (T_VariableType)p_oVariableExpressionNode;\n";
+      a_sExpression += "      T_VariableName.GenerateExpression( T_GeneratorType );\n";
+      a_sExpression += "      return true;\n";
+      a_sExpression += "   }\n";
+
+      auto Str a_oGen = new Str( a_sExpression );
+      a_oGen.Value = a_oGen.Replace( "T_VariableType", T_VariableType );
+      a_oGen.Value = a_oGen.Replace( "T_VariableName", T_VariableName );
+      a_oGen.Value = a_oGen.Replace( "T_GeneratorType", T_GeneratorType );
+      // DEBUG
+      //Console.Out( a_oGen.Value );
+      p_sExpression += a_oGen.Value;
+      if( a_nType < p_oTypeInfoArray.Count - 1 )
+      {
+         p_sExpression += "   else\n";
+      }
+   }
+
+   p_sExpression += "\n";
+   p_sExpression += "   return false;\n";
+   p_sExpression += "}\n\n";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateConfigureVectorExpressionT(
+
+   TypeInfoArray p_oTypeInfoArray,
+   TypeInfoArray p_oVectorExpressionGeneratorTypes,
+   ref string p_sExpression
+
+   )
+{
+   for( int a_nType = 0; a_nType < p_oTypeInfoArray.Count; ++a_nType )
+   {
+      string a_sExpression;
+      TypeInformation a_oTypeInfo = p_oTypeInfoArray.Objects[ a_nType ];
+      string T_VariableType = a_oTypeInfo.GetTypeName();
+      string T_VariableName = "a_o" + a_oTypeInfo.GetTypeName();
+
+      TypeInformation a_oGeneratorTypeInfo = p_oVectorExpressionGeneratorTypes.Objects[ a_nType ];
+      string T_GeneratorType = a_oGeneratorTypeInfo.GetTypeName();
+
+      a_sExpression += GenerateFunctionHeader();
+      a_sExpression += "function void Configure<T_VariableType>( VariableExpressionNode p_oVariableExpressionNode, Node p_oVariableNode )\n";
+      a_sExpression += "{\n";
+      a_sExpression += "   T_VariableType T_VariableName = (T_VariableType)p_oVariableExpressionNode;\n";
+      a_sExpression += "   int a_nVariableDimension = T_VariableName.GetVariableDimension();\n";
+      a_sExpression += "   if( p_oVariableNode.IsDerived( MatrixNode ) )\n";
+      a_sExpression += "   {\n";
+      a_sExpression += "      MatrixNode a_oMatrixNode = (MatrixNode)p_oVariableNode;\n";
+      a_sExpression += "      a_nVariableDimension = a_oMatrixNode.Rows;\n";
+      a_sExpression += "   }\n";
+      a_sExpression += "   if( T_VariableName.IsLeftOperand() || T_VariableName.IsRightOperand() )\n";
+      a_sExpression += "   {\n";
+      a_sExpression += "      if( a_nVariableDimension < T_VariableName.Dimension )\n";
+      a_sExpression += "      {\n";
+      a_sExpression += "         // Make sure we clear member selection.\n";
+      a_sExpression += "         T_VariableName.ClearMemberSelection();\n";
+      a_sExpression += "      }\n";
+      a_sExpression += "      else\n";
+      a_sExpression += "      if( a_nVariableDimension == T_VariableName.Dimension )\n";
+      a_sExpression += "      {\n";
+      a_sExpression += "         // Make sure we clear member selection.\n";
+      a_sExpression += "         T_VariableName.ClearMemberSelection();\n";
+      a_sExpression += "      }\n";
+      a_sExpression += "      else\n";
+      a_sExpression += "      if( a_nVariableDimension > T_VariableName.Dimension )\n";
+      a_sExpression += "      {\n";
+      a_sExpression += "         // Set member selection to expression dimension.\n";
+      a_sExpression += "         T_VariableName.InitializeMemberSelection( T_VariableName.Dimension );\n";
+      a_sExpression += "      }\n";
+      a_sExpression += "   }\n";
+      a_sExpression += "   // If dimension hasn't been set.\n";
+      a_sExpression += "   if( T_VariableName.Dimension == -1 )\n";
+      a_sExpression += "   {\n";
+      a_sExpression += "      T_VariableName.Dimension = T_VariableName.GetVariableDimension();\n";
+      a_sExpression += "   }\n";
+      a_sExpression += "   T_VariableName.GenerateExpression( T_GeneratorType );\n";
+      a_sExpression += "   T_VariableName.SelectedMatrixCol = 0;\n";
+      a_sExpression += "}\n\n";
+
+      auto Str a_oGen = new Str( a_sExpression );
+      a_oGen.Value = a_oGen.Replace( "<T_VariableType>", T_VariableType );
+      a_oGen.Value = a_oGen.Replace( "T_VariableType", T_VariableType );
+      a_oGen.Value = a_oGen.Replace( "T_VariableName", T_VariableName );
+      a_oGen.Value = a_oGen.Replace( "T_GeneratorType", T_GeneratorType );
+      // DEBUG
+      //Console.Out( a_oGen.Value );
+      p_sExpression += a_oGen.Value;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateCreateVariableDeclarationT(
+
+   TypeInfoArray p_oVariableNodeTypes,
+   TypeInfoArray p_oExpressionNodeTypes,
+   TypeInfoArray p_oExpressionNodeGeneratorTypes,
+   ref string p_sExpression
+
+   )
+{
+   for( int a_nType = 0; a_nType < p_oVariableNodeTypes.Count; ++a_nType )
+   {
+      string a_sExpression;
+      TypeInformation a_oVariableTypeInfo = p_oVariableNodeTypes.Objects[ a_nType ];
+      string T_VariableType = a_oVariableTypeInfo.GetTypeName();
+      string T_VariableName = "a_o" + T_VariableType;
+
+      TypeInformation a_oExpressionTypeInfo = p_oExpressionNodeTypes.Objects[ a_nType ];
+      string T_ExpressionType = a_oExpressionTypeInfo.GetTypeName();
+      string T_ExpressionName = "a_o" + T_ExpressionType;
+
+      TypeInformation a_oExpressionGeneratorTypeInfo = p_oExpressionNodeGeneratorTypes.Objects[ a_nType ];
+      string T_ExpressionGeneratorType = a_oExpressionGeneratorTypeInfo.GetTypeName();
+
+      a_sExpression += GenerateFunctionHeader();
+      a_sExpression += "function void Create<T_VariableType>Declaration( string p_sDeclarationNodeName, int p_nDeclarationType, string p_sVariableNodeName, string p_sExpressionNodeName )\n";
+      a_sExpression += "{\n";
+      a_sExpression += "   List nodes = new List;\n";
+      a_sExpression += "   ValidateNodeCreateContext.CreateNodes( Model, DeclarationNode, p_sDeclarationNodeName, nodes, -1 );\n";
+      a_sExpression += "   DeclarationNode a_oDeclarationNode;\n";
+      a_sExpression += "   for( int node = 0; node < nodes.GetCount(); ++node )\n";
+      a_sExpression += "   {\n";
+      a_sExpression += "      a_oDeclarationNode = (DeclarationNode)nodes.Get(node);\n";
+      a_sExpression += "      a_oDeclarationNode.DeclarationType = p_nDeclarationType;\n";
+      a_sExpression += "   }\n";
+
+      a_sExpression += "   // Create a T_VariableType\n";
+      a_sExpression += "   int a_nBindingType = Enum.Binding_Local();\n";
+
+      if( a_oVariableTypeInfo.IsDerived( BooleanNode ) )
+      {
+         a_sExpression += "   bool a_bInitialVal = true;\n";
+         a_sExpression += "   T_VariableType T_VariableName = Create.Create<T_VariableType>( a_nBindingType, p_sVariableNodeName, a_bInitialVal );\n";
+      }
+
+      a_sExpression += "   // Create a BinaryOperatorNode that will be used for the expression.\n";
+      a_sExpression += "   BinaryOperatorNode a_oBinaryOperatorNode = new BinaryOperatorNode;\n";
+      a_sExpression += "   a_oBinaryOperatorNode.Name = \"Assign\";\n";
+      a_sExpression += "   a_oBinaryOperatorNode.Operator = Enum.BinaryOperator_Assign();\n";
+
+      a_sExpression += "   // Create a T_ExpressionType\n";
+      a_sExpression += "   T_ExpressionType T_ExpressionName = new T_ExpressionType\n";
+      a_sExpression += "   T_ExpressionName.ExpressionSide = Enum.ExpressionSide_Right();\n";
+      a_sExpression += "   T_ExpressionName.ExpressionType = Enum.ExpressionType_Expression();\n";
+      a_sExpression += "   T_ExpressionName.Expression = T_ExpressionName.GenerateExpression( T_ExpressionGeneratorType );\n";
+
+      a_sExpression += "   // Wire the expression.\n";
+      a_sExpression += "   T_ExpressionName.OperatorDataSource = a_oBinaryOperatorNode;\n";
+      a_sExpression += "   a_oBinaryOperatorNode.LeftDataSource = T_VariableName;\n";
+      a_sExpression += "   a_oBinaryOperatorNode.RightDataSource = T_ExpressionName;\n";
+
+      a_sExpression += "   // Add the complete declaration to the model.\n";
+      a_sExpression += "   Model.AddNode( T_VariableName, a_oDeclarationNode, -1 );\n";
+      a_sExpression += "   Model.AddNode( a_oBinaryOperatorNode, a_oDeclarationNode, -1 );\n";
+      a_sExpression += "   Model.AddNode( T_ExpressionName, a_oDeclarationNode, -1 );\n";
+
+      a_sExpression += "   delete nodes;\n";
+
+      a_sExpression += "}\n\n";
+
+      auto Str a_oGen = new Str( a_sExpression );
+      a_oGen.Value = a_oGen.Replace( "<T_VariableType>", T_VariableType );
+      a_oGen.Value = a_oGen.Replace( "T_VariableType", T_VariableType );
+      a_oGen.Value = a_oGen.Replace( "T_VariableName", T_VariableName );
+      a_oGen.Value = a_oGen.Replace( "<T_ExpressionType>", T_ExpressionType );
+      a_oGen.Value = a_oGen.Replace( "T_ExpressionType", T_ExpressionType );
+      a_oGen.Value = a_oGen.Replace( "T_ExpressionName", T_ExpressionName );
+
+      // DEBUG
+      //Console.Out( a_oGen.Value );
+      p_sExpression += a_oGen.Value;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int CompileTemplateFunctions()
+{
+   // Build a TypeInfoArray of all VariableExpressionNode<T> array types.
+   auto TypeInfoArray a_oVariableExpressionNodeArrayTypes;
+   a_oVariableExpressionNodeArrayTypes.Add( BooleanArrayExpressionNode );
+   a_oVariableExpressionNodeArrayTypes.Add( BooleanVectorArrayExpressionNode );
+   a_oVariableExpressionNodeArrayTypes.Add( IntegerArrayExpressionNode );
+   a_oVariableExpressionNodeArrayTypes.Add( IntegerVectorArrayExpressionNode );
+   a_oVariableExpressionNodeArrayTypes.Add( UnsignedIntegerArrayExpressionNode );
+   a_oVariableExpressionNodeArrayTypes.Add( UnsignedIntegerVectorArrayExpressionNode );
+   a_oVariableExpressionNodeArrayTypes.Add( FloatArrayExpressionNode );
+   a_oVariableExpressionNodeArrayTypes.Add( VectorArrayExpressionNode );
+
+   // Build a TypeInfoArray of all VariableNode<T> array types.
+   auto TypeInfoArray a_oVariableNodeArrayTypes;
+   a_oVariableNodeArrayTypes.Add( BooleanArrayNode );
+   a_oVariableNodeArrayTypes.Add( BooleanVectorArrayNode );
+   a_oVariableNodeArrayTypes.Add( IntegerArrayNode );
+   a_oVariableNodeArrayTypes.Add( IntegerVectorArrayNode );
+   a_oVariableNodeArrayTypes.Add( UnsignedIntegerArrayNode );
+   a_oVariableNodeArrayTypes.Add( UnsignedIntegerVectorArrayNode );
+   a_oVariableNodeArrayTypes.Add( FloatArrayNode );
+   a_oVariableNodeArrayTypes.Add( VectorArrayNode );
+
+   // Build a TypeInfoArray of all VariableNode<T> array expression generator types.
+   auto TypeInfoArray a_oArrayExpressionGeneratorTypes;
+   a_oArrayExpressionGeneratorTypes.Add( BooleanArrayExpressionGenerator );
+   a_oArrayExpressionGeneratorTypes.Add( BooleanVectorArrayExpressionGenerator );
+   a_oArrayExpressionGeneratorTypes.Add( IntegerArrayExpressionGenerator );
+   a_oArrayExpressionGeneratorTypes.Add( IntegerVectorArrayExpressionGenerator );
+   a_oArrayExpressionGeneratorTypes.Add( UnsignedIntegerArrayExpressionGenerator );
+   a_oArrayExpressionGeneratorTypes.Add( UnsignedIntegerVectorArrayExpressionGenerator );
+   a_oArrayExpressionGeneratorTypes.Add( FloatArrayExpressionGenerator );
+   a_oArrayExpressionGeneratorTypes.Add( VectorArrayExpressionGenerator );
+
+   // Build a TypeInfoArray of all VariableExpressionNode<T> vector types.
+   auto TypeInfoArray a_oVariableNodeVectorTypes;
+   a_oVariableNodeVectorTypes.Add( BooleanVectorExpressionNode );
+   a_oVariableNodeVectorTypes.Add( IntegerVectorExpressionNode );
+   a_oVariableNodeVectorTypes.Add( UnsignedIntegerVectorExpressionNode );
+   a_oVariableNodeVectorTypes.Add( VectorExpressionNode );
+
+   // Build a TypeInfoArray of all VariableExpressionNode<T> vector expression types.
+   auto TypeInfoArray a_oVectorExpressionGeneratorTypes;
+   a_oVectorExpressionGeneratorTypes.Add( BooleanVectorExpressionGenerator );
+   a_oVectorExpressionGeneratorTypes.Add( IntegerVectorExpressionGenerator );
+   a_oVectorExpressionGeneratorTypes.Add( UnsignedIntegerVectorExpressionGenerator );
+   a_oVectorExpressionGeneratorTypes.Add( VectorExpressionGenerator );
+
+   // Build a TypeInfoArray of all VariableExpressionNode<T> types.
+   auto TypeInfoArray a_oVariableExpressionNodeTypes;
+   a_oVariableExpressionNodeTypes.Add( BooleanExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( BooleanArrayExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( BooleanVectorExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( BooleanVectorArrayExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( IntegerExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( IntegerArrayExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( IntegerVectorExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( IntegerVectorArrayExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( UnsignedIntegerExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( UnsignedIntegerVectorExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( UnsignedIntegerArrayExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( UnsignedIntegerVectorArrayExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( FloatExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( FloatArrayExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( VectorExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( VectorArrayExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( MatrixExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( StructExpressionNode );
+   a_oVariableExpressionNodeTypes.Add( SamplerExpressionNode );
+
+   // Build a TypeInfoArray of all VariableExpressionNode<T> types.
+   auto TypeInfoArray a_oVariableExpressionGeneratorTypes;
+   a_oVariableExpressionGeneratorTypes.Add( BooleanExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( BooleanArrayExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( BooleanVectorExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( BooleanVectorArrayExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( IntegerExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( IntegerArrayExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( IntegerVectorExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( IntegerVectorArrayExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( UnsignedIntegerExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( UnsignedIntegerVectorExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( UnsignedIntegerArrayExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( UnsignedIntegerVectorArrayExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( FloatExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( FloatArrayExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( VectorExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( VectorArrayExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( MatrixExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( StructExpressionGenerator );
+   a_oVariableExpressionGeneratorTypes.Add( SamplerExpressionGenerator );
+   
+   auto TypeInfoArray a_oDeclaredVariableNodeTypes;
+   a_oDeclaredVariableNodeTypes.Add( BooleanNode );
+   a_oDeclaredVariableNodeTypes.Add( BooleanArrayNode );
+   a_oDeclaredVariableNodeTypes.Add( BooleanVectorNode );
+   a_oDeclaredVariableNodeTypes.Add( BooleanVectorArrayNode );
+   a_oDeclaredVariableNodeTypes.Add( IntegerNode );
+   a_oDeclaredVariableNodeTypes.Add( IntegerArrayNode );
+   a_oDeclaredVariableNodeTypes.Add( IntegerVectorNode );
+   a_oDeclaredVariableNodeTypes.Add( IntegerVectorArrayNode );
+   a_oDeclaredVariableNodeTypes.Add( UnsignedIntegerNode );
+   a_oDeclaredVariableNodeTypes.Add( UnsignedIntegerVectorNode );
+   a_oDeclaredVariableNodeTypes.Add( UnsignedIntegerArrayNode );
+   a_oDeclaredVariableNodeTypes.Add( FloatNode );
+   a_oDeclaredVariableNodeTypes.Add( FloatArrayNode );
+   a_oDeclaredVariableNodeTypes.Add( VectorNode );
+   a_oDeclaredVariableNodeTypes.Add( MatrixNode );
+   a_oDeclaredVariableNodeTypes.Add( StructInstanceNode );
+   //a_oDeclaredVariableNodeTypes.Add( SamplerNode );
+
+   // Build a TypeInfoArray of all generally anonymous sub-classes of VariableNode.
+   auto TypeInfoArray a_oVariableNodeTypes;
+   a_oVariableNodeTypes.Add( BooleanNode );
+   a_oVariableNodeTypes.Add( BooleanArrayNode );
+   a_oVariableNodeTypes.Add( BooleanVectorNode );
+   a_oVariableNodeTypes.Add( BooleanVectorArrayNode );
+   a_oVariableNodeTypes.Add( StringNode );
+   a_oVariableNodeTypes.Add( StringArrayNode );
+   a_oVariableNodeTypes.Add( FloatNode );
+   a_oVariableNodeTypes.Add( FloatArrayNode );
+   a_oVariableNodeTypes.Add( TimerNode );
+   a_oVariableNodeTypes.Add( UnsignedIntegerNode );
+   a_oVariableNodeTypes.Add( UnsignedIntegerArrayNode );
+   a_oVariableNodeTypes.Add( UnsignedIntegerVectorNode );
+   a_oVariableNodeTypes.Add( UnsignedIntegerVectorArrayNode );
+   a_oVariableNodeTypes.Add( IntegerNode );
+   a_oVariableNodeTypes.Add( IntegerArrayNode );
+   a_oVariableNodeTypes.Add( IntegerVectorNode );
+   a_oVariableNodeTypes.Add( IntegerVectorArrayNode );
+   a_oVariableNodeTypes.Add( ColorNode );
+   a_oVariableNodeTypes.Add( ColorArrayNode );
+   a_oVariableNodeTypes.Add( MatrixNode );
+   a_oVariableNodeTypes.Add( VectorNode );
+   a_oVariableNodeTypes.Add( VectorArrayNode );
+   a_oVariableNodeTypes.Add( SamplerNode );
+   a_oVariableNodeTypes.Add( StructInstanceNode );
+   a_oVariableNodeTypes.Add( MatrixArrayNode );
+
+   // Build a TypeInfoArray of all dynamic uniform variable nodse.
+   auto TypeInfoArray a_oDynamicUniformNodeTypes;
+   a_oDynamicUniformNodeTypes.Add( ViewportFloatNode );
+   a_oDynamicUniformNodeTypes.Add( ViewportVectorNode );
+   a_oDynamicUniformNodeTypes.Add( ViewMatrixNode );
+   a_oDynamicUniformNodeTypes.Add( LightBooleanNode );
+   a_oDynamicUniformNodeTypes.Add( LightIntegerNode );
+   a_oDynamicUniformNodeTypes.Add( LightColorNode );
+   a_oDynamicUniformNodeTypes.Add( LightVectorNode );
+   a_oDynamicUniformNodeTypes.Add( LightFloatNode );
+   a_oDynamicUniformNodeTypes.Add( LightMatrixNode );
+   a_oDynamicUniformNodeTypes.Add( MaterialColorNode );
+   a_oDynamicUniformNodeTypes.Add( MaterialIntegerNode );
+   a_oDynamicUniformNodeTypes.Add( MaterialFloatNode );
+   a_oDynamicUniformNodeTypes.Add( TimerNode );
+   a_oDynamicUniformNodeTypes.Add( LightCountNode );
+   a_oDynamicUniformNodeTypes.Add( RectangleGeometryModifierVectorNode );
+   a_oDynamicUniformNodeTypes.Add( SubroutineIntegerNode );
+
+   string a_sTemplateLibrary;
+   a_sTemplateLibrary += GenerateLibraryHeader( "TEMPLATE_UTIL.SSL", "This script contains functions generated from templates in meta_util.ssl" );
+   a_sTemplateLibrary += "import library \"enumeration_util.ssl\";\n";
+   a_sTemplateLibrary += "import library \"message_util.ssl\";\n";
+   a_sTemplateLibrary += "import library \"opengl_util.ssl\";\n";
+   a_sTemplateLibrary += "library Template;\n\n";
+   a_sTemplateLibrary += "// This library is automatically generated by CompileTemplateFunctions() in META_UTIL.SSL. Local changes will be destroyed.\n\n";
+
+   //a_sTemplateLibrary += GetEnumerations();
+
+   // Generate VariableNodeT update name function.
+   a_sTemplateLibrary += ImportFunction( "ConvertBindingToQualifier" );
+   a_sTemplateLibrary += GenerateFunctionHeader();
+   a_sTemplateLibrary += GenerateUpdateVariableNameT( a_oVariableNodeTypes );
+
+   // Import functions required by this library.
+   a_sTemplateLibrary += ImportFunction( "GetBindingTypeFromSelectionContext" );
+   a_sTemplateLibrary += ImportFunction( "ConfigureVariableNodeForSelectionContext" );
+
+   // Generate DynamicVariableNodeT mode query functions.
+   GenerateIsModeOfT( a_oDynamicUniformNodeTypes, a_sTemplateLibrary );
+
+   // Generate DynamicVariableNodeT set mode functions.
+   GenerateSetModeOfT( a_oDynamicUniformNodeTypes, a_sTemplateLibrary );
+
+   // Generate DynamicVariableNodeT format functions.
+   GenerateFormatDynamicUniformT( a_oDynamicUniformNodeTypes, a_sTemplateLibrary );
+
+   // Generate CreateVariableExpressionNodeAssignmentT functions.
+   GenerateCreateVariableExpressionNodeAssignmentT(
+      a_oVariableExpressionNodeTypes,
+      a_oVariableExpressionGeneratorTypes,
+      a_sTemplateLibrary );
+
+   // Generate GenerateSetVariableArrayExpressionT functions.
+   GenerateSetVariableArrayExpressionT(
+      a_oVariableExpressionNodeArrayTypes,
+      a_oVariableNodeArrayTypes,
+      a_oArrayExpressionGeneratorTypes,
+      a_sTemplateLibrary );
+
+   // Generate SetVariableExpressionT functions.
+   GenerateSetVariableExpressionT(
+      a_oVariableExpressionNodeTypes,
+      a_oVariableExpressionGeneratorTypes,
+      a_sTemplateLibrary );
+
+   // Generate ConfigureVectorExpressionT functions.
+   GenerateConfigureVectorExpressionT(
+      a_oVariableNodeVectorTypes,
+      a_oVectorExpressionGeneratorTypes,
+      a_sTemplateLibrary );
+
+   // Generate CreateVariableDeclarationT functions.
+   //GenerateCreateVariableDeclarationT( a_oDeclaredVariableNodeTypes, a_oVariableExpressionNodeTypes, a_oVectorExpressionGeneratorTypes, a_sTemplateLibrary );
+
+   // Generate VariableExpressionNode<T> and associated variable comparison functions.
+   a_sTemplateLibrary += GenerateFunctionHeader();
+   a_sTemplateLibrary += GenerateExpressionVariableComparisonT( "BooleanArray", "BooleanArrayExpressionNode", "BooleanArrayNode" );
+   a_sTemplateLibrary += GenerateFunctionHeader();
+   a_sTemplateLibrary += GenerateExpressionVariableComparisonT( "BooleanVectorArray", "BooleanVectorArrayExpressionNode", "BooleanVectorArrayNode" );
+   a_sTemplateLibrary += GenerateFunctionHeader();
+   a_sTemplateLibrary += GenerateExpressionVariableComparisonT( "IntegerArray", "IntegerArrayExpressionNode", "IntegerArrayNode" );
+   a_sTemplateLibrary += GenerateFunctionHeader();
+   a_sTemplateLibrary += GenerateExpressionVariableComparisonT( "UnsignedIntegerArray", "UnsignedIntegerArrayExpressionNode", "UnsignedIntegerArrayNode" );
+   a_sTemplateLibrary += GenerateFunctionHeader();
+   a_sTemplateLibrary += GenerateExpressionVariableComparisonT( "FloatArray", "FloatArrayExpressionNode", "FloatArrayNode" );
+   a_sTemplateLibrary += GenerateFunctionHeader();
+   a_sTemplateLibrary += GenerateExpressionVariableComparisonT( "VectorArray", "VectorArrayExpressionNode", "VectorArrayNode" );
+
+   // Build the file path to the templates file ( template_util.ssl ).
+   auto FilePath a_oTemplateDocumentPath = new FilePath( Application.GetApplicationDataPath() );
+   a_oTemplateDocumentPath.AppendPath( "scripts\\template_util.ssl" );
+   a_oTemplateDocumentPath.Canonicalize();
+   // DEBUG
+   //Console.Out( a_oTemplateDocumentPath.GetPath() );
+   TextFile a_oTemplateFile = new TextFile;
+
+   if( a_oTemplateFile.Open( a_oTemplateDocumentPath.GetPath(), false ) )
+   {
+      a_oTemplateFile.Write( a_sTemplateLibrary );
+      a_oTemplateFile.Close();
+   }
+   delete a_oTemplateFile;
+
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateCreateCommandsT(
+
+   TypeInfoArray p_oBasicTypes,
+   StrList p_slGuidIdentifiers,
+   StrList p_slIconImagePaths,
+   ref string p_sTemplateLibrary
+
+   )
+{
+   for( int a_nType = 0; a_nType < p_oBasicTypes.Count; ++a_nType )
+   {
+      TypeInformation a_oTypeInfo = p_oBasicTypes.Objects[ a_nType ];
+      string T_NodeType = a_oTypeInfo.GetTypeName();
+      string T_Guid = p_slGuidIdentifiers.Get( a_nType );
+      string T_Icon = p_slIconImagePaths.Get( a_nType );
+
+      string a_sExpression;
+
+      a_sExpression += GenerateMacroHeader();
+      a_sExpression += "function void CreateT_NodeType_OnUpdate( CommandPresentationModuleInfo commandInfo )\n";
+      a_sExpression += "{\n";
+      a_sExpression += "   ValidateNodeCreateContext.TestContext( commandInfo, \"T_NodeType\" );\n";
+
+      if( a_oTypeInfo.IsDerived( UniformBufferNode ) || a_oTypeInfo.IsDerived( UniformBufferBindNode ) )
+      {
+         a_sExpression += "   GPU.ValidateShadingLanguageVersion( 140, commandInfo );\n";
+      }
+
+      a_sExpression += "}\n\n";
+      a_sExpression += "macro CreateT_NodeType()\n";
+      a_sExpression += "[Category=\"Create Commands\", Guid=\"T_Guid\", Image=\"T_Icon\"]\n";
+      a_sExpression += "{\n";
+      a_sExpression += "   List nodes;\n";
+      if( a_oTypeInfo.IsDerived( JumpStatementNode ) )
+      {
+         a_sExpression += "   ValidateNodeCreateContext.CreateNodes( Model, T_NodeType, \"return\", nodes, -1 );\n";
+      }
+      else
+      {
+         a_sExpression += "   ValidateNodeCreateContext.CreateNodes( Model, T_NodeType, \"NewT_NodeType\", nodes, -1 );\n";
+      }
+      a_sExpression += "}\n\n";
+
+
+      auto Str a_oGen = new Str( a_sExpression );
+
+      a_oGen.Value = a_oGen.Replace( "T_NodeType", T_NodeType );
+      a_oGen.Value = a_oGen.Replace( "T_Guid", T_Guid );
+      a_oGen.Value = a_oGen.Replace( "T_Icon", T_Icon );
+      // DEBUG
+      //Console.Out( a_oGen.Value );
+      p_sTemplateLibrary += a_oGen.Value;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateCreateVariableCommandsT(
+
+   TypeInfoArray p_oVariableTypes,
+   StrList p_slGuidIdentifiers,
+   StrList p_slIconImagePaths,
+   StrList p_slLanguageTypeNames,
+   ref string p_sTemplateLibrary
+
+   )
+{
+   for( int a_nType = 0; a_nType < p_oVariableTypes.Count; ++a_nType )
+   {
+      TypeInformation a_oTypeInfo = p_oVariableTypes.Objects[ a_nType ];
+      string T_NodeType = a_oTypeInfo.GetTypeName();
+      string T_VariableName = "a_o" + T_NodeType;
+      string T_Guid = p_slGuidIdentifiers.Get( a_nType );
+      string T_Icon = p_slIconImagePaths.Get( a_nType );
+      string T_LangTypeName = p_slLanguageTypeNames.Get( a_nType );
+
+      string a_sExpression;
+
+      a_sExpression += GenerateMacroHeader();
+      a_sExpression += "function void CreateT_NodeType_OnUpdate( CommandPresentationModuleInfo commandInfo )\n";
+      a_sExpression += "{\n";
+      a_sExpression += "   ValidateNodeCreateContext.TestContext( commandInfo, \"T_NodeType\" );\n";
+      a_sExpression += "}\n\n";
+      a_sExpression += "macro CreateT_NodeType()\n";
+      a_sExpression += "[Category=\"Create Commands\", Guid=\"T_Guid\", Image=\"T_Icon\"]\n";
+      a_sExpression += "{\n";
+
+      a_sExpression += "   List nodes = new List;\n";
+      a_sExpression += "   string a_sVariableName = \"myT_LangTypeName\";\n";
+      a_sExpression += "   ValidateNodeCreateContext.CreateNodes( Model, T_NodeType, a_sVariableName, nodes, -1 );\n";
+      a_sExpression += "   for( int i = 0; i < nodes.GetCount(); ++i )\n";
+      a_sExpression += "   {\n";
+      a_sExpression += "      T_NodeType T_VariableName = (T_NodeType)nodes.Get( i );\n";
+
+      // Do variadic for vector and array types.
+      if(   a_oTypeInfo.IsDerived( BooleanArrayNode ) ||
+            a_oTypeInfo.IsDerived( BooleanVectorArrayNode ) ||
+            a_oTypeInfo.IsDerived( IntegerArrayNode ) ||
+            a_oTypeInfo.IsDerived( IntegerVectorArrayNode ) ||
+            a_oTypeInfo.IsDerived( UnsignedIntegerArrayNode ) ||
+            a_oTypeInfo.IsDerived( UnsignedIntegerVectorArrayNode ) ||
+            a_oTypeInfo.IsDerived( FloatArrayNode ) ||
+            a_oTypeInfo.IsDerived( VectorArrayNode ) ||
+            a_oTypeInfo.IsDerived( ColorArrayNode ) )
+            
+      {
+         a_sExpression += "      T_VariableName.Count = 4;\n";
+      }
+      else
+      if(   a_oTypeInfo.IsDerived( BooleanVectorNode ) ||
+            a_oTypeInfo.IsDerived( IntegerVectorNode ) ||
+            a_oTypeInfo.IsDerived( UnsignedIntegerVectorNode ) ||
+            a_oTypeInfo.IsDerived( VectorNode ) ||
+            a_oTypeInfo.IsDerived( DynamicVectorNode ) )
+      {
+         a_sExpression += "      T_VariableName.Dimension = 4;\n";
+      }
+      else
+      if(   a_oTypeInfo.IsDerived( StringArrayNode ) )
+      {
+         a_sExpression += "      T_VariableName.Objects.Add( \"new_string\" );\n";
+      }
+
+      a_sExpression += "      T_VariableName.Variable = a_sVariableName;\n";
+      a_sExpression += "      Graph.RenameVariable( T_VariableName );\n";
+      a_sExpression += "   }\n";
+      a_sExpression += "   Template.ConfigureVariableNodeForSelectionContext( nodes, Template.GetBindingTypeFromSelectionContext() );\n";
+      a_sExpression += "   delete nodes;\n";
+
+      a_sExpression += "}\n\n";
+
+      auto Str a_oGen = new Str( a_sExpression );
+      a_oGen.Value = a_oGen.Replace( "T_NodeType", T_NodeType );
+      a_oGen.Value = a_oGen.Replace( "T_VariableName", T_VariableName );
+      a_oGen.Value = a_oGen.Replace( "T_Guid", T_Guid );
+      a_oGen.Value = a_oGen.Replace( "T_Icon", T_Icon );
+      a_oGen.Value = a_oGen.Replace( "T_LangTypeName", T_LangTypeName );
+      // DEBUG
+      //Console.Out( a_oGen.Value );
+      p_sTemplateLibrary += a_oGen.Value;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateCreateVectorCommandsT(
+
+   TypeInformation p_oTypeInformation,
+   StrList p_slVectorCreateGuids,
+   StrList p_slVectorDimensions,
+   StrList p_slTypeEnumerations,
+   string p_sTypeModifier,
+   ref string p_sTemplateLibrary
+
+   )
+{
+   string T_NodeType = p_oTypeInformation.GetTypeName();
+   string T_VariableName = "a_o" + T_NodeType;
+   string a_sTemplateLibrary;
+   a_sTemplateLibrary += GenerateMacroHeader();
+
+   a_sTemplateLibrary += "function void CreateT_NodeTypeOfDimension( int p_eDimension, ";
+
+   if(   p_oTypeInformation.IsDerived( BooleanVectorArrayNode ) ||
+         p_oTypeInformation.IsDerived( IntegerVectorArrayNode ) ||
+         p_oTypeInformation.IsDerived( UnsignedIntegerVectorArrayNode ) ||
+         p_oTypeInformation.IsDerived( VectorArrayNode ) )
+   {
+      a_sTemplateLibrary += "int p_nCount, ";
+   }
+
+   a_sTemplateLibrary += "string p_sVariableName )\n";
+
+   a_sTemplateLibrary += "{\n";
+   a_sTemplateLibrary += "   List nodes = new List;\n";
+   a_sTemplateLibrary += "   ValidateNodeCreateContext.CreateNodes( Model, T_NodeType, p_sVariableName, nodes, -1 );\n";
+   a_sTemplateLibrary += "   for( int i = 0; i < nodes.GetCount(); ++i )\n";
+   a_sTemplateLibrary += "   {\n";
+   a_sTemplateLibrary += "      T_NodeType T_VariableName = (T_NodeType)nodes.Get( i );\n";
+   a_sTemplateLibrary += "      T_VariableName.Variable = \"my\" + p_sVariableName";
+
+   if(   p_oTypeInformation.IsDerived( BooleanVectorArrayNode ) ||
+         p_oTypeInformation.IsDerived( IntegerVectorArrayNode ) ||
+         p_oTypeInformation.IsDerived( UnsignedIntegerVectorArrayNode ) ||
+         p_oTypeInformation.IsDerived( VectorArrayNode ) )
+   {
+      a_sTemplateLibrary += " + \"Array\";\n";
+      a_sTemplateLibrary += "      T_VariableName.VectorDimension = p_eDimension;\n";
+      a_sTemplateLibrary += "      T_VariableName.Count = p_nCount;\n";
+   }
+   else
+   {
+      a_sTemplateLibrary += ";\n";
+      a_sTemplateLibrary += "      T_VariableName.Dimension = p_eDimension;\n";
+   }
+
+   a_sTemplateLibrary += "      T_VariableName.Name = T_VariableName.UpdateName();\n";
+   a_sTemplateLibrary += "      Graph.RenameVariable( T_VariableName );\n";
+   a_sTemplateLibrary += "   }\n";
+   a_sTemplateLibrary += "   Template.ConfigureVariableNodeForSelectionContext( nodes, Template.GetBindingTypeFromSelectionContext() );\n";
+   a_sTemplateLibrary += "   delete nodes;\n";
+   a_sTemplateLibrary += "}\n\n";
+
+   auto Str a_oGen = new Str( a_sTemplateLibrary );
+   a_oGen.Value = a_oGen.Replace( "T_NodeType", T_NodeType );
+   a_oGen.Value = a_oGen.Replace( "T_VariableName", T_VariableName );
+   // DEBUG
+   //Console.Out( a_oGen.Value );
+   p_sTemplateLibrary += a_oGen.Value;
+
+   for( int a_nType = 0; a_nType < p_slVectorCreateGuids.GetCount(); ++a_nType )
+   {
+      string a_sCommand;
+      string T_Dim = p_slVectorDimensions.Get( a_nType );
+      string T_TypeEnum = p_slTypeEnumerations.Get( a_nType );
+      string T_GUID = p_slVectorCreateGuids.Get( a_nType );
+      string T_Modifier = p_sTypeModifier;
+      a_sCommand += "function void Create<T_NodeType><T_Dim>_OnUpdate( CommandPresentationModuleInfo commandInfo )\n";
+      a_sCommand += "{\n";
+      a_sCommand += "   ValidateNodeCreateContext.TestContext( commandInfo, \"<T_NodeType>\" );\n";
+      a_sCommand += "}\n\n";
+      a_sCommand += "macro Create<T_NodeType><T_Dim>()\n";
+      a_sCommand += "[Category=\"Create Commands\", Guid=\"T_GUID\", Image=\".\\\\icons\\\\new_vector_node.bmp\"]\n";
+      a_sCommand += "{\n";
+
+      if(   p_oTypeInformation.IsDerived( BooleanVectorArrayNode ) ||
+            p_oTypeInformation.IsDerived( IntegerVectorArrayNode ) ||
+            p_oTypeInformation.IsDerived( UnsignedIntegerVectorArrayNode ) ||
+            p_oTypeInformation.IsDerived( VectorArrayNode ) )
+      {
+         a_sCommand += "   CreateT_NodeTypeOfDimension( T_TypeEnum, 4, \"<T_Modifier>vec<T_Dim>\" );\n";
+      }
+      else
+      {
+         a_sCommand += "   CreateT_NodeTypeOfDimension( T_TypeEnum, \"<T_Modifier>vec<T_Dim>\" );\n";
+      }
+
+      a_sCommand += "}\n";
+
+      auto Str a_oMacro = new Str( a_sCommand );
+      a_oMacro.Value = a_oMacro.Replace( "<T_NodeType>", T_NodeType );
+      a_oMacro.Value = a_oMacro.Replace( "T_NodeType", T_NodeType );
+      a_oMacro.Value = a_oMacro.Replace( "T_GUID", T_GUID );
+      a_oMacro.Value = a_oMacro.Replace( "T_TypeEnum", T_TypeEnum );
+      a_oMacro.Value = a_oMacro.Replace( "<T_Dim>", T_Dim );
+      a_oMacro.Value = a_oMacro.Replace( "<T_Modifier>", T_Modifier );
+      a_oMacro.Value = a_oMacro.Replace( "T_Dim", T_Dim );
+      a_oMacro.Value = a_oMacro.Replace( "T_Modifier", T_Modifier );
+      p_sTemplateLibrary += a_oMacro.Value;
+   }
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateNodeCommandInfo(
+
+   TypeInfoArray p_oBasicTypes, 
+   StrList p_slGuidIdentifiers,
+   StrList p_slIconImagePaths
+
+   )
+{
+   p_oBasicTypes.Add( ContainerNode );
+   p_slGuidIdentifiers.Add( "{41F0E1B1-B271-4F83-8A82-2868E4092902}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_container_node.bmp" );
+
+   p_oBasicTypes.Add( ProjectGroup );
+   p_slGuidIdentifiers.Add( "{4AEBD9F7-D7D8-4912-A317-92AB3D67C1D7}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\create_project_node.bmp" );
+
+   p_oBasicTypes.Add( CategoryGroup );
+   p_slGuidIdentifiers.Add( "{7D8C9B72-E96A-4172-8AC9-5A2124656DF1}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\create_category_node.bmp" );
+
+   p_oBasicTypes.Add( FolderGroup );
+   p_slGuidIdentifiers.Add( "{B7F4959A-0C31-41AC-9A3E-D8FBBACF18C7}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\create_folder_node.bmp" );
+
+   p_oBasicTypes.Add( UniformPaletteNode );
+   p_slGuidIdentifiers.Add( "{402F3796-C79E-4C0B-956F-BB81BD8E4832}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_group.bmp" );
+
+   p_oBasicTypes.Add( TexturePaletteNode );
+   p_slGuidIdentifiers.Add( "{A343E2FF-87F5-4DD2-A332-6872134B21AF}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_group.bmp" );
+
+   p_oBasicTypes.Add( IncludePaletteNode );
+   p_slGuidIdentifiers.Add( "{AC0BDF2D-413A-41A5-8AE6-D160E788242C}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_group.bmp" );
+
+   p_oBasicTypes.Add( DataPaletteNode );
+   p_slGuidIdentifiers.Add( "{2FFF9DAF-BDB6-4066-8035-67C2ABB4149B}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_group.bmp" );
+
+   p_oBasicTypes.Add( TraversalGuardNode );
+   p_slGuidIdentifiers.Add( "{2291553D-D533-484C-A1D5-D8C644D4F023}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_group.bmp" );
+
+   p_oBasicTypes.Add( MaterialPaletteNode );
+   p_slGuidIdentifiers.Add( "{45712F55-7096-4CD0-84E2-20ECA55C86B6}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_group.bmp" );
+
+   p_oBasicTypes.Add( FileNode );
+   p_slGuidIdentifiers.Add( "{8E9186EB-F561-4BB1-80FA-8ACFAAC57838}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\create_file_node.bmp" );
+
+   p_oBasicTypes.Add( ScriptNode );
+   p_slGuidIdentifiers.Add( "{1F9220B7-F612-46D4-A453-4B81096121A9}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\create_script_node.bmp" );
+
+   p_oBasicTypes.Add( Program );
+   p_slGuidIdentifiers.Add( "{1F9220CC-F612-46D4-A453-4B81096121A9}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\create_program_node_icon.bmp" );
+
+   p_oBasicTypes.Add( Group );
+   p_slGuidIdentifiers.Add( "{1F91F915-F612-46D4-A453-4B81096121A9}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_group.bmp" );
+
+   p_oBasicTypes.Add( LOD );
+   p_slGuidIdentifiers.Add( "{1F91FA01-F612-46D4-A453-4B81096121A9}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_lod.bmp" );
+
+   p_oBasicTypes.Add( NodeLink );
+   p_slGuidIdentifiers.Add( "{1F91F958-F612-46D4-A453-4B81096121A9}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_link.bmp" );
+
+   p_oBasicTypes.Add( JumpStatementNode );
+   p_slGuidIdentifiers.Add( "{DF1B13E4-5894-42BB-AF36-8CF391D99030}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_jump_statement_node.bmp" );
+
+   p_oBasicTypes.Add( StatementNode );
+   p_slGuidIdentifiers.Add( "{1F922075-F612-46D4-A453-4B81096121A9}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_statement_node.bmp" );
+
+   p_oBasicTypes.Add( StatementBlockNode );
+   p_slGuidIdentifiers.Add( "{BAC4EC82-D66D-4B6B-B218-756F0CA2980D}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_statement_block_node.bmp" );
+
+   p_oBasicTypes.Add( FunctionParameterNode );
+   p_slGuidIdentifiers.Add( "{B5CE0DBE-FA22-4126-85D0-CF31E2F521FF}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_function_parameter_node.bmp" );
+
+   p_oBasicTypes.Add( FrameBuffer );
+   p_slGuidIdentifiers.Add( "{BD6677D9-B541-4E2D-9E12-CE061F810B02}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_framebuffer_node.bmp" );
+
+   p_oBasicTypes.Add( FrameBufferBind );
+   p_slGuidIdentifiers.Add( "{5756757A-0990-4755-B173-179C6277C7DA}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_framebuffer_bind_node.bmp" );
+
+   p_oBasicTypes.Add( ExpressionNode );
+   p_slGuidIdentifiers.Add( "{3685CD75-A594-4583-907C-C35418C6F19C}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_expression_node.bmp" );
+
+   p_oBasicTypes.Add( RenderTraversalNode );
+   p_slGuidIdentifiers.Add( "{7B6ED22F-6A05-4917-A973-3C18D4FDCB55}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_render_traversal_node.bmp" );
+
+   p_oBasicTypes.Add( ClearBuffersNode );
+   p_slGuidIdentifiers.Add( "{C54E90A2-BBAC-47F1-92A2-1F287A115311}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_clear_buffers_node.bmp" );
+
+   p_oBasicTypes.Add( StructureGroup );
+   p_slGuidIdentifiers.Add( "{54D17942-F73D-42B7-AA98-E882C9E7D16C}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_structure_group_node.bmp" );
+
+   p_oBasicTypes.Add( StencilNode );
+   p_slGuidIdentifiers.Add( "{C8DA5319-288B-41E4-AAA9-E9F008698C58}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_stencil_node.bmp" );
+
+   p_oBasicTypes.Add( ProgramOptions );
+   p_slGuidIdentifiers.Add( "{09BB7E91-771D-43CA-9B7F-E7D62C1992BA}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_program_options_node.bmp" );
+
+   p_oBasicTypes.Add( DeclareFunctionNode );
+   p_slGuidIdentifiers.Add( "{C1C6EFFE-3CA7-489D-BBA6-833E47ED5604}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_declare_function_node.bmp" );
+
+   p_oBasicTypes.Add( IteratorNode );
+   p_slGuidIdentifiers.Add( "{2D025734-3C70-44CE-91C5-4349D5D7FAC0}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_iterator_node.bmp" );
+
+   p_oBasicTypes.Add( UniformBufferNode );
+   p_slGuidIdentifiers.Add( "{057BAE74-CCDD-4D8F-8A53-21D885EFC399}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_uniform_buffer_node.bmp" );
+
+   p_oBasicTypes.Add( UniformBufferBindNode );
+   p_slGuidIdentifiers.Add( "{0E16CBE5-E2F0-4989-8A85-404E105D92C7}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_uniform_buffer_bind_node.bmp" );
+
+   p_oBasicTypes.Add( DynamicLightArrayNode );
+   p_slGuidIdentifiers.Add( "{92C8981A-CAE9-4521-BDF6-2EE6B986A917}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_dynamic_light_array_node.bmp" );
+
+   p_oBasicTypes.Add( ProgramVariationNode );
+   p_slGuidIdentifiers.Add( "{D6597EE5-8A10-4BE3-B646-887BEE077AEC}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_program_variation_node.bmp" );
+
+   p_oBasicTypes.Add( ScreenAlignedGeometryNode );
+   p_slGuidIdentifiers.Add( "{CDA83F0B-05FF-4C7E-BCAA-47200305D1DF}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_screen_aligned_geometry_node.bmp" );
+
+   // Begin Probably deprecated.
+
+   p_oBasicTypes.Add( LightCameraStateNode );
+   p_slGuidIdentifiers.Add( "{CD4C39C2-CA96-40C1-B962-E57DAABCE7D1}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\create_light_camera_state_node.bmp" );
+
+   p_oBasicTypes.Add( LightProjectionMatrixNode );
+   p_slGuidIdentifiers.Add( "{55F7CAD7-09EB-44B9-97FB-9936254F0367}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_matrix_node.bmp" );
+
+   p_oBasicTypes.Add( LightProjectionCameraMatrixNode );
+   p_slGuidIdentifiers.Add( "{DF689F9B-4CB8-4A7A-A401-81D544107985}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_matrix_node.bmp" );
+
+   p_oBasicTypes.Add( LightModelViewMatrixNode );
+   p_slGuidIdentifiers.Add( "{8EC4B839-A355-4C16-ADE4-484CBD4C50C7}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_matrix_node.bmp" );
+
+   p_oBasicTypes.Add( LightModelViewCameraMatrixNode );
+   p_slGuidIdentifiers.Add( "{EBDDA854-F79F-4D07-8334-F51E5B9DD8D3}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_matrix_node.bmp" );
+
+   // End Probably deprecated.
+
+   p_oBasicTypes.Add( TypeAggregatorNode );
+   p_slGuidIdentifiers.Add( "{88D7A4E0-814F-440E-9920-229BA420592D}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_type_aggregator_node.bmp" );
+
+   p_oBasicTypes.Add( OrthoProjectionMatrixNode );
+   p_slGuidIdentifiers.Add( "{7EB1154E-0B50-4276-907B-BC5F2FD861F5}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_matrix_node.bmp" );
+
+   p_oBasicTypes.Add( ProjectFileNode );
+   p_slGuidIdentifiers.Add( "{D7F5ADA0-CD49-4B6A-8704-839682628E4A}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\create_file_node.bmp" );
+
+   p_oBasicTypes.Add( StructNode );
+   p_slGuidIdentifiers.Add( "{484FCC17-6AF2-4CA6-A847-8C20B18A85D0}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_struct_node.bmp" );
+
+   p_oBasicTypes.Add( StructInstanceNode );
+   p_slGuidIdentifiers.Add( "{FAFB201F-D18A-4E19-91D0-AAE6D3746583}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_type_aggregator_node.bmp" );
+
+   p_oBasicTypes.Add( GlslQualifierNode );
+   p_slGuidIdentifiers.Add( "{536A72DC-86EB-48DB-BCE8-FDCCAAE1EFC0}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_qualifier_node.bmp" );
+
+   p_oBasicTypes.Add( TransformFeedbackLayoutNode );
+   p_slGuidIdentifiers.Add( "{D04B8937-3609-4CE1-B07E-C6C7A00B09E8}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_layout_node.bmp" );
+
+   p_oBasicTypes.Add( ControlShaderLayoutNode );
+   p_slGuidIdentifiers.Add( "{FECD933D-D5F8-44B9-BEE2-9D228BB8370B}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_layout_node.bmp" );
+
+   p_oBasicTypes.Add( EvaluationShaderLayoutNode );
+   p_slGuidIdentifiers.Add( "{AC20F188-7243-4241-AB91-85A46F97CA06}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_layout_node.bmp" );
+
+   p_oBasicTypes.Add( GeometryShaderLayoutNode );
+   p_slGuidIdentifiers.Add( "{9650E6FC-9474-4F4E-9293-240036EF545A}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_layout_node.bmp" );
+
+   p_oBasicTypes.Add( FragmentShaderLayoutNode );
+   p_slGuidIdentifiers.Add( "{4711520F-F2A8-4E1B-9BB2-86C80863ACD2}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_layout_node.bmp" );
+
+   p_oBasicTypes.Add( DeclarationNode );
+   p_slGuidIdentifiers.Add( "{9539E6CA-2D0A-440F-A353-F869BEE1A32A}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_declaration_node.bmp" );
+
+   p_oBasicTypes.Add( ListNode );
+   p_slGuidIdentifiers.Add( "{2CAA1CDA-EA2B-4435-81F7-B7CDC9FE3664}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_list_node.bmp" );
+
+   p_oBasicTypes.Add( LightArrayNode );
+   p_slGuidIdentifiers.Add( "{FF2CF6AF-9B67-4F40-884A-C9032CD5A1A6}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_light_array_node.bmp" );
+
+   p_oBasicTypes.Add( MaterialArrayNode );
+   p_slGuidIdentifiers.Add( "{589548EF-DE08-4E35-8B18-15A65882CCDF}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_material_array_node.bmp" );
+
+   p_oBasicTypes.Add( TextureArrayNode );
+   p_slGuidIdentifiers.Add( "{B92534DD-DB60-4842-9D87-4D2DF1EC8D14}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_texture_array_node.bmp" );
+
+   p_oBasicTypes.Add( UniformArrayNode );
+   p_slGuidIdentifiers.Add( "{455945AA-102D-4B43-BFA5-1C23F58B5E0A}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_uniform_array_node.bmp" );
+
+   p_oBasicTypes.Add( ShaderBufferNode );
+   p_slGuidIdentifiers.Add( "{405A3182-903C-4BDF-AB56-8F6A5FA705DD}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_shader_buffer_node.bmp" );
+
+   p_oBasicTypes.Add( ShaderBufferBindNode );
+   p_slGuidIdentifiers.Add( "{04445520-80B1-4B73-8EFF-567E614B3C96}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_uniform_buffer_bind_node.bmp" );
+
+   p_oBasicTypes.Add( GeometryPaletteNode );
+   p_slGuidIdentifiers.Add( "{B1C9A453-40F3-42DD-8444-CF5264785786}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_group.bmp" );
+
+   p_oBasicTypes.Add( ShaderPaletteNode );
+   p_slGuidIdentifiers.Add( "{A6423602-7887-4A55-AEDA-D1CD9A6F520A}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_group.bmp" );
+
+   p_oBasicTypes.Add( MenuElementNode );
+   p_slGuidIdentifiers.Add( "{D773AD43-E878-4E77-9F34-78FAAA2DD854}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_menu_element_node.bmp" );
+
+   p_oBasicTypes.Add( PopupElementNode );
+   p_slGuidIdentifiers.Add( "{ED3ABAF3-58C2-4291-9520-61A886AE379A}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_popup_element_node.bmp" );
+
+   p_oBasicTypes.Add( ItemElementNode );
+   p_slGuidIdentifiers.Add( "{BF8A551C-2347-401F-8CF7-9C70C6C6CFEB}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_item_element_node.bmp" );
+
+   p_oBasicTypes.Add( SeparatorElementNode );
+   p_slGuidIdentifiers.Add( "{C42479B2-0903-428F-82D9-26155E6408AD}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_separator_element_node.bmp" );
+
+   p_oBasicTypes.Add( DockbarElementNode );
+   p_slGuidIdentifiers.Add( "{0121EB60-88B2-49F3-8A81-938AF903E484}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_dockbar_element_node.bmp" );
+
+   p_oBasicTypes.Add( DockedViewElementNode );
+   p_slGuidIdentifiers.Add( "{9108C8DB-2C06-47B8-9473-29471470BD5D}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_dockedview_element_node.bmp" );
+
+   p_oBasicTypes.Add( ActiveViewElementNode );
+   p_slGuidIdentifiers.Add( "{F20A8090-1CFF-4C6C-B8CA-3AC8C826782D}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_activeview_element_node.bmp" );
+
+   p_oBasicTypes.Add( ToolbarElementNode );
+   p_slGuidIdentifiers.Add( "{E5E5A2B5-6D63-4F2F-A670-7C7331A9DF3A}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_toolbar_element_node.bmp" );
+
+   p_oBasicTypes.Add( ContextMenuElementNode );
+   p_slGuidIdentifiers.Add( "{F26A641A-F551-4187-AAF3-DBD8C3CB98AF}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_contextmenu_element_node.bmp" );
+
+   p_oBasicTypes.Add( KeyboardElementNode );
+   p_slGuidIdentifiers.Add( "{BD33EB99-3851-4116-B715-F614608EA324}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_keyboard_element_node.bmp" );
+
+   p_oBasicTypes.Add( AcceleratorElementNode );
+   p_slGuidIdentifiers.Add( "{C232BAC1-D841-4E84-8634-E4A4932D73C9}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_accelerator_element_node.bmp" );
+
+   p_oBasicTypes.Add( InstallerDeclarationNode );
+   p_slGuidIdentifiers.Add( "{CCB55578-D4E9-43E0-B2CD-0D79AD4136D3}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_installer_declaration_node.bmp" );
+
+   p_oBasicTypes.Add( InstallerParameterNode );
+   p_slGuidIdentifiers.Add( "{CB9428DF-DB3E-49BB-91B9-244B3550C514}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_installer_parameter_node.bmp" );
+
+   p_oBasicTypes.Add( InstallerFlagNode );
+   p_slGuidIdentifiers.Add( "{B258F7E3-C32A-4E75-9F15-FD7F1B45BCD7}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_installer_flag_node.bmp" );
+
+   p_oBasicTypes.Add( ParameterListNode );
+   p_slGuidIdentifiers.Add( "{C843F8D7-545C-4D10-97DE-C93DEDC57F73}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_parameter_list_node.bmp" );
+
+   p_oBasicTypes.Add( SubroutineListNode );
+   p_slGuidIdentifiers.Add( "{64AF6DB5-0E80-4779-B5DD-1C5768E98BBA}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_subroutine_list_node.bmp" );
+
+   p_oBasicTypes.Add( SubroutineNode );
+   p_slGuidIdentifiers.Add( "{B1CD3839-CF47-49AC-980B-6D0283CFF502}" );
+   p_slIconImagePaths.Add( ".\\\\icons\\\\new_subroutine_node.bmp" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateVariableNodeCommandInfo(
+
+   TypeInfoArray p_oVariableNodeTypes, 
+   StrList p_slVariableGuidIdentifiers,
+   StrList p_slVariableIconImagePaths, 
+   StrList p_slLanguageTypeNames
+
+   )
+{
+   p_oVariableNodeTypes.Add( BooleanNode );
+   p_slVariableGuidIdentifiers.Add( "{3C4D9670-DDFD-4184-9FA1-4F58D830AC53}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_boolean_node.bmp" );
+   p_slLanguageTypeNames.Add( "Bool" );
+
+   p_oVariableNodeTypes.Add( BooleanArrayNode );
+   p_slVariableGuidIdentifiers.Add( "{40094D80-AB1D-4B72-9DB8-E120E1306B39}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_boolean_node.bmp" );
+   p_slLanguageTypeNames.Add( "BoolArray" );
+
+   p_oVariableNodeTypes.Add( BooleanVectorNode );
+   p_slVariableGuidIdentifiers.Add( "{A88617D0-3666-43A3-BA2C-C45E47BB7C6C}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_vector_node.bmp" );
+   p_slLanguageTypeNames.Add( "BoolVector" );
+
+   p_oVariableNodeTypes.Add( BooleanVectorArrayNode );
+   p_slVariableGuidIdentifiers.Add( "{13C87833-D800-4BA7-88BB-27D6BB1F49BF}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_vector_node.bmp" );
+   p_slLanguageTypeNames.Add( "BoolVectorArray" );
+
+   p_oVariableNodeTypes.Add( IntegerNode );
+   p_slVariableGuidIdentifiers.Add( "{EBA6BECE-665F-4D7B-AC16-E8F5E486E817}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_integer_node.bmp" );
+   p_slLanguageTypeNames.Add( "Int" );
+
+   p_oVariableNodeTypes.Add( IntegerArrayNode );
+   p_slVariableGuidIdentifiers.Add( "{77F9806A-4106-4955-9BD1-2FFDBB904940}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_integer_node.bmp" );
+   p_slLanguageTypeNames.Add( "IntArray" );
+
+   p_oVariableNodeTypes.Add( IntegerVectorNode );
+   p_slVariableGuidIdentifiers.Add( "{CEC04FE5-8D79-4E96-BA41-016050F819ED}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_vector_node.bmp" );
+   p_slLanguageTypeNames.Add( "IntVector" );
+
+   p_oVariableNodeTypes.Add( IntegerVectorArrayNode );
+   p_slVariableGuidIdentifiers.Add( "{8B838246-1803-4239-8885-90B5DAF2723A}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_vector_node.bmp" );
+   p_slLanguageTypeNames.Add( "IntVectorArray" );
+
+   p_oVariableNodeTypes.Add( UnsignedIntegerNode );
+   p_slVariableGuidIdentifiers.Add( "{741638D7-C51E-445B-AC1E-51984D6B2153}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_integer_node.bmp" );
+   p_slLanguageTypeNames.Add( "Uint" );
+
+   p_oVariableNodeTypes.Add( UnsignedIntegerArrayNode );
+   p_slVariableGuidIdentifiers.Add( "{D7B41DB7-BEF4-4984-B9F8-04E7CED1D379}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_integer_node.bmp" );
+   p_slLanguageTypeNames.Add( "UintArray" );
+
+   p_oVariableNodeTypes.Add( UnsignedIntegerVectorNode );
+   p_slVariableGuidIdentifiers.Add( "{DD6DEFD1-7349-4069-B745-1A817D2D5437}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_vector_node.bmp" );
+   p_slLanguageTypeNames.Add( "UintVector" );
+
+   p_oVariableNodeTypes.Add( UnsignedIntegerVectorArrayNode );
+   p_slVariableGuidIdentifiers.Add( "{5E66B18C-DF5E-47C6-8FFB-E2E1D26A2C7D}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_vector_node.bmp" );
+   p_slLanguageTypeNames.Add( "UintVectorArray" );
+
+   p_oVariableNodeTypes.Add( FloatNode );
+   p_slVariableGuidIdentifiers.Add( "{B5940AAE-3117-4995-B413-370FF44458D2}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_float_node.bmp" );
+   p_slLanguageTypeNames.Add( "Float" );
+
+   p_oVariableNodeTypes.Add( FloatArrayNode );
+   p_slVariableGuidIdentifiers.Add( "{C5F989CC-6EED-4715-8EBB-ABCBB13F2EFC}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_float_node.bmp" );
+   p_slLanguageTypeNames.Add( "FloatArray" );
+
+   p_oVariableNodeTypes.Add( VectorNode );
+   p_slVariableGuidIdentifiers.Add( "{38FD68E5-3AD3-4B91-B533-F3694BA98E2B}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_vector_node.bmp" );
+   p_slLanguageTypeNames.Add( "Vector" );
+
+   p_oVariableNodeTypes.Add( VectorArrayNode );
+   p_slVariableGuidIdentifiers.Add( "{8FAFB2E5-F32B-4577-AED6-948158BD033C}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_vector_node.bmp" );
+   p_slLanguageTypeNames.Add( "VectorArray" );
+
+   p_oVariableNodeTypes.Add( ColorNode );
+   p_slVariableGuidIdentifiers.Add( "{1BF5F1CF-D04F-4C9A-935D-7A6E822775EB}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_color_node.bmp" );
+   p_slLanguageTypeNames.Add( "Color" );
+
+   p_oVariableNodeTypes.Add( ColorArrayNode );
+   p_slVariableGuidIdentifiers.Add( "{2CAD3BFE-B03D-4F43-9AC7-0A0BF39F4B96}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_color_node.bmp" );
+   p_slLanguageTypeNames.Add( "LightColor" );
+
+   p_oVariableNodeTypes.Add( MatrixNode );
+   p_slVariableGuidIdentifiers.Add( "{047BB340-BF83-4108-B762-63E481D6C30F}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_matrix_node.bmp" );
+   p_slLanguageTypeNames.Add( "Matrix" );
+
+   p_oVariableNodeTypes.Add( TimerNode );
+   p_slVariableGuidIdentifiers.Add( "{6F2D52D4-2FCA-41F2-BBCB-13E3AC3A72BB}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_timer_node.bmp" );
+   p_slLanguageTypeNames.Add( "Timer" );
+
+   p_oVariableNodeTypes.Add( ViewMatrixNode );
+   p_slVariableGuidIdentifiers.Add( "{44F2BE17-F845-4801-994A-E7FEA0E1659E}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_matrix_node.bmp" );
+   p_slLanguageTypeNames.Add( "ViewMatrix" );
+
+   p_oVariableNodeTypes.Add( LightBooleanNode );
+   p_slVariableGuidIdentifiers.Add( "{9D299192-F4E8-4CC9-94B5-66B0307B36BA}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_boolean_node.bmp" );
+   p_slLanguageTypeNames.Add( "LightBoolean" );
+
+   p_oVariableNodeTypes.Add( LightIntegerNode );
+   p_slVariableGuidIdentifiers.Add( "{02926AC5-2DB2-4C29-ADD1-F39145AA08B0}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_integer_node.bmp" );
+   p_slLanguageTypeNames.Add( "LightInteger" );
+
+   p_oVariableNodeTypes.Add( LightFloatNode );
+   p_slVariableGuidIdentifiers.Add( "{5BE2C77F-B99C-471D-8077-10656AF8EFFD}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_float_node.bmp" );
+   p_slLanguageTypeNames.Add( "LightFloat" );
+
+   p_oVariableNodeTypes.Add( LightVectorNode );
+   p_slVariableGuidIdentifiers.Add( "{AF5AB465-D17B-46CA-A515-F35293AEB2FB}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_vector_node.bmp" );
+   p_slLanguageTypeNames.Add( "LightVector" );
+
+   p_oVariableNodeTypes.Add( LightColorNode );
+   p_slVariableGuidIdentifiers.Add( "{B1C7F716-138F-44CD-98BE-4B55102615AA}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_color_node.bmp" );
+   p_slLanguageTypeNames.Add( "LightColor" );
+
+   p_oVariableNodeTypes.Add( LightMatrixNode );
+   p_slVariableGuidIdentifiers.Add( "{44F2BE1F-F845-4801-994A-E7FEA0E1659E}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_matrix_node.bmp" );
+   p_slLanguageTypeNames.Add( "LightMatrix" );
+
+   p_oVariableNodeTypes.Add( ViewportFloatNode );
+   p_slVariableGuidIdentifiers.Add( "{FB79B78F-351A-4E30-9E0D-1E5902F3BD00}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_float_node.bmp" );
+   p_slLanguageTypeNames.Add( "ViewportFloat" );
+
+   p_oVariableNodeTypes.Add( ViewportVectorNode );
+   p_slVariableGuidIdentifiers.Add( "{3FF9335F-B498-483E-A756-25A4F4A063E7}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_vector_node.bmp" );
+   p_slLanguageTypeNames.Add( "ViewportFloat" );
+
+   p_oVariableNodeTypes.Add( MaterialIntegerNode );
+   p_slVariableGuidIdentifiers.Add( "{BA21BA87-F663-4AF7-B864-343B2490F368}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_integer_node.bmp" );
+   p_slLanguageTypeNames.Add( "MaterialInteger" );
+
+   p_oVariableNodeTypes.Add( MaterialFloatNode );
+   p_slVariableGuidIdentifiers.Add( "{C1B5842C-8A64-42DD-A257-2E4830298C93}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_float_node.bmp" );
+   p_slLanguageTypeNames.Add( "MaterialFloat" );
+
+   p_oVariableNodeTypes.Add( MaterialColorNode );
+   p_slVariableGuidIdentifiers.Add( "{6FA30DB0-4B0A-46AF-86FC-CB48DBF766EF}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_color_node.bmp" );
+   p_slLanguageTypeNames.Add( "LightColor" );
+
+   p_oVariableNodeTypes.Add( LightCountNode );
+   p_slVariableGuidIdentifiers.Add( "{1984EA4A-2412-4416-80AD-308D4CA7B377}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_integer_node.bmp" );
+   p_slLanguageTypeNames.Add( "LightCount" );
+
+   p_oVariableNodeTypes.Add( RectangleGeometryModifierVectorNode );
+   p_slVariableGuidIdentifiers.Add( "{4585D401-2483-4575-97DD-53F47689C504}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_vector_node.bmp" );
+   p_slLanguageTypeNames.Add( "LightCount" );
+
+   p_oVariableNodeTypes.Add( SubroutineIntegerNode );
+   p_slVariableGuidIdentifiers.Add( "{DEB6A202-86EF-489F-AA60-895BEFA7FCBB}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_integer_node.bmp" );
+   p_slLanguageTypeNames.Add( "SubroutineInteger" );
+
+   p_oVariableNodeTypes.Add( DynamicBooleanNode );
+   p_slVariableGuidIdentifiers.Add( "{83C2BA35-50AC-4DD1-9261-AE353DFED3D6}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_boolean_node.bmp" );
+   p_slLanguageTypeNames.Add( "DynamicBoolean" );
+
+   p_oVariableNodeTypes.Add( DynamicIntegerNode );
+   p_slVariableGuidIdentifiers.Add( "{80E5482A-3EDC-4F39-8F44-8E04A1C9F7AC}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_integer_node.bmp" );
+   p_slLanguageTypeNames.Add( "DynamicInteger" );
+
+   p_oVariableNodeTypes.Add( DynamicFloatNode );
+   p_slVariableGuidIdentifiers.Add( "{B55C0742-F5F0-4D0F-AF64-8AF88FFB5216}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_float_node.bmp" );
+   p_slLanguageTypeNames.Add( "DynamicFloat" );
+
+   p_oVariableNodeTypes.Add( DynamicVectorNode );
+   p_slVariableGuidIdentifiers.Add( "{2ABC9B97-1AD3-4B27-9D2B-65E44C5F87FB}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_vector_node.bmp" );
+   p_slLanguageTypeNames.Add( "DynamicVector" );
+
+   p_oVariableNodeTypes.Add( DynamicColorNode );
+   p_slVariableGuidIdentifiers.Add( "{B8ED9CF9-9640-44A5-9A04-7D3943753F3E}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_color_node.bmp" );
+   p_slLanguageTypeNames.Add( "DynamicColor" );
+
+   p_oVariableNodeTypes.Add( DynamicMatrixNode );
+   p_slVariableGuidIdentifiers.Add( "{EEECC638-717C-4FDA-BF75-FAFFAB2F1623}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_matrix_node.bmp" );
+   p_slLanguageTypeNames.Add( "DynamicMatrix" );
+
+   p_oVariableNodeTypes.Add( StringNode );
+   p_slVariableGuidIdentifiers.Add( "{C715366A-5D15-437B-9AB6-B024F75C1BF4}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_string_node.bmp" );
+   p_slLanguageTypeNames.Add( "StringNode" );
+
+   p_oVariableNodeTypes.Add( StringArrayNode );
+   p_slVariableGuidIdentifiers.Add( "{0B34635E-D1E3-4590-B503-436EA0F9AAB3}" );
+   p_slVariableIconImagePaths.Add( ".\\\\icons\\\\new_string_node.bmp" );
+   p_slLanguageTypeNames.Add( "StringArrayNode" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int CompileTemplateMacros()
+{
+   // Build a TypeInfoArray of all basic types for which we need simple create commands.
+   auto TypeInfoArray a_oBasicTypes;
+   auto StrList a_slGuidIdentifiers;
+   auto StrList a_slIconImagePaths;
+   CreateNodeCommandInfo(
+      a_oBasicTypes,
+      a_slGuidIdentifiers,
+      a_slIconImagePaths );
+
+   // Build a TypeInfoArray of all variable node types for which we need customized create commands.
+   auto TypeInfoArray a_oVariableNodeTypes;
+   auto StrList a_slVariableGuidIdentifiers;
+   auto StrList a_slVariableIconImagePaths;
+   auto StrList a_slLanguageTypeNames;
+
+   CreateVariableNodeCommandInfo(
+      a_oVariableNodeTypes,
+      a_slVariableGuidIdentifiers,
+      a_slVariableIconImagePaths,
+      a_slLanguageTypeNames );
+
+   // Build a collection of info about VectorNode create command variations.
+   auto StrList a_slVectorDimensions;
+   a_slVectorDimensions.Add( "2" );
+   a_slVectorDimensions.Add( "3" );
+   a_slVectorDimensions.Add( "4" );
+
+   auto StrList a_slTypeEnumerations;
+   a_slTypeEnumerations.Add( "Enum.GLSL_DataType_Vec2()" );
+   a_slTypeEnumerations.Add( "Enum.GLSL_DataType_Vec3()" );
+   a_slTypeEnumerations.Add( "Enum.GLSL_DataType_Vec4()" );
+
+   auto StrList a_slBooleanVectorCreateGuids;
+   a_slBooleanVectorCreateGuids.Add( "{1B2F5581-28FC-4D2B-8581-06E51382EA63}" );
+   a_slBooleanVectorCreateGuids.Add( "{21BACF05-9031-493E-B170-279E5479450A}" );
+   a_slBooleanVectorCreateGuids.Add( "{55009D8A-B4E3-42CE-BD6C-D6193ECFC4D4}" );
+
+   auto StrList a_slIntegerVectorCreateGuids;
+   a_slIntegerVectorCreateGuids.Add( "{0A50A140-25CC-4FA4-9285-A080BBCBC841}" );
+   a_slIntegerVectorCreateGuids.Add( "{8D3FF1D9-168A-42F6-A831-430553ED6FEA}" );
+   a_slIntegerVectorCreateGuids.Add( "{4265BB18-C246-446B-8717-A6FA143EE807}" );
+
+   auto StrList a_slUnsignedIntegerVectorCreateGuids;
+   a_slUnsignedIntegerVectorCreateGuids.Add( "{55B66D39-2741-49F5-AF45-2825F4B6F232}" );
+   a_slUnsignedIntegerVectorCreateGuids.Add( "{EAA4EE74-28DA-4E5A-B2A7-2022E8E26161}" );
+   a_slUnsignedIntegerVectorCreateGuids.Add( "{6EF9D58E-974C-4422-8CCA-F3FCB7D9EC29}" );
+
+   auto StrList a_slVectorCreateGuids;
+   a_slVectorCreateGuids.Add( "{3A214E77-02C7-4F37-A27A-883D40AEBA63}" ); 
+   a_slVectorCreateGuids.Add( "{480C83B3-359A-4579-8EFD-72BF1AF3DC4B}" ); 
+   a_slVectorCreateGuids.Add( "{ED736A56-637F-4A8E-9190-F03222677BD1}" ); 
+
+   auto StrList a_slBooleanVectorArrayCreateGuids;
+   a_slBooleanVectorArrayCreateGuids.Add( "{F179FF23-0E96-4EAA-915B-F168A1176861}" );
+   a_slBooleanVectorArrayCreateGuids.Add( "{7A4B9F48-D371-48FB-AC8D-9E984A83E0E0}" );
+   a_slBooleanVectorArrayCreateGuids.Add( "{F61B504F-0E81-49E0-A374-1C7E61F38706}" );
+
+   auto StrList a_slIntegerVectorArrayCreateGuids;
+   a_slIntegerVectorArrayCreateGuids.Add( "{6B208978-112C-452A-883C-D0286D1B076A}" );
+   a_slIntegerVectorArrayCreateGuids.Add( "{9D29A658-935E-4FAA-B925-6E76A038D6D2}" );
+   a_slIntegerVectorArrayCreateGuids.Add( "{61CD713C-48D1-4943-AA02-2E59CE8F952B}" );
+
+   auto StrList a_slUnsignedIntegerVectorArrayCreateGuids;
+   a_slUnsignedIntegerVectorArrayCreateGuids.Add( "{63C5AC27-EB2C-4A62-92AF-7BD915858A3C}" );
+   a_slUnsignedIntegerVectorArrayCreateGuids.Add( "{A6E0D3CD-8A3D-4F79-B973-087FC94CE14A}" );
+   a_slUnsignedIntegerVectorArrayCreateGuids.Add( "{F31A3F5F-0C54-41D6-9E7C-5DF74712099E}" );
+
+   auto StrList a_slVectorArrayCreateGuids;
+   a_slVectorArrayCreateGuids.Add( "{8434FC6F-A0B9-4D11-8F7D-6858C0485312}" );
+   a_slVectorArrayCreateGuids.Add( "{17361D7F-D345-459D-A9E1-603A6B7544A3}" );
+   a_slVectorArrayCreateGuids.Add( "{CDCA44E9-75FE-4E59-AD6E-518362D23A20}" );
+
+   string a_sTemplateLibrary;
+   a_sTemplateLibrary += GenerateLibraryHeader( "TEMPLATE_SCRIPTS.SSL", "This script contains macros generated from templates in meta_util.ssl" );
+   a_sTemplateLibrary += "import library \"enumeration_util.ssl\";\n";
+   a_sTemplateLibrary += "import library \"graph_util.ssl\";\n";
+   a_sTemplateLibrary += "import library \"message_util.ssl\";\n";
+   a_sTemplateLibrary += "import library \"opengl_util.ssl\";\n";
+   a_sTemplateLibrary += "import library \"template_util.ssl\";\n\n";
+   a_sTemplateLibrary += "// This library is automatically generated by CompileTemplateMacros() in META_UTIL.SSL. Local changes will be destroyed.\n\n";
+
+   //a_sTemplateLibrary += GetEnumerations();
+
+   // Generate simple create commands.
+   if(   a_oBasicTypes.Count != a_slGuidIdentifiers.GetCount() &&
+         a_oBasicTypes.Count != a_slIconImagePaths.GetCount() )
+   {
+      Console.Assert( "Error compiling templates. Count of a_oBasicTypes, a_slGuidIdentifiers, and a_slIconImagePaths are not equal." );
+      return 0;
+   }
+   else
+   {
+      GenerateCreateCommandsT( a_oBasicTypes, a_slGuidIdentifiers,
+         a_slIconImagePaths, a_sTemplateLibrary );
+   }
+
+   // Generate variable node create commands.
+   if(   a_oVariableNodeTypes.Count != a_slVariableGuidIdentifiers.GetCount() &&
+         a_oVariableNodeTypes.Count != a_slVariableIconImagePaths.GetCount() &&
+         a_oVariableNodeTypes.Count != a_slLanguageTypeNames.GetCount() )
+   {
+      string a_sAssert = "Error compiling templates. Count of a_oVariableNodeTypes, " +
+         "a_slVariableGuidIdentifiers, a_slVariableIconImagePaths, and a_slLanguageTypeNames are not equal.";
+      Console.Assert( a_sAssert );
+      return 0;
+   }
+   else
+   {
+      GenerateCreateVariableCommandsT(
+         a_oVariableNodeTypes,
+         a_slVariableGuidIdentifiers,
+         a_slVariableIconImagePaths,
+         a_slLanguageTypeNames,
+         a_sTemplateLibrary );
+   }
+
+   // Generate vector node create command variations, vec2, vec3, vec4.
+   if(   a_slVectorCreateGuids.GetCount() != a_slVectorDimensions.GetCount() &&
+         a_slVectorDimensions.GetCount()  != a_slTypeEnumerations.GetCount() )
+   {
+      string a_sAssert = "Error compiling templates. Count of a_slVectorCreateGuids, " +
+         "a_slVectorDimensions, and a_slTypeEnumerations are not equal.";
+      Console.Assert( a_sAssert );
+      return 0;
+   }
+   else
+   {
+      // Generate commands that create vector types.
+      GenerateCreateVectorCommandsT(
+         BooleanVectorNode,
+         a_slBooleanVectorCreateGuids,
+         a_slVectorDimensions,
+         a_slTypeEnumerations,
+         "B",
+         a_sTemplateLibrary );
+
+      GenerateCreateVectorCommandsT(
+         IntegerVectorNode,
+         a_slIntegerVectorCreateGuids,
+         a_slVectorDimensions,
+         a_slTypeEnumerations,
+         "I",
+         a_sTemplateLibrary );
+
+      GenerateCreateVectorCommandsT(
+         UnsignedIntegerVectorNode,
+         a_slUnsignedIntegerVectorCreateGuids,
+         a_slVectorDimensions,
+         a_slTypeEnumerations,
+         "U",
+         a_sTemplateLibrary );
+
+      GenerateCreateVectorCommandsT(
+         VectorNode,
+         a_slVectorCreateGuids,
+         a_slVectorDimensions,
+         a_slTypeEnumerations,
+         "F",
+         a_sTemplateLibrary );
+
+      // Generate commands that create variable representing arrays of vector types.
+      GenerateCreateVectorCommandsT(
+         BooleanVectorArrayNode,
+         a_slBooleanVectorArrayCreateGuids,
+         a_slVectorDimensions,
+         a_slTypeEnumerations,
+         "B",
+         a_sTemplateLibrary );
+
+      GenerateCreateVectorCommandsT(
+         IntegerVectorArrayNode,
+         a_slIntegerVectorArrayCreateGuids,
+         a_slVectorDimensions,
+         a_slTypeEnumerations,
+         "I",
+         a_sTemplateLibrary );
+
+      GenerateCreateVectorCommandsT(
+         UnsignedIntegerVectorArrayNode,
+         a_slUnsignedIntegerVectorArrayCreateGuids,
+         a_slVectorDimensions,
+         a_slTypeEnumerations,
+         "U",
+         a_sTemplateLibrary );
+
+      GenerateCreateVectorCommandsT(
+         VectorArrayNode,
+         a_slVectorArrayCreateGuids,
+         a_slVectorDimensions,
+         a_slTypeEnumerations,
+         "F",
+         a_sTemplateLibrary );
+   }
+
+   // DEBUG
+   //Console.Out( a_sTemplateLibrary );
+
+   // Build the file path to the templates file ( template_scripts.ssl ).
+   auto FilePath a_oTemplateDocumentPath = new FilePath( Application.GetApplicationDataPath() );
+   a_oTemplateDocumentPath.AppendPath( "scripts" );
+   a_oTemplateDocumentPath.AppendPath( "template_scripts.ssl" );
+   a_oTemplateDocumentPath.Canonicalize();
+   // DEBUG
+   //Console.Out( a_oTemplateDocumentPath.GetPath() );
+   TextFile a_oTemplateFile = new TextFile;
+
+   if( a_oTemplateFile.Open( a_oTemplateDocumentPath.GetPath(), false ) )
+   {
+      a_oTemplateFile.Write( a_sTemplateLibrary );
+      a_oTemplateFile.Close();
+   }
+   delete a_oTemplateFile;
+   return 1;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function string GetPathToSource()
+{
+   auto FilePath a_oSourcePath = new FilePath( Application.GetApplicationDataPath() );
+   a_oSourcePath.AppendPath( "Preferences" );
+   a_oSourcePath.AppendPath( "Source.ini" );
+   a_oSourcePath.Canonicalize();
+   if( !( a_oSourcePath.FileExists() ) )
+   {
+      return "";
+   }
+
+   auto TextFile a_oSourceDocument;
+   if( !( a_oSourceDocument.Open( a_oSourcePath.GetPath(), true ) ) )
+   {
+      return "";
+   }
+
+   string a_sSrc;
+   while( !( a_oSourceDocument.IsEndOfFile() ) )
+   {
+      a_sSrc = a_oSourceDocument.ReadLine();
+   }
+
+   a_oSourcePath.SetPath( a_sSrc );
+
+   return a_oSourcePath.GetPath();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GenerateEnumerationFunctions( Node p_oEnums, ref string p_sEnumerationAccessors )
+{
+   if( p_oEnums && p_oEnums.IsDerived( StringArrayNode ) )
+   {
+      StringArrayNode a_oStringArrayNode = (StringArrayNode)p_oEnums;
+      if( a_oStringArrayNode.Objects.GetCount() == 2 )
+      {
+         // This is a _brute force_ cast. It makes sure that enumeration
+         // values are cast to integers, including if the enumeration
+         // uses C++ features not supported by scripts. EX: 1 << 5.
+         // In this example, 1 << 5 produces an integer value of 1.
+         // These values won't be usable in a script anyway, but
+         // we need to make sure that the script compiles!
+         auto Str a_oCast = new Str( a_oStringArrayNode.Objects.Get( 1 ) );
+         a_oCast.Value = a_oCast.ToInt();
+
+         p_sEnumerationAccessors += "function int " + a_oStringArrayNode.Objects.Get( 0 ) + "() ";
+         p_sEnumerationAccessors += "{ return " + a_oCast.Value + "; }\n";
+      }
+      else
+      {
+         p_sEnumerationAccessors += "function int " + a_oStringArrayNode.Objects.Get( 0 ) + "() ";
+         p_sEnumerationAccessors += "{ return " + p_oEnums.ChildIndex() + "; }\n";
+      }
+   }
+
+   if( p_oEnums && p_oEnums.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)p_oEnums;
+      for( int a_nChild = 0; a_nChild < a_oGroup.ChildCount; ++a_nChild )
+      {
+         Node a_oChild = (Node)a_oGroup.Children[ a_nChild ];
+         GenerateEnumerationFunctions( a_oChild, p_sEnumerationAccessors );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CompileEnumerations()
+{
+   // Make sure the destination file exists before we do any work.
+   auto FilePath a_oEnumerationUtilPath = new FilePath( Application.GetApplicationDataPath() );
+   a_oEnumerationUtilPath.AppendPath( "scripts" );
+   a_oEnumerationUtilPath.AppendPath( "enumeration_util.ssl" );
+   a_oEnumerationUtilPath.Canonicalize();
+
+   if( !( a_oEnumerationUtilPath.FileExists() ) )
+   {
+      string a_sMessage = "The following file does not exist: " + a_oEnumerationUtilPath.GetPath();
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   auto TextFile a_oEnumerationUtil;
+   if( !( a_oEnumerationUtil.Open( a_oEnumerationUtilPath.GetPath(), false ) ) )
+   {
+      string a_sMessage = "Unable to open: " + a_oEnumerationUtilPath.GetPath();
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   // Set the base path to the application's C++ source folder.
+   string a_sPathToSource = GetPathToSource();
+   if( a_sPathToSource == "" )
+   {
+      string a_sMessage = "This command cannot be executed in release builds.";
+      Console.Error( a_sMessage );
+   }
+
+   // Create a list of files containing an enumeration for which you wish to generate functions.
+   // These are based of the path in your Source.ini file.
+   auto StrList a_slRawSourceFiles;
+   a_slRawSourceFiles.Add( "BinaryOperatorNode.h" );
+   a_slRawSourceFiles.Add( "DeclarationNode.h" );
+   a_slRawSourceFiles.Add( "ProgramFlags.h" );
+   a_slRawSourceFiles.Add( "TextureFlags.h" );
+   a_slRawSourceFiles.Add( "TimerNode.h" );
+   a_slRawSourceFiles.Add( "VariableNodeFlags.h" );
+   a_slRawSourceFiles.Add( "InterfaceElementEnumerations.h" );
+   a_slRawSourceFiles.Add( "EditTool\\AppScaffoldNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\AppDefinitionNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\ConfigNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\DataMemberNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\ExtensionNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\GraphMemberNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\HelpConfigNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\InterfaceElementNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\InterfaceSectionNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\JumpStatementNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\LightBooleanNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\LightColorNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\LightCountNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\LightFloatNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\LightIntegerNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\LightMatrixNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\LightVectorNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\MaterialColorNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\MaterialFloatNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\MaterialIntegerNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\MeshBooleanNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\ProjectFileNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\PreprocessorNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\ShaderSourceNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\SectionConfigNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\SubroutineIntegerNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\TypeRepNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\ViewportFloatNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\ViewMatrixNode.h" );
+   a_slRawSourceFiles.Add( "EditTool\\ViewportVectorNode.h" );
+
+   // Iterate the raw source files and generate complete filenames.
+   auto StrList a_slSourceFiles;
+   for( int i = 0; i < a_slRawSourceFiles.GetCount(); ++i )
+   {
+      auto FilePath a_oCompletePath = new FilePath( a_sPathToSource );
+      a_oCompletePath.AppendPath( a_slRawSourceFiles.Get( i ) );
+      a_oCompletePath.Canonicalize();
+      a_slSourceFiles.Add( a_oCompletePath.GetPath() );
+   }
+
+   Group a_oEnums = new Group;
+   a_oEnums.Name = "Enumerations";
+
+   for( int j = 0; j < a_slSourceFiles.GetCount(); ++j )
+   {
+      auto FilePath a_oSourceFilePath = new FilePath( a_slSourceFiles.Get( j ) );
+      a_oSourceFilePath.Canonicalize();
+      Parse.ParseEnumerationSource( a_oEnums, a_oSourceFilePath );
+   }
+
+   string a_sEnumerationLibrary;
+   a_sEnumerationLibrary += GenerateLibraryHeader( "ENUMERATION_UTIL.SSL",
+      "This script contains enumeration access functions generated from parsed C++ source" );
+   a_sEnumerationLibrary += "library Enum;\n\n";
+   a_sEnumerationLibrary += "// This library is automatically generated by CompileEnumerations() in META_UTIL.SSL. Local changes will be destroyed.\n";
+   a_sEnumerationLibrary += "// This library should not import any other libraries.\n\n";
+
+   string a_sEnumerationAccessors;
+   GenerateEnumerationFunctions( a_oEnums, a_sEnumerationAccessors );
+   a_sEnumerationLibrary += a_sEnumerationAccessors;
+
+   // DEBUG
+   //Console.Out( a_sEnumerationLibrary );
+   a_oEnumerationUtil.Write( a_sEnumerationLibrary );
+   a_oEnumerationUtil.Close();
+
+   auto StrList a_slMessages;
+   SpaBuildUtil.GenerateCommandHeader( "CompileEnumerations", a_slMessages );
+   for( int k = 0; k < a_slSourceFiles.GetCount(); ++k )
+   {
+      auto FilePath a_oSourceFilePath = new FilePath( a_slSourceFiles.Get( k ) );
+      a_slMessages.Add( "Successfully compiled " + a_oSourceFilePath.GetPath() );
+   }
+
+   //SpaBuildUtil.Out( a_slMessages );
+   bool a_bAddEnums = false;
+
+   if( a_oEnums )
+   {
+      if( a_bAddEnums )
+      {
+         Model.AddNode( a_oEnums, Model, -1 );
+      }
+      else
+      {
+         delete a_oEnums;
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CompileClasses()
+{
+   // Make sure the destination file exists before we do any work.
+   auto FilePath a_oClassUtilPath = new FilePath( Application.GetApplicationDataPath() );
+   a_oClassUtilPath.AppendPath( "scripts" );
+   a_oClassUtilPath.AppendPath( "class_util.ssl" );
+   a_oClassUtilPath.Canonicalize();
+
+   if( !( a_oClassUtilPath.FileExists() ) )
+   {
+      string a_sMessage = "The following file does not exist: " + a_oClassUtilPath.GetPath();
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   // Make sure the source classes exists before we do any work.
+   auto FilePath a_oClassesFolder = new FilePath( Application.GetApplicationDataPath() );
+   a_oClassesFolder.AppendPath( "scripts" );
+   a_oClassesFolder.AppendPath( "classes\\" );
+
+   auto StrList a_slClassFolderContents;
+   a_oClassesFolder.FindFiles( a_slClassFolderContents, "*.box", true, false );
+   //SpaStrListUtil.Out( a_slClassFolderContents );
+
+   // Allocate a new document to store compiled class objects.
+   Model3D a_oClassObjects = new Model3D;
+   a_oClassObjects.Name = "ClassObjects";
+   a_oClassObjects.Class = "ClassObjects";
+
+   // Iterate the BOX files and gather any TypeRepNodes.
+   // These nodes represent the new type before compilation.
+   for( int a_nFile = 0; a_nFile < a_slClassFolderContents.GetCount(); ++a_nFile )
+   {
+      auto List a_lTypeRepNodes;
+      auto FilePath a_oClassDocumentPath =
+         new FilePath( a_slClassFolderContents.GetAt( a_nFile ) );
+      auto Model3D a_oDocument;
+
+      if( a_oDocument.OpenFile( a_oClassDocumentPath.GetPath() ) )
+      {
+         Graph.GetNodesFromDatabase( a_oDocument, a_lTypeRepNodes, TypeRepNode );
+
+         // Create a TypeAggregatorNode and embed the class members
+         // in the TypeAggregatorNode's NodeList object.
+         for( int a_nClass = 0; a_nClass < a_lTypeRepNodes.GetCount(); ++a_nClass )
+         {
+            TypeAggregatorNode a_oType = new TypeAggregatorNode;
+            TypeRepNode a_oClass = (TypeRepNode)a_lTypeRepNodes.Get( a_nClass );
+            a_oType.Name = a_oClass.Type;
+
+            for( int a_nMember = 0; a_nMember < a_oClass.ChildCount; ++a_nMember )
+            {
+               Node a_oNode = (Node)a_oClass.Children[ a_nMember ].Clone();
+               a_oType.NodeList.Add( a_oNode );
+
+            }
+            a_oClassObjects.AddChild( a_oType );
+         }
+      }
+   }
+
+   // Save the document and clean up.
+   a_oClassObjects.SaveFile( a_oClassesFolder.GetPath() + "compiled_classes.box" );
+
+   // Compile the classes into SSL that we can call easily.
+   // We're going to compile the classes into class_util.ssl.
+   auto TextFile a_oClassUtil;
+   if( !( a_oClassUtil.Open( a_oClassUtilPath.GetPath(), false ) ) )
+   {
+      string a_sMessage = "Unable to open: " + a_oClassUtilPath.GetPath();
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   string a_sClassLibrary;
+   a_sClassLibrary += GenerateLibraryHeader( "CLASS_UTIL.SSL", "This script contains classes generated from SSL class declarations" );
+   a_sClassLibrary += "import library \"graph_util.ssl\";\n\n";
+   a_sClassLibrary += "library Classes;\n\n";
+   a_sClassLibrary += "// This library is automatically generated by CompileClasses() in META_UTIL.SSL. Local changes will be destroyed.\n\n";
+
+   for( int a_nOut = 0; a_nOut < a_oClassObjects.ChildCount; ++a_nOut )
+   {
+      Node a_oNode = (Node)a_oClassObjects.Children[ a_nOut ];
+      if( a_oNode && a_oNode.IsDerived( TypeAggregatorNode ) )
+      {
+         auto StrList a_slObjectNames;
+         TypeAggregatorNode a_oClassDefinition = (TypeAggregatorNode)a_oNode;
+
+         string a_sContainerName = "a_o" + a_oClassDefinition.Name;
+         a_sClassLibrary += GenerateClassHeader();
+         // When we are working in SSL, calling the function created below
+         // returns to us a TypeAggregatorNode that represents the class object.
+         // Because we are using a data-driven approach, all class members are
+         // fully initialized to whatever values the nodes currently store.
+         a_sClassLibrary += "function TypeAggregatorNode Create" + a_oClassDefinition.Name + "Object()\n";
+         a_sClassLibrary += "{\n";
+         //Console.Out( a_oClassDefinition.Name );
+         a_sClassLibrary += "   // The calling function is responsible for managing the storage!\n";
+         a_sClassLibrary += "   return Graph.GetClassObject( \"" + a_oClassDefinition.Name + "\" );\n";
+         a_sClassLibrary += "}\n\n";
+      }
+   }
+
+   // DEBUG
+   //Console.Out( a_sClassLibrary );
+   a_oClassUtil.Write( a_sClassLibrary );
+   a_oClassUtil.Close();
+
+   // Delete the model we allocated.
+   delete a_oClassObjects;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CompileTemplateRecursive(
+
+   TypeAggregatorNode p_oShaderTokens,
+   TypeAggregatorNode p_oTypeAliases,
+   FilePath p_oTemplatePath,
+   FilePath p_oPrototypePath,
+   int p_nRecursionDepth,
+   List p_lDebugNodes,
+   bool p_bDebug
+
+   )
+{
+   // Tokenize GLSL template source.
+   Parse.TokenizeSource( p_oShaderTokens, p_oTypeAliases, p_oTemplatePath );
+
+   // Compile the tokens into a complete set of all overloaded functions.
+   auto StrList a_slFunctionPrototypes;
+   if( !( Parse.CompileGlslTemplatePrototypes( p_oShaderTokens, p_oTypeAliases, a_slFunctionPrototypes ) ) )
+   {
+      // Call failed, so add the object to the model if we want to debug.
+      if( p_bDebug )
+      {
+         // Document is now responsible for storage.
+         Model.AddNode( p_oShaderTokens, Model, -1 );
+      }
+      else
+      {
+         // Otherwise, add to list so we can decide what to do with the memory later.
+         p_lDebugNodes.Add( p_oShaderTokens );
+      }
+
+      return;
+   }
+
+   // DEBUG
+   // If we're debugging, it's very helpful to be able to
+   // inspect the compiled code object. We can do this
+   // by adding it to the model, which will allow us to
+   // inspect it very easily.
+   if( p_bDebug )
+   {
+      // Document is now responsible for storage.
+      Model.AddNode( p_oShaderTokens, Model, -1 );
+   }
+   else
+   {
+      // Otherwise, add to list so we can decide what to do with the memory later.
+      p_lDebugNodes.Add( p_oShaderTokens );
+   }
+
+   // Save the prototypes to disk.
+   auto Str a_oFind = new Str( p_oTemplatePath.GetPath() );
+
+   if( p_oPrototypePath.GetFileExtension() == "" )
+   {
+      string a_sFileName = p_oTemplatePath.GetFileNameNoExtension();
+      a_sFileName += "_function_prototypes.ssl";
+      p_oPrototypePath.AppendPath( a_sFileName );
+      //Console.Out( p_oPrototypePath.GetPath() );
+   }
+
+   auto TextFile a_oFunctionPrototypeDoc;
+   if( !( a_oFunctionPrototypeDoc.Open( p_oPrototypePath.GetPath(), false ) ) )
+   {
+      string a_sMessage = "Unable to open: " + p_oPrototypePath.GetPath();
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   // Extract the function prototypes from the StrList object.
+   string a_sFunctionPrototypes;
+   for( int f = 0; f < a_slFunctionPrototypes.GetCount(); ++f )
+   {
+      a_sFunctionPrototypes += a_slFunctionPrototypes.GetAt( f ) + "\n";
+   }
+
+   // Console.Out( a_oPrototypePath.GetPath() );
+   a_oFunctionPrototypeDoc.Write( a_sFunctionPrototypes );
+   a_oFunctionPrototypeDoc.Close();
+
+
+   if( p_nRecursionDepth <= 1 )
+   {
+      // No template recursion.
+      return;
+   }
+
+   if( p_nRecursionDepth > 1 )
+   {
+      // Clear this object, which frees the memory it's aggregating,
+      // but *does not* free the memory used by the aggregator node itself.
+      p_oShaderTokens.NodeList.Clear();
+   }
+
+   for( int a_nRecurse = 0; a_nRecurse < 1/*p_nRecursionDepth*/; ++a_nRecurse )
+   {
+      // Re-allocate since any recursion means the old tokens are invalidated.
+      TypeAggregatorNode a_oShaderTokens = Classes.CreateShaderTokensObject();
+
+      // Compile template again to achieve desired recursive compilation.
+      int a_nRecursionDepth = 0; // We need to make sure that each of these calls has zero recursion!
+      CompileTemplateRecursive(
+         a_oShaderTokens,
+         p_oTypeAliases,
+         p_oPrototypePath,
+         p_oPrototypePath,
+         a_nRecursionDepth,
+         p_lDebugNodes, p_bDebug );
+
+      // a_oShaderTokens destroyed each time this loop runs, which is the behavior we want.
+      // If we're about to exit the loop, copy the final set of shader token objects into p_oShaderTokens.
+      // We need the final set of objects in the calling context ( CompileGlslFunctions() ).
+      if( a_nRecurse == p_nRecursionDepth - 1 )
+      {
+         for( int a_nMember = 0; a_nMember < a_oShaderTokens.NodeList.GetCount(); ++a_nMember )
+         {
+            Node a_oClonedMember = (Node)a_oShaderTokens.NodeList.Get( a_nMember );
+            Node a_oNew = (Node)a_oClonedMember.Clone(); // 'Clone' is equivalent to calling 'new'.
+
+            // Add the cloned memory to p_oShaderTokens. This is equivalent to Add( *new( TYPE ) )
+            p_oShaderTokens.NodeList.Add( a_oNew );
+         }
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ExecOpenGlTemplateCompiler( FilePath p_oTemplatePath, List p_lFunctionContainers )
+{
+   bool a_bDebug = true;
+   bool a_bAdded = false;
+
+   // Get shading language version info such as 120, 330, 400, 430 440, etc.
+   auto Str a_oShadingLanguageVersion = new Str( p_oTemplatePath.GetFileNameNoExtension() );
+   auto StrList a_slShadingLanguageVersions;
+   auto IntArray a_aiIndices;
+   auto ShaderVersionNode a_oGetGlslVersionInfo;
+   a_oGetGlslVersionInfo.GetShadingLanguageVersionItems( a_slShadingLanguageVersions, a_aiIndices );
+
+   // Check that the file name component is convertible to an int representing a valid GLSL version.
+   int a_nVersion = a_oShadingLanguageVersion.ToInt();
+
+   int a_nVersionIndex = a_slShadingLanguageVersions.Find( a_oShadingLanguageVersion.Value );
+   if( a_nVersionIndex == -1 )
+   {
+      string a_sMessage = "Invalid GLSL version indicated: " + a_oShadingLanguageVersion.Value;
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   // Create a ShaderTokens object to store tokenized/lexed code.
+   // See \SCRIPTS\CLASSES\GENERAL_CLASSES.BOX for class layout.
+   // The calling function ( here ) is responsible for storage!
+   // Not using 'auto' because we might want to add to the graph
+   // if we encounter problems that we need to debug.
+   // The calling function ( the function we're in now ) is responsible for storage!
+   TypeAggregatorNode a_oShaderTokens = Classes.CreateShaderTokensObject();
+   if( !a_oShaderTokens )
+   {
+      // Allocation failed. Required storage does not exist.
+      return;
+   }
+
+   // Set the shader version info in a_oShaderTokens.
+   a_oShaderTokens.Int( "shadingLanguageVersion" ).Value = a_nVersionIndex;
+
+   // Create a TypeAliases object to manage code generation.
+   // This object contains static string arrays with keywords
+   // and static integer arrays that store delimiter/digit char values.
+   // See \SCRIPTS\CLASSES\GENERAL_CLASSES.BOX for class layout.
+   // Using auto because we don't need to save this to disk
+   // since we can already inspect its full values at the path above.
+   // This object will be automatically destroyed at the end of this function's lifetime.
+   auto TypeAggregatorNode a_oTypeAliases = Classes.CreateTypeAliasesObject();
+   if( !a_oTypeAliases )
+   {
+      // Allocation failed. Static objects required for analysis do not exist.
+      return;
+   }
+
+   // Compile the template into GLSL functions.
+   // Do so until the template recursion limit is reached.
+   auto FilePath a_oPrototypePath = new FilePath( p_oTemplatePath.GetFilePath() );
+   int a_nRecursionDepth = a_oTypeAliases.Uint( "maxTemplateRecursion" ).Value;
+
+   List a_lDebugNodes = new List; // This list *owns* all memory allocated by CompileTemplateRecursive()
+   CompileTemplateRecursive( a_oShaderTokens, a_oTypeAliases, p_oTemplatePath,
+      a_oPrototypePath, a_nRecursionDepth, a_lDebugNodes, a_bDebug );
+
+   // Clean up!
+   delete a_lDebugNodes;
+
+   // Open and parse the complete function prototypes we just wrote.
+   TypeAggregatorNode a_oFunctionTokens = Classes.CreateShaderTokensObject();
+   if( !a_oFunctionTokens )
+   {
+      // Allocation failed. Required storage does not exist.
+      return;
+   }
+
+   // Set the shader version info in a_oShaderTokens.
+   a_oFunctionTokens.Int( "shadingLanguageVersion" ).Value = a_nVersionIndex;
+
+   // Tokenize the source.
+   Parse.TokenizeSource( a_oFunctionTokens, a_oTypeAliases, a_oPrototypePath );
+
+   if( !( Parse.CompileGlslObjectCode( a_oFunctionTokens, a_oTypeAliases, p_lFunctionContainers ) ) )
+   {
+      // Call failed, so add the object to the model if we want to debug.
+      if( a_bDebug )
+      {
+         // Document is now responsible for storage.
+         a_bAdded = true;
+         Model.AddNode( a_oFunctionTokens, Model, -1 );
+      }
+      else
+      {
+         // Otherwise, delete the object so we don't leak memory!
+         delete a_oFunctionTokens;
+      }
+
+      return;
+   }
+
+   // Create and store an HTML document that
+   // contains the tokens and lexical analysis.
+   // Useful for debugging difficult problems.
+   string a_sFileName = p_oTemplatePath.GetFileNameNoExtension();
+   auto FilePath a_oSaveParseInfoFile = new FilePath( p_oTemplatePath.GetFilePath() );
+   a_oSaveParseInfoFile.AppendPath( "parse_info_for_" + a_sFileName + ".htm" );
+
+   auto TextFile a_oParserInfo;
+   if( !( a_oParserInfo.Open( a_oSaveParseInfoFile.GetPath(), false ) ) )
+   {
+      string a_sMessage = "Unable to open: " + a_oParserInfo.GetPath();
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   // Generate very simple HTML.
+   string a_sParseInfo;
+   a_sParseInfo += "<!DOCTYPE html>\n";
+   a_sParseInfo += "<html>\n";
+   a_sParseInfo += "<head>\n";
+   a_sParseInfo += "<title>Parse Info: " + a_sFileName + "</title>";
+   a_sParseInfo += "<style type=\"text/css\">td { border: 1px solid silver; }</style>\n";
+   a_sParseInfo += "</head>\n";
+   a_sParseInfo += "<body>\n";
+   a_sParseInfo += "<table>\n";
+   a_sParseInfo += "<tr>\n";
+   a_sParseInfo += "   <td>TOKEN</td>\n";
+   a_sParseInfo += "   <td>SEMANTIC</td>\n";
+   a_sParseInfo += "   <td>INDEX</td>\n";
+   a_sParseInfo += "</tr>\n";
+   for( int i = 0; i < a_oFunctionTokens.StrList( "Tokens").Objects.GetCount(); ++i )
+   {
+      a_sParseInfo += "<tr>\n";
+      a_sParseInfo += "   <td>" + a_oFunctionTokens.StrList( "Tokens").Objects.GetAt( i ) + "</td>\n";
+      a_sParseInfo += "   <td>" + a_oFunctionTokens.StrList( "TokenInfo").Objects.GetAt( i ) + "</td>\n";
+      a_sParseInfo += "   <td>" + i + "</td>\n";
+      a_sParseInfo += "</tr>\n";
+   }
+   a_sParseInfo += "</table>\n";
+   a_sParseInfo += "</body>\n";
+   a_sParseInfo += "</html>\n";
+
+   // Save HTML to disk.
+   a_oParserInfo.Write( a_sParseInfo );
+   a_oParserInfo.Close();
+   //SpaStrListUtil.Out( a_slTokens );
+
+   if( a_bDebug && !a_bAdded )
+   {
+      // Document is now responsible for storage.
+      Model.AddNode( a_oFunctionTokens, Model, -1 );
+   }
+   else
+   {
+      // Otherwise, delete the object so we don't leak memory!
+      delete a_oFunctionTokens;
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CompileGlslFunctions()
+{
+   auto FilePath a_oOpenGlFunctionPrototypesPath = new FilePath( Application.GetApplicationDataPath() );
+   a_oOpenGlFunctionPrototypesPath.AppendPath( "content" );
+   a_oOpenGlFunctionPrototypesPath.AppendPath( "includes" );
+   a_oOpenGlFunctionPrototypesPath.AppendPath( "SPA_Prototypes.box" );
+   a_oOpenGlFunctionPrototypesPath.Canonicalize();
+
+   if( !( a_oOpenGlFunctionPrototypesPath.FileExists() ) )
+   {
+      Console.FileDoesNotExist( a_oOpenGlFunctionPrototypesPath.GetPath() );
+      return;
+   }
+
+   auto Model3D a_oPrototypes;
+   if( !( a_oPrototypes.OpenFile( a_oOpenGlFunctionPrototypesPath.GetPath() ) ) )
+   {
+      string a_sMessage = "Unable to open the following file: " +
+         a_oOpenGlFunctionPrototypesPath.GetPath();
+      Console.Assert( a_sMessage );
+      return;
+   }
+
+   // Get all the FileNodes from the document.
+   auto List a_lFileNodes;
+   Graph.GetNodesFromDatabase( a_oPrototypes, a_lFileNodes, FileNode );
+   auto List a_lFunctionContainers;
+
+   for( int a_nFiles = 0; a_nFiles < a_lFileNodes.GetCount(); ++a_nFiles )
+   {
+      FileNode a_oFileNode = (FileNode)a_lFileNodes.Get( a_nFiles );
+      auto FilePath a_oTemplatePath = new FilePath( a_oFileNode.FilePath );
+      a_oTemplatePath.ResolveToModel( a_oPrototypes );
+      a_oTemplatePath.Canonicalize();
+
+      if( !( a_oTemplatePath.FileExists() ) )
+      {
+         Console.FileDoesNotExist( a_oTemplatePath.GetPath() );
+         return;
+      }
+
+      ExecOpenGlTemplateCompiler( a_oTemplatePath, a_lFunctionContainers );
+   }
+
+   // Create a new file with the function declarations.
+   auto FilePath a_oFunctionsPath = new FilePath( Application.GetApplicationDataPath() );
+   a_oFunctionsPath.AppendPath( "content" );
+   a_oFunctionsPath.AppendPath( "includes" );
+   a_oFunctionsPath.AppendPath( "SPA_Functions.box" );
+   a_oFunctionsPath.Canonicalize();
+
+   if( !( a_oFunctionsPath.FileExists() ) )
+   {
+      Console.FileDoesNotExist( a_oFunctionsPath.GetPath() );
+      return;
+   }
+
+   // Create a new document and set the appropriate document class.
+   Model3D a_oFunctions = new Model3D;
+   a_oFunctions.Name = "Library";
+   a_oFunctions.Class = "Library";
+
+   // Add the new nodes to the current document and SPA_Functions.box.
+   for( int f = 0; f < a_lFunctionContainers.GetCount(); ++f )
+   {
+      Node a_oNode = (Node)a_lFunctionContainers.Get( f );
+      Node a_oNew = (Node)a_oNode.Clone();
+      a_oFunctions.AddChild( a_oNode );
+      Model.AddNode( a_oNew, Model, -1 );
+   }
+
+   a_oFunctions.SaveFile( a_oFunctionsPath.GetPath() );
+   delete a_oFunctions;
+}

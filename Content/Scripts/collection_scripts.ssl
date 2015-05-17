@@ -1,0 +1,299 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             COLLECTION_SCRIPTS.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements commands for working with collection nodes.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "graph_util.ssl";
+import library "list_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+//  Update the UI state for camera commands that only depend on a Camera
+//  node being selected.
+
+function void HandleOnUpdate( CommandPresentationModuleInfo commandInfo, string commandHint, bool enabled )
+{
+   commandInfo.SetEnabled( enabled );
+   string hint = commandHint;
+   if( !enabled )
+   {
+      hint += ": to enable this command, select a Collection node";
+   }
+
+   commandInfo.Status.SetHint( hint );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CollectionToggleLayers_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate(   commandInfo,
+                     "Toggle collection layer set",
+                     Model.GetSelectCount() == 1 && Model.GetSelectBuffer().IsNodeTypeSelected( CollectionNode ) );
+}
+
+macro CollectionToggleLayers()
+[Category="Collection Commands", Guid="{1F91FAF2-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   // This macro currently only works if the scene graph is structured as follows:
+   // - Group1
+   //   - Group2
+   //     - CollectionNode1
+   //     ...
+   //   - Group3
+   //     - CollectionNode2
+   //     ...
+   // Any Group nodes in the selected CollectionNode will be set visible;
+   // Group nodes in other CollectionNodes will be set invisible.
+   
+   int selectedCount = Model.GetSelectCount();
+   if( selectedCount == 1 )
+   {
+      Node selNode = Model.GetSelectedNode( 0 ).GetNode();
+      
+      if( selNode.IsDerived( CollectionNode ) )
+      {
+         Group parent = selNode.Parent();
+         if( parent )
+         {
+            parent = parent.Parent();
+         }
+         
+         if( parent )
+         {
+            // We have to turn all the other groups off first, then we
+            // turn on the selected collection node groups.
+            
+            int childCount = parent.ChildCount;
+            for( int i = 0; i < childCount; ++i )
+            {
+               Node child = parent.Children[i];
+               if( child.IsDerived( Group ) )
+               {
+                  Group testCollNode = (Group)child;
+                  if( testCollNode.ChildCount == 1 && testCollNode.Children[0].IsDerived( CollectionNode ) )
+                  {
+                     Graph.SetCollectionVisibility( (CollectionNode)testCollNode.Children[0], false );
+                  }
+               }
+            }
+         }
+         
+         Graph.SetCollectionVisibility( (CollectionNode)selNode, true );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CollectionRestoreSelection_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate(   commandInfo,
+                     "Restore selection from collection",
+                     Model.GetSelectBuffer().IsNodeTypeSelected( CollectionNode ) );
+}
+
+macro CollectionRestoreSelection()
+[Category="Collection Commands", Guid="{1F9220F8-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Model.DeselectAll();
+	Graph.RestoreSelectionFromCollection();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CollectionRemoveAllItems_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate(   commandInfo,
+                     "Remove all items from collection",
+                     Model.GetSelectBuffer().IsNodeTypeSelected( CollectionNode ) );
+}
+
+macro CollectionRemoveAllItems()
+[Category="Collection Commands", Guid="{488A1FAA-B5D7-4A4F-A30D-99A3C8B85305}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oSelectedNode = (Node)Model.GetSelectedNode(i).GetNode();
+
+      if( a_oSelectedNode && a_oSelectedNode.IsDerived( CollectionNode ) )
+      {
+         CollectionNode a_oCollectionNode = (CollectionNode)Model.EditNode( a_oSelectedNode );
+         List a_lCollectionItems = a_oCollectionNode.GetCollection();
+         a_lCollectionItems.Clear();
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CollectionNodeEnumerateCollectionItems_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate(   commandInfo,
+                     "Displays the node's CLASS, ID, NAME, and DATABASE PATH for all items in the collection",
+                     Model.GetSelectBuffer().IsNodeTypeSelected( CollectionNode ) );
+}
+
+macro CollectionNodeEnumerateCollectionItems()
+[Category="Collection Commands", Guid="{59DF5622-2EE2-4018-8F6F-A40D038F0093}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   string a_sInfo;
+   string a_sMessage;
+   int a_iCollectionCount;
+
+   for( int i = 0; i < Model.GetSelectCount(); ++i )
+   {
+      Node a_oSelectedNode = (Node)Model.GetSelectedNode(i).GetNode();
+
+      if( a_oSelectedNode && a_oSelectedNode.IsDerived( CollectionNode ) )
+      {
+         CollectionNode a_oCollectionNode = (CollectionNode)a_oSelectedNode;
+         List a_lCollectionItems = a_oCollectionNode.GetCollection();
+         a_iCollectionCount = a_lCollectionItems.GetCount();
+         for( int items = 0; items < a_lCollectionItems.GetCount(); ++items )
+         {
+            NodeSelect a_oNodeSelect = (NodeSelect)a_lCollectionItems.Get( items );
+            Node a_oCollectionItems = (Node)a_oNodeSelect.GetNode();
+
+            string a_sNodeClass = "NONE";
+            string a_sNodeID = "NONE";
+            
+            if( a_oCollectionItems.Class != "" )
+            {
+               a_sNodeClass = a_oCollectionItems.Class;
+            }
+            if( a_oCollectionItems.ID != "" )
+            {
+               a_sNodeID = a_oCollectionItems.ID;
+            }
+
+            a_sMessage += "Item :" + items + " NAME = " + a_oCollectionItems.Name + " CLASS = " + a_sNodeClass + " ID = " + a_sNodeID + " " + a_oCollectionItems.GetPathToNode() + "\n";
+         }
+      }
+   }
+
+   if( a_sMessage == "" )
+   {
+      a_sInfo = "No items in Collection.";
+   }
+   else
+   {
+      a_sInfo = "\n" + a_iCollectionCount + " item(s) in this collection.\n\n";
+      a_sInfo += a_sMessage;
+   }
+
+   Console.GenerateOutputMessage( a_sInfo, "INFO" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CollectionDisplayMemberProperties_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate(   commandInfo,
+                     "Display properties of collection members",
+                     Model.GetSelectBuffer().IsNodeTypeSelected( CollectionNode ) );
+}
+
+macro CollectionDisplayMemberProperties()
+[Category="Collection Commands", Guid="{1F91FA95-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Model.DeselectAll();
+	Graph.RestoreSelectionFromCollection();
+   Application.ExecuteCommand( "Edit Commands", "EditDisplayProperties" );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CollectionPopulateWithNodesByType_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate(   commandInfo,
+                     "Adds all nodes of a specific type to the collection",
+                     Model.GetSelectBuffer().IsNodeTypeSelected( CollectionNode ) );
+}
+
+macro CollectionPopulateWithNodesByType()
+[Category="Collection Commands", Guid="{AFE7D0E3-8C3A-4281-8128-9B052FBB57AE}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   if( Model.GetSelectCount() == 1 )
+   {
+      Node a_oSelectedNode = (Node)Model.GetSelectedNode( 0 ).GetNode();
+      if( a_oSelectedNode && a_oSelectedNode.IsDerived( CollectionNode ) )
+      {
+         CollectionNode a_oCollectionNode = (CollectionNode)Model.EditNode( a_oSelectedNode );
+
+         auto Type a_oType;
+         auto TypeInformation typeInfo =
+            a_oType.GetType().FindClassType( a_oCollectionNode.ID );
+
+         if( typeInfo )
+         {
+            Graph.AddNodeTypeToCollection( a_oCollectionNode, typeInfo );
+            a_oCollectionNode.Name = a_oCollectionNode.ID;
+            Model.DeselectAll();
+         }
+      }
+   }
+   else
+   {
+      Console.Error( "Please select a single CollectionNode before invoking this command." );
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// macro
+////////////////////////////////////////////////////////////////////////////////
+
+function void CollectionToggleMembersVisible_OnUpdate( CommandPresentationModuleInfo commandInfo )
+{
+   HandleOnUpdate(   commandInfo,
+                     "Toggle collection member visibility",
+                     Model.GetSelectBuffer().IsNodeTypeSelected( CollectionNode ) );
+}
+
+macro CollectionToggleMembersVisible()
+[Category="Collection Commands", Guid="{1F91FA9D-F612-46D4-A453-4B81096121A9}", Image=".\\icons\\generic_script_icon.bmp"]
+{
+   Model.DeselectAll();
+
+   int selectedCount = Model.GetSelectCount();
+   for( int node = 0; node < selectedCount; ++node )
+   {
+      Node selNode = Model.GetSelectedNode( node ).GetNode();
+      if( selNode.IsDerived( CollectionNode ) )
+      {
+         CollectionNode collNode = (CollectionNode)selNode;
+
+         List selectBuffer = collNode.GetCollection();
+         int count = selectBuffer.GetCount();
+         for( int i = 0; i < count; ++i )
+         {
+            NodeSelect select = (NodeSelect)selectBuffer.Get( i );
+            Node selectedNode = select.GetNode();
+            if( selectedNode.IsDerived( Group ) )
+            {
+               Group group = (Group)Model.EditNode( selectedNode );
+               group.Visible = !group.Visible;
+            }
+          }
+      }
+   }
+}

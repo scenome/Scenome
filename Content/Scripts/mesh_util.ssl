@@ -1,0 +1,84 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             MESH_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements basic mesh utility functions.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+library SpaMeshUtil;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void InvalidateMeshesIterate( Node startNode, List invalidatedNodes )
+{
+   if( invalidatedNodes.In( startNode ) )
+   {
+      return;
+   }
+   
+   invalidatedNodes.AddRef( startNode );
+   if( startNode.IsDerived( ParametricMesh ) )
+   {
+      // Refresh the mesh's dependencies first, so it will
+      // generate with any new mesh data it needs.
+      List deps = startNode.GetDependencies();
+      for( int i = 0; i < deps.GetCount(); ++i )
+      {
+         Node dep = (Node)deps.Get( i );
+         InvalidateMeshesIterate( dep, invalidatedNodes );
+      }
+      
+      if( deps )
+      {
+         delete deps;
+      }
+      
+      ParametricMesh invalidateMesh = (ParametricMesh)startNode;
+      invalidateMesh.InvalidateMesh();
+      invalidateMesh.GenerateMesh();
+   }
+   else
+   if( startNode.IsDerived( NodeLink ) )
+   {
+      ((NodeLink)startNode).Flush();
+   }
+   
+   if( startNode.IsDerived( Group ) )
+   {
+      Group startGroup = (Group)startNode;
+      for( int i = 0; i < startGroup.ChildCount; ++i )
+      {
+         Node child = startGroup.Children[i];
+         InvalidateMeshesIterate( child, invalidatedNodes );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void InvalidateMeshes()
+{
+   List invalidatedNodes = new List;
+   if( Model.GetSelectCount() )
+   {
+      for( int sel = 0; sel < Model.GetSelectCount(); ++sel )
+      {
+         Node selNode = Model.GetSelectedNode( sel ).GetNode();
+         InvalidateMeshesIterate( selNode, invalidatedNodes );
+      }
+   }
+   else
+   {
+      InvalidateMeshesIterate( Model, invalidatedNodes );
+   }
+   delete invalidatedNodes;
+   Model.UpdateViews();
+}
+

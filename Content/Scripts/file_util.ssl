@@ -1,0 +1,397 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file         :   FILE_UTIL.SSL                      
+// $author       :   Scenomics                                
+// $privacy      :   PUBLIC                                   
+// $description  :   This script implements very basic file state checking.
+// $legal        :   Reserved * r_rLegal                      
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////
+
+library SpaFileUtil;
+
+import library "message_util.ssl";
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function int ValidateFileExists( string p_sFileName, string p_sResolvePath )
+{
+   auto FilePath a_oPathToFile = new FilePath( p_sFileName );
+   a_oPathToFile.ResolveToPath( p_sResolvePath );
+   return a_oPathToFile.FileExists();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function int ValidateCurrentFileState( string a_sFileName )
+{
+   string a_sCurrentFileName = Application.GetFileName( Model.Filename );
+
+   if( a_sCurrentFileName == "" )
+   {
+      string a_sMessage = "Please save the file or relative paths cannot be resolved.";
+      Console.GenerateOutputMessage( a_sMessage, "WARN" );
+      return 0;
+   }
+   else
+   if( a_sCurrentFileName == a_sFileName )
+   {
+      string a_sMessage =  "You cannot run this command inside any database referred " +
+                           "to by the command. For example: you cannot run a preferences " +
+                           " command if PREFERENCES.BOX is the active document.";
+
+      Console.GenerateOutputMessage( a_sMessage, "WARN" );
+      return 0;
+   }
+
+   return 1;
+}
+
+function int ValidateCurrentFileStateSilent( string a_sFileName )
+{
+   string a_sCurrentFileName = Application.GetFileName( Model.Filename );
+
+   if( a_sCurrentFileName == "" )
+   {
+      return 0;
+   }
+   else
+   if( a_sCurrentFileName == a_sFileName )
+   {
+      return 0;
+   }
+
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function bool IsFileSaved( CommandPresentationModuleInfo commandInfo )
+{
+   if( Application.GetFileName( Model.Filename ) == "" )
+   {
+      commandInfo.SetEnabled( false );
+      commandInfo.Status.SetHint( "You must save the file before you can invoke this command." );
+      return false;
+   }
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void GetConfigPaths( List p_lConfigNodes, StrList p_slConfigPaths )
+{
+   for( int nodes = 0; nodes < p_lConfigNodes.GetCount(); ++nodes )
+   {
+      Node a_oIsConfigNode = (Node)p_lConfigNodes.Get( nodes );
+      if( a_oIsConfigNode && a_oIsConfigNode.IsDerived( ConfigNode ) )
+      {
+         ConfigNode a_oConfigNode = (ConfigNode)a_oIsConfigNode;
+         p_slConfigPaths.Add( a_oConfigNode.GetAbsolutePath() );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function bool FolderExists( StrList p_slConfigPaths )
+{
+   bool a_bExists;
+   auto File a_oCheckDirExists;
+
+   for( int paths = 0; paths < p_slConfigPaths.GetCount(); ++paths )
+   {
+      string a_sFolderPath = p_slConfigPaths.Get( paths );
+      //Console.Message( "-" + a_sFolderPath );
+      if( a_sFolderPath == "" )
+      {
+         continue;
+      }
+
+      if( a_oCheckDirExists.FileExists( a_sFolderPath ) == false )
+      {
+         a_bExists = a_oCheckDirExists.CreateDirectory( a_sFolderPath );
+      }
+      else
+      {
+         a_bExists = true;
+      }
+
+      if( a_bExists == false )
+      {
+         Console.Message( "Failed while trying to create the following directory: " + a_sFolderPath );
+         break;
+      }
+   }
+
+   return a_bExists;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function bool DisplaySecurityWarning()
+{
+   // Warn the user that FTP is not secure, and that server credentials are stored in human-readable text.
+   string a_sSecurityWarning = 
+      "WARNING: This command creates and executes an FTP script that uploads proprietary content to an FTP server. " +
+      "FTP transmits server credentials in human-readable text format, and there are SERIOUS security risks associated " +
+      "with using FTP, including, but not limited to, discovery of server credentials by third parties, theft and destruction " +
+      "of sensitive information, and SERIOUS harm to your business, its employees, and its reputation. After this command completes " +
+      "the application will TRY to destroy the FTP script which contains the server credentials, but portions may remain " +
+      "in application or system memory where they may be accessible by malicious agents. Please restart your computer immediately " +
+      "after the upload process completes.\n\nIf you have any questions or concerns please click NO and contact a reputable Information " +
+      "Technology professional for information on how to securely transmit sensitive information from your business to a web server.\n\n" +
+      "SCENOMICS LLC has informed you of the SERIOUS risks associated with using FTP and you or your business agree to assume, without " +
+      "limitation, any and all liability which may arise as a result of using FTP to transmit sensitive information.";
+
+   if( Application.MessageBox( 1, a_sSecurityWarning, "WARNING" ) == false )
+   {
+      return false;
+   }
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void DisplayRestartWarning(
+
+   bool p_bDeletedFtpScript,
+   bool p_bDeletedBatchScript,
+   string p_sFtpScriptPath,
+   string p_sBatchScriptPath
+
+   )
+{
+   // Warn the user that they should restart to make sure FTP credentials don't remain in memory.
+   string a_sRestartWarning = 
+      "WARNING: After this command completes the application will TRY to destroy the FTP script which contains the server " +
+      "credentials, but portions may remain in application or system memory where they may be accessible by malicious agents. " +
+      "Please restart your computer immediately after the upload process completes.";
+      
+   if( p_bDeletedFtpScript )
+   {
+      a_sRestartWarning += "\n\nDeleted FTP script at: " + p_sFtpScriptPath;
+   }
+   else
+   {
+      a_sRestartWarning += "\n\nUnable to delete FTP script at: " + p_sFtpScriptPath;
+   }
+
+   if( p_bDeletedBatchScript )
+   {
+      a_sRestartWarning += "\n\nDeleted batch script at: " + p_sBatchScriptPath;
+   }
+   else
+   {
+      a_sRestartWarning += "\n\nUnable to delete batch script at: " + p_sBatchScriptPath;
+   }
+
+   Application.MessageBox( 0, a_sRestartWarning, "WARNING" );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////////////
+
+function void Upload( StrList p_slFtpDirectives, string p_sDirectory, string p_sFileSuffix )
+{
+   // Save the FTP script to disk.
+   auto TextFile a_oFtpScript;
+   auto FilePath a_oDeleteFile = new FilePath( p_sDirectory + "\\upload_" + p_sFileSuffix + ".bat" );
+
+   // DEBUG
+   //Console.Message( a_oDeleteFile.GetPath() );
+   if( a_oFtpScript.Open( a_oDeleteFile.GetPath(), false ) )
+   {
+      for( int i = 0; i < p_slFtpDirectives.GetCount(); ++i )
+      {
+         string a_sScriptItem = p_slFtpDirectives.GetAt(i) + "\n";
+         a_oFtpScript.Write( a_sScriptItem );
+      }
+      a_oFtpScript.Close();
+   }
+   else
+   {
+      string a_sMessage = "Unable to create a file at the following location: " +
+         a_oDeleteFile.GetPath();
+      Console.Error( a_sMessage );
+      return;
+   }
+
+   // DEBUG
+   //SpaStrListUtil.Out( p_slFtpDirectives );
+
+   // Write a batch file that calls the FTP scripts.
+   auto TextFile a_oExecuteFTP;
+   auto FilePath a_oExecuteFile = new FilePath( p_sDirectory + "\\runftp.bat" );
+
+   if( a_oExecuteFTP.Open( a_oExecuteFile.GetPath(), false ) )
+   {
+      a_oExecuteFTP.Write( "ftp -i -s:upload_" + p_sFileSuffix + ".bat\n" );
+      a_oExecuteFTP.Close();
+   }
+   else
+   {
+      string a_sMessage = "Unable to create a file at the following location: " +
+         a_oExecuteFile.GetPath();
+      Console.Error( a_sMessage );
+      return;
+   }
+
+   // Execute.
+   Application.RunProgram( "ftp -i -s:\"" + a_oDeleteFile.GetPath() + "\"", "Uploading file to server...", 1, 1 );
+
+   // Clean up.
+   string a_sFtpScriptPath = a_oDeleteFile.GetPath();
+   string a_sBatchScriptPath = a_oExecuteFile.GetPath();
+   bool a_bDeletedFtpScript = Application.DeleteFile( a_oDeleteFile.GetPath() );
+   bool a_bDeletedBatchScript = Application.DeleteFile( a_oExecuteFile.GetPath() );
+   DisplayRestartWarning( a_bDeletedFtpScript, a_bDeletedBatchScript, a_sFtpScriptPath, a_sBatchScriptPath );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool IsAsciiFile( string p_sFile )
+{
+   string a_sExtension = Application.GetFileExtension( p_sFile );
+
+   auto StrList a_slAsciiExtensions;
+   a_slAsciiExtensions.Add( "stm" );
+   a_slAsciiExtensions.Add( "htm" );
+   a_slAsciiExtensions.Add( "txt" );
+   a_slAsciiExtensions.Add( "xml" );
+   a_slAsciiExtensions.Add( "php" );
+   a_slAsciiExtensions.Add( "js"  );
+   a_slAsciiExtensions.Add( "css" );
+   a_slAsciiExtensions.Add( "inc" );
+   a_slAsciiExtensions.Add( "ssl" );
+   a_slAsciiExtensions.Add( "cpp" );
+   a_slAsciiExtensions.Add( "h"   );
+   a_slAsciiExtensions.Add( "bat" );
+   a_slAsciiExtensions.Add( "cmd" );
+   a_slAsciiExtensions.Add( "config" );
+   a_slAsciiExtensions.Add( "htaccess" );
+   a_slAsciiExtensions.Add( "script" );
+
+   for( int i = 0; i < a_slAsciiExtensions.GetCount(); ++i )
+   {
+      if( a_sExtension == a_slAsciiExtensions.GetAt( i ) )
+      {
+         return true;
+      }
+   }
+
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool CreateAsciiFile( string p_sFilePath )
+{
+   auto File a_oFile;
+   a_oFile.Filename = p_sFilePath;
+   a_oFile.FileAccess.Binary = true;
+
+   // Input / Output Direction
+   a_oFile.FileAccess.GenericWrite( true );
+   a_oFile.FileAccess.GenericRead( true );
+
+   // Share Mode
+   a_oFile.FileAccess.FileShareRead = false;
+   a_oFile.FileAccess.FileShareWrite = true;
+   a_oFile.FileAccess.FileShareDelete = false;
+
+   // Disposition
+   a_oFile.FileAccess.Disposition = 4;
+
+   // Attributes
+   a_oFile.FileAccess.FileAttributeNormal = true;
+
+   // Create the file.
+   a_oFile.CreateFile( p_sFilePath );
+
+   auto FilePath a_oExist = new FilePath( p_sFilePath );
+   if( a_oExist.FileExists() == false )
+   {
+      string a_sMessage = "Unable to create the following file: " + p_sFilePath;
+      Console.Error( a_sMessage );
+   }
+
+   a_oFile.ReleaseHandle();
+
+   return a_oExist.FileExists();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool CreateDirectory( string p_sDirectoryPath )
+{
+   bool a_bSuccess;
+   auto FilePath a_oFilePath = new FilePath( p_sDirectoryPath );
+   a_oFilePath.Canonicalize();
+   if( a_oFilePath.FileExists() )
+   {
+      string a_sMessage = "The following directory already exists: " + a_oFilePath.GetPath();
+      Console.Error( a_sMessage );
+   }
+   else
+   {
+      a_bSuccess = Application.CreateDirectory( a_oFilePath.GetPath() );
+      if( a_bSuccess == false )
+      {
+         string a_sMessage = "Unable to create the following directory: " +
+            a_oFilePath.GetPath();
+         Console.Error( a_sMessage );
+      }
+      else
+      {
+         a_bSuccess = true;
+      }
+   }
+
+   return a_bSuccess;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool IsXmlDocument( string p_sExtension )
+{
+   auto StrList a_slXmlExtensions;
+   a_slXmlExtensions.Add( "stm" );
+   a_slXmlExtensions.Add( "htm" );
+   a_slXmlExtensions.Add( "html" );
+   a_slXmlExtensions.Add( "xml" );
+
+   for( int i = 0; i < a_slXmlExtensions.GetCount(); ++i )
+   {
+      if( p_sExtension == a_slXmlExtensions.GetAt( i ) )
+      {
+         return true;
+      }
+   }
+
+   return false;
+}

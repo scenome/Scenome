@@ -1,0 +1,2356 @@
+////////////////////////////////////////////////////////////////////////////////
+// $file             CREATE_UTIL.SSL
+// $author           Scenomics LLC
+// $privacy          PUBLIC
+// $description      This script implements basic node creat functions.
+// $legal            Reserved * r_rLegal
+//
+// Copyright 2004-2014 Scenomics LLC. All Rights Reserved.
+////////////////////////////////////////////////////////////////////////////////
+
+import library "enumeration_util.ssl";
+import library "node_util.ssl";
+import library "remote_database_util.ssl";
+import library "template_util.ssl";
+import library "variable_util.ssl";
+library Create;
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetBaseScalarExpressionInfo( ExpressionInfo p_oExpressionInfo )
+{
+   p_oExpressionInfo.Cols = 1;
+   p_oExpressionInfo.Rows = 1;
+   p_oExpressionInfo.ArrayCount = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetBaseArrayExpressionInfo( ExpressionInfo p_oExpressionInfo )
+{
+   p_oExpressionInfo.ArrayCount = 4;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetBaseScalarArrayExpressionInfo( ExpressionInfo p_oExpressionInfo )
+{
+   p_oExpressionInfo.Cols = 1;
+   p_oExpressionInfo.Rows = 1;
+   p_oExpressionInfo.ArrayCount = 4;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetBaseTvec2ExpressionInfo( ExpressionInfo p_oExpressionInfo )
+{
+   p_oExpressionInfo.Cols = 1;
+   p_oExpressionInfo.Rows = 2;
+   p_oExpressionInfo.ArrayCount = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetBaseTvec3ExpressionInfo( ExpressionInfo p_oExpressionInfo )
+{
+   p_oExpressionInfo.Cols = 1;
+   p_oExpressionInfo.Rows = 3;
+   p_oExpressionInfo.ArrayCount = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetBaseTvec4ExpressionInfo( ExpressionInfo p_oExpressionInfo )
+{
+   p_oExpressionInfo.Cols = 1;
+   p_oExpressionInfo.Rows = 4;
+   p_oExpressionInfo.ArrayCount = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void SetBaseMatrixExpressionInfo(
+
+   ExpressionInfo p_oExpressionInfo,
+   int p_nCols,
+   int p_nRows,
+   int p_nCount
+   )
+{
+   p_oExpressionInfo.Cols = p_nCols;
+   p_oExpressionInfo.Rows = p_nRows;
+   p_oExpressionInfo.ArrayCount = p_nCount;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetCreateIndex( Group p_oSelGroup )
+{
+   int a_nCreateAtThisIndex = -1;
+   for( int index = 0; index < p_oSelGroup.ChildCount; ++index )
+   {
+      Node a_oChild = (Node)p_oSelGroup.Children[ index ];
+      if( a_oChild && a_oChild.IsDerived( VariableExpressionNode ) )
+      {
+         VariableExpressionNode a_oVariableExpressionNode =
+            (VariableExpressionNode)a_oChild;
+         if( a_oVariableExpressionNode.IsReturn() )
+         {
+            a_nCreateAtThisIndex = index;
+            break;
+         }
+      }
+   }
+
+   return a_nCreateAtThisIndex;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int ConvertBindingToQualifier( int p_iBindingType )
+{
+   if( p_iBindingType == Enum.Binding_Local() )
+   {
+      return -1;
+   }
+   else
+   if( p_iBindingType == Enum.Binding_Constant() )
+   {
+      return Enum.GLSL_Qualifier_Const();
+   }
+   else
+   if( p_iBindingType == Enum.Binding_Uniform() )
+   {
+      return Enum.GLSL_Qualifier_Uniform();
+   }
+   else
+   if( p_iBindingType == Enum.Binding_Attribute() )
+   {
+      return Enum.GLSL_Qualifier_Attribute();
+   }
+   else
+   if( p_iBindingType == Enum.Binding_Varying() )
+   {
+      return Enum.GLSL_Qualifier_Varying();
+   }
+   else
+   if( p_iBindingType == Enum.Binding_CompileDirective() )
+   {
+      return Enum.GLSL_Qualifier_CompileDirective();
+   }
+   else
+   if( p_iBindingType == Enum.Binding_Input() )
+   {
+      return Enum.GLSL_Qualifier_In();
+   }
+   else
+   if( p_iBindingType == Enum.Binding_Output() )
+   {
+      return Enum.GLSL_Qualifier_Out();
+   }
+   else
+   if( p_iBindingType == Enum.Binding_None() )
+   {
+      return -1;
+   }
+   else
+   if( p_iBindingType == Enum.Binding_Buffer() )
+   {
+      return Enum.GLSL_Qualifier_Buffer();
+   }
+   else
+   if( p_iBindingType == Enum.Binding_Subroutine() )
+   {
+      return Enum.GLSL_Qualifier_Subroutine();
+   }
+
+   return -1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetBindingTypeFromSelectionContext()
+{
+   int a_nBindingType = Enum.Binding_Local();
+
+   for( int a_nSelIndex = 0; a_nSelIndex < Model.GetSelectCount(); ++a_nSelIndex )
+   {
+      Node a_oSelectedNode = (Node)Model.GetSelectedNode( a_nSelIndex ).GetNode();
+
+      if(   a_oSelectedNode && a_oSelectedNode.IsDerived( UniformPaletteNode ) ||
+            a_oSelectedNode && a_oSelectedNode.IsDerived( Program ) ||
+            a_oSelectedNode && a_oSelectedNode.IsDerived( UniformArrayNode ) ||
+            a_oSelectedNode && a_oSelectedNode.IsDerived( UniformBufferBindNode ) )
+      {
+         a_nBindingType = Enum.Binding_Uniform();
+      }
+   }
+
+   return a_nBindingType;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ConfigureVariableNodeForSelectionContext( List p_lNodes, int p_iBindingType )
+{
+   for( int i = 0; i < p_lNodes.GetCount(); ++i )
+   {
+      VariableNode a_oVariableNode = (VariableNode)p_lNodes.Get( i );
+      a_oVariableNode.BindingType = p_iBindingType;
+      a_oVariableNode.QualifierList.ModifyQualifier( true, ConvertBindingToQualifier( p_iBindingType ) );
+      a_oVariableNode.Name = a_oVariableNode.UpdateName();
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function StatementNode CreateStatementNode(
+
+   string p_sNodeName,
+   int p_iStatementType,
+   bool p_bRuntimeLogicEnabled
+
+   )
+{
+   StatementNode a_oNewStatementNode = new StatementNode;
+   a_oNewStatementNode.Name = p_sNodeName;
+   a_oNewStatementNode.StatementType = p_iStatementType;
+   a_oNewStatementNode.RuntimeLogic = p_bRuntimeLogicEnabled;
+   return a_oNewStatementNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function ExpressionNode CreateExpressionNode( string p_sNodeName, int p_iLanguage )
+{
+   ExpressionNode a_oExpressionNode = new ExpressionNode;
+   a_oExpressionNode.Name = p_sNodeName;
+   a_oExpressionNode.Language = p_iLanguage;
+   return a_oExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function TimerNode CreateTimerNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   int p_iValue
+
+   )
+{
+   TimerNode a_oTimerNode = new TimerNode;
+   a_oTimerNode.Variable = p_sVariableName;
+   a_oTimerNode.BindingType = p_iBindingType;
+   a_oTimerNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oTimerNode.Value = p_iValue;
+   a_oTimerNode.Name = a_oTimerNode.UpdateName();
+   return a_oTimerNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function IntegerNode CreateIntegerNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   int p_iValue
+
+   )
+{
+   IntegerNode a_oIntegerNode = new IntegerNode;
+   a_oIntegerNode.Variable = p_sVariableName;
+   a_oIntegerNode.BindingType = p_iBindingType;
+   a_oIntegerNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oIntegerNode.Value = p_iValue;
+   a_oIntegerNode.Name = a_oIntegerNode.UpdateName();
+   return a_oIntegerNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function UnsignedIntegerNode CreateUnsignedIntegerNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   int p_iValue
+
+   )
+{
+   UnsignedIntegerNode a_oUnsignedIntegerNode = new UnsignedIntegerNode;
+   a_oUnsignedIntegerNode.Variable = p_sVariableName;
+   a_oUnsignedIntegerNode.BindingType = p_iBindingType;
+   a_oUnsignedIntegerNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oUnsignedIntegerNode.Value = p_iValue;
+   a_oUnsignedIntegerNode.Name = a_oUnsignedIntegerNode.UpdateName();
+   return a_oUnsignedIntegerNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function FloatNode CreateFloatNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   double p_dValue
+
+   )
+{
+   FloatNode a_oFloatNode = new FloatNode;
+   a_oFloatNode.BindingType = p_iBindingType;
+   a_oFloatNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oFloatNode.Variable = p_sVariableName;
+   a_oFloatNode.Value = p_dValue;
+   a_oFloatNode.Name = a_oFloatNode.UpdateName();
+   return a_oFloatNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function VectorNode CreateVectorNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   int p_iDimension,
+   Vec4 p_vVec4
+
+   )
+{
+   VectorNode a_oVectorNode = new VectorNode;
+   a_oVectorNode.Variable = p_sVariableName;
+   a_oVectorNode.BindingType = p_iBindingType;
+   a_oVectorNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oVectorNode.Dimension = p_iDimension;
+   a_oVectorNode.Value = p_vVec4;
+   a_oVectorNode.Name = a_oVectorNode.UpdateName();
+   return a_oVectorNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function DynamicVectorNode CreateDynamicVectorNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   int p_iDimension,
+   Vec4 p_vVec4,
+   Node p_oDataSource
+
+   )
+{
+   DynamicVectorNode a_oDynamicVectorNode = new DynamicVectorNode;
+   a_oDynamicVectorNode.Variable = p_sVariableName;
+   a_oDynamicVectorNode.BindingType = p_iBindingType;
+   a_oDynamicVectorNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oDynamicVectorNode.Dimension = p_iDimension;
+   a_oDynamicVectorNode.Value = p_vVec4;
+   a_oDynamicVectorNode.DataSource = p_oDataSource;
+   a_oDynamicVectorNode.Name = a_oDynamicVectorNode.UpdateName();
+   return a_oDynamicVectorNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function BooleanNode CreateBooleanNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   bool p_bValue
+
+   )
+{
+   BooleanNode a_oBooleanNode = new BooleanNode;
+   a_oBooleanNode.Variable = p_sVariableName;
+   a_oBooleanNode.BindingType = p_iBindingType;
+   a_oBooleanNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oBooleanNode.Value = p_bValue;
+   a_oBooleanNode.Name = a_oBooleanNode.UpdateName();
+   return a_oBooleanNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function BooleanVectorNode CreateBooleanVectorNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   int p_nDimension,
+   Vec4I p_vBvec
+
+   )
+{
+   BooleanVectorNode a_oBooleanVectorNode = new BooleanVectorNode;
+   a_oBooleanVectorNode.Variable = p_sVariableName;
+   a_oBooleanVectorNode.BindingType = p_iBindingType;
+   a_oBooleanVectorNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oBooleanVectorNode.Dimension = p_nDimension;
+   a_oBooleanVectorNode.Value = p_vBvec;
+   a_oBooleanVectorNode.Name = a_oBooleanVectorNode.UpdateName();
+   return a_oBooleanVectorNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function ColorNode CreateColorNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   Color p_oColor
+
+   )
+{
+   ColorNode a_oColorNode = new ColorNode;
+   a_oColorNode.Variable = p_sVariableName;
+   a_oColorNode.BindingType = p_iBindingType;
+   a_oColorNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oColorNode.Value.SetRGBA( p_oColor.R, p_oColor.G, p_oColor.B, p_oColor.A );
+   a_oColorNode.Name = a_oColorNode.UpdateName();
+   return a_oColorNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function SamplerNode CreateSamplerNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   int p_iSamplerType
+
+   )
+{
+   SamplerNode a_oSamplerNode = new SamplerNode;
+   a_oSamplerNode.Variable = p_sVariableName;
+   a_oSamplerNode.BindingType = p_iBindingType;
+   a_oSamplerNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oSamplerNode.SamplerType = p_iSamplerType;
+   a_oSamplerNode.Name = a_oSamplerNode.UpdateName();
+   return a_oSamplerNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function DynamicSamplerNode CreateDynamicSamplerNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   int p_iSamplerType,
+   Node p_oDataSource
+
+   )
+{
+   DynamicSamplerNode a_oDynamicSamplerNode = new DynamicSamplerNode;
+   a_oDynamicSamplerNode.Variable = p_sVariableName;
+   a_oDynamicSamplerNode.BindingType = p_iBindingType;
+   a_oDynamicSamplerNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oDynamicSamplerNode.SamplerType = p_iSamplerType;
+   a_oDynamicSamplerNode.DataSource = p_oDataSource;
+   a_oDynamicSamplerNode.Name = a_oDynamicSamplerNode.UpdateName();
+   return a_oDynamicSamplerNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function MatrixNode CreateMatrixNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   int p_iRows,
+   int p_iCols,
+   Matrix p_oMatrix
+
+   )
+{
+   MatrixNode a_oMatrixNode = new MatrixNode;
+   a_oMatrixNode.Variable = p_sVariableName;
+   a_oMatrixNode.BindingType = p_iBindingType;
+   a_oMatrixNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oMatrixNode.Rows = p_iRows;
+   a_oMatrixNode.Cols = p_iCols;
+   a_oMatrixNode.Value = p_oMatrix;
+   a_oMatrixNode.Name = a_oMatrixNode.UpdateName();
+   return a_oMatrixNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function MatrixArrayNode CreateMatrixArrayNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   int p_iRows,
+   int p_iCols,
+   int p_nCount
+
+   )
+{
+   MatrixArrayNode a_oMatrixArrayNode = new MatrixArrayNode;
+   a_oMatrixArrayNode.Variable = p_sVariableName;
+   a_oMatrixArrayNode.BindingType = p_iBindingType;
+   a_oMatrixArrayNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oMatrixArrayNode.Rows = p_iRows;
+   a_oMatrixArrayNode.Cols = p_iCols;
+   a_oMatrixArrayNode.Count = p_nCount;
+   a_oMatrixArrayNode.Name = a_oMatrixArrayNode.UpdateName();
+   return a_oMatrixArrayNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function LightMatrixNode CreateLightMatrixNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   int p_iRows,
+   int p_iCols,
+   Matrix p_oMatrix
+
+   )
+{
+   LightMatrixNode a_oLightMatrixNode = new LightMatrixNode;
+   a_oLightMatrixNode.Variable = p_sVariableName;
+   a_oLightMatrixNode.BindingType = p_iBindingType;
+   a_oLightMatrixNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oLightMatrixNode.Name = a_oLightMatrixNode.UpdateName();
+   return a_oLightMatrixNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function IntegerArrayNode CreateIntegerArrayNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   IntArray p_aiValues
+
+   )
+{
+   IntegerArrayNode a_oIntegerArrayNode = new IntegerArrayNode;
+   a_oIntegerArrayNode.Count = p_aiValues.Count;
+   for( int vals = 0; vals < p_aiValues.Count; ++vals )
+   {
+      a_oIntegerArrayNode.Objects[ vals ] = p_aiValues.Objects[ vals ];
+   }
+
+   a_oIntegerArrayNode.Variable = p_sVariableName;
+   a_oIntegerArrayNode.BindingType = p_iBindingType;
+   a_oIntegerArrayNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oIntegerArrayNode.Name = a_oIntegerArrayNode.UpdateName();
+   return a_oIntegerArrayNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function FloatArrayNode CreateFloatArrayNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   VariantArray p_adValues
+
+   )
+{
+   FloatArrayNode a_oFloatArrayNode = new FloatArrayNode;
+   a_oFloatArrayNode.Count = p_adValues.Count;
+   for( int vals = 0; vals < p_adValues.Count; ++vals )
+   {
+      a_oFloatArrayNode.Objects[ vals ] = p_adValues.Objects[ vals ].Double;
+   }
+
+   a_oFloatArrayNode.Variable = p_sVariableName;
+   a_oFloatArrayNode.BindingType = p_iBindingType;
+   a_oFloatArrayNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oFloatArrayNode.Name = a_oFloatArrayNode.UpdateName();
+   return a_oFloatArrayNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function ColorArrayNode CreateColorArrayNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   VariantArray p_aiValues
+
+   )
+{
+   if( Math.ModI( p_aiValues.Count, 4 ) == 0 )
+   {
+      ColorArrayNode a_oColorArrayNode = new ColorArrayNode;
+      int a_iArrayElements = p_aiValues.Count / 4;
+      a_oColorArrayNode.Count = a_iArrayElements;
+
+      // Copy the elements over. Use a single for() loop
+      // with an interior counter so we can do this as
+      // quickly and efficiently as possible.
+      int counter = 0;
+      for( int elements = 0; elements < a_iArrayElements; ++elements )
+      {
+         a_oColorArrayNode.Objects[elements].R =
+            p_aiValues.Objects[counter].Int;
+            ++counter;
+
+         a_oColorArrayNode.Objects[elements].G =
+            p_aiValues.Objects[counter].Int;
+            ++counter;
+
+         a_oColorArrayNode.Objects[elements].B =
+            p_aiValues.Objects[counter].Int;
+            ++counter;
+
+         a_oColorArrayNode.Objects[elements].A =
+            p_aiValues.Objects[counter].Int;
+            ++counter;
+      }
+
+      a_oColorArrayNode.Variable = p_sVariableName;
+      a_oColorArrayNode.BindingType = p_iBindingType;
+      a_oColorArrayNode.QualifierList.ModifyQualifier(
+         true, ConvertBindingToQualifier( p_iBindingType ) );
+      a_oColorArrayNode.Name = a_oColorArrayNode.UpdateName();
+      return a_oColorArrayNode;
+   }
+   else
+   {
+      string a_sMessage = "The VariantArray p_aiValues array member count" +
+         " must be a multiple of 4. Current count: " + p_aiValues.Count;
+      Console.GenerateOutputMessage( a_sMessage, "ASSERT" );
+   }
+
+   return null;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function VectorArrayNode CreateVectorArrayNode(
+
+   int p_iBindingType,
+   string p_sVariableName,
+   VariantArray p_adValues
+
+   )
+{
+   VectorArrayNode a_oVectorArrayNode = new VectorArrayNode;
+   a_oVectorArrayNode.Count = p_adValues.Count / 4;
+
+   // Copy the elements over. Use a single for() loop
+   // with an interior counter so we can do this as
+   // quickly and efficiently as possible.
+   int counter = 0;
+   for( int elements = 0; elements < a_oVectorArrayNode.Count; ++elements )
+   {
+      a_oVectorArrayNode.Objects[elements].X =
+         p_adValues.Objects[counter].Double;
+         ++counter;
+
+      a_oVectorArrayNode.Objects[elements].Y =
+         p_adValues.Objects[counter].Double;
+         ++counter;
+
+      a_oVectorArrayNode.Objects[elements].Z =
+         p_adValues.Objects[counter].Double;
+         ++counter;
+
+      a_oVectorArrayNode.Objects[elements].W =
+         p_adValues.Objects[counter].Double;
+         ++counter;
+   }
+
+   a_oVectorArrayNode.Variable = p_sVariableName;
+   a_oVectorArrayNode.BindingType = p_iBindingType;
+   a_oVectorArrayNode.QualifierList.ModifyQualifier(
+      true, ConvertBindingToQualifier( p_iBindingType ) );
+   a_oVectorArrayNode.Name = a_oVectorArrayNode.UdpateName();
+   return a_oVectorArrayNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool IsTypeSelected( TypeInformation p_oTypeInfo )
+{
+   if( Model.GetSelectCount() == 1 )
+   {
+      Node a_oSelNode = (Node)Model.GetSelectedNode(0).GetNode();
+      if( a_oSelNode && a_oSelNode.IsDerived( p_oTypeInfo ) )
+      {
+         return true;
+      }
+   }
+
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void VariableNodeContextFilter( CommandPresentationModuleInfo commandInfo, string p_sHintText )
+{
+   if( IsTypeSelected( UniformPaletteNode ) || IsTypeSelected( Program ) || IsTypeSelected( UniformBufferBindNode ) )
+   {
+      commandInfo.SetEnabled( true );
+      commandInfo.Status.SetHint( p_sHintText );
+      return;
+   }
+
+   commandInfo.Status.SetHint( "Please select a UniformPaletteNode, Program node, or UniformBufferNode." );
+   commandInfo.SetEnabled( false );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool AddNodeByContext( Node p_oNode )
+{
+   if( IsTypeSelected( Group ) )
+   {
+      Group a_oContainer = (Group)Model.GetFirstSelectedNode().GetNode();
+      Model.AddNode( p_oNode, a_oContainer, -1 );
+      return true;
+   }
+
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ToggleVariableArray( VariableNode p_oVariableNode )
+{
+   int a_iChildIndex = p_oVariableNode.ChildIndex();
+   Group a_oParent = p_oVariableNode.Parent();
+
+   if(   p_oVariableNode.IsDerived( DynamicBooleanNode ) ||
+         p_oVariableNode.IsDerived( DynamicIntegerNode ) ||
+         p_oVariableNode.IsDerived( DynamicColorNode )   ||
+         p_oVariableNode.IsDerived( DynamicVectorNode )  ||
+         p_oVariableNode.IsDerived( DynamicMatrixNode ) )
+   {
+      string a_sMessage = "Array conversion is not supported for this type of VariableNode.\n" +
+         "The software has created an appropriate array variable and copied the node's \n" +
+         "current value to the first array index of the new variable. Please note that \n" +
+         "subsequent changes to the source variable will not be copied into the destination variable.";
+      Console.Error( a_sMessage );
+   }
+   else
+   if( p_oVariableNode.IsDerived( SamplerNode ) ||
+      p_oVariableNode.IsDerived( StringNode ) )
+   {
+      string a_sMessage = "Array conversion is not supported for this type of variable.";
+      Console.Error( a_sMessage );
+   }
+   else
+   if( p_oVariableNode.IsDerived( BooleanNode ) )
+   {
+      // We don't support any BooleanArrayNode, but
+      // the IntegerArrayNode will work fine.
+      BooleanNode a_oBooleanNode = (BooleanNode)p_oVariableNode;
+      int a_iValue = a_oBooleanNode.Value;
+
+      // Create an IntArray that has a single
+      // value storing the current int value.
+      auto IntArray a_aiArrayValues;
+      a_aiArrayValues.Add( a_iValue );
+
+      // Create an IntegerArrayNode
+      IntegerArrayNode a_oIntegerArrayNode =
+         CreateIntegerArrayNode( a_oBooleanNode.BindingType,
+            a_oBooleanNode.Variable, a_aiArrayValues );
+      
+      Model.AddNode( a_oIntegerArrayNode, a_oParent, -1 );
+   }
+   if( p_oVariableNode.IsDerived( IntegerNode ) )
+   {
+      IntegerNode a_oIntegerNode = (IntegerNode)p_oVariableNode;
+
+      // Create an IntArray that has a single
+      // value storing the current int value.
+      auto IntArray a_aiArrayValues;
+      a_aiArrayValues.Add( a_oIntegerNode.Value );
+
+      // Create an IntegerArrayNode
+      IntegerArrayNode a_oIntegerArrayNode =
+         CreateIntegerArrayNode( a_oIntegerNode.BindingType,
+            a_oIntegerNode.Variable, a_aiArrayValues );
+      
+      Model.AddNode( a_oIntegerArrayNode, a_oParent, -1 );
+   }
+   else
+   if( p_oVariableNode.IsDerived( FloatNode ) )
+   {
+      FloatNode a_oFloatNode = (FloatNode)p_oVariableNode;
+
+      // Create a VariantArray that has a single
+      // value storing the current double value.
+      auto VariantArray a_adArrayValues;
+      a_adArrayValues.Count = 1;
+      a_adArrayValues.Objects[0].Double = a_oFloatNode.Value;
+
+      // Create an FloatArrayNode
+      FloatArrayNode a_oFloatArrayNode =
+         CreateFloatArrayNode( a_oFloatNode.BindingType,
+            a_oFloatNode.Variable, a_adArrayValues );
+      
+      Model.AddNode( a_oFloatArrayNode, a_oParent, -1 );
+   }
+   else
+   if( p_oVariableNode.IsDerived( ColorNode ) )
+   {
+      ColorNode a_oColorNode = (ColorNode)p_oVariableNode;
+
+      // Create a VariantArray that
+      // stores color values;
+      auto VariantArray a_acArrayValues;
+      a_acArrayValues.Count = 4;
+      a_acArrayValues.Objects[0].Int = a_oColorNode.Value.R;
+      a_acArrayValues.Objects[1].Int = a_oColorNode.Value.G;
+      a_acArrayValues.Objects[2].Int = a_oColorNode.Value.B;
+      a_acArrayValues.Objects[3].Int = a_oColorNode.Value.A;
+
+      ColorArrayNode a_oColorArrayNode =
+         CreateColorArrayNode( a_oColorNode.BindingType,
+            a_oColorNode.Variable, a_acArrayValues );
+
+      if( a_oColorArrayNode )
+      {
+         Model.AddNode( a_oColorArrayNode, a_oParent, -1 );
+      }
+   }
+   else
+   if( p_oVariableNode.IsDerived( VectorNode ) )
+   {
+      VectorNode a_oVectorNode = (VectorNode)p_oVariableNode;
+
+      // Create a VariantArray that has one
+      // double for each vector component.
+      auto VariantArray a_adArrayValues;
+      a_adArrayValues.Count = 4;
+      a_adArrayValues.Objects[0].Double = a_oVectorNode.Value.X;
+      a_adArrayValues.Objects[1].Double = a_oVectorNode.Value.Y;
+      a_adArrayValues.Objects[2].Double = a_oVectorNode.Value.Z;
+      a_adArrayValues.Objects[3].Double = a_oVectorNode.Value.W;
+
+      // Create a VectorArrayNode
+      VectorArrayNode a_oVectorArrayNode =
+         CreateVectorArrayNode( a_oVectorNode.BindingType,
+            a_oVectorNode.Variable, a_adArrayValues );
+      
+      if( a_oVectorArrayNode )
+      {
+         Model.AddNode( a_oVectorArrayNode, a_oParent, -1 );
+      }
+   }
+   else
+   if( p_oVariableNode.IsDerived( MatrixNode ) )
+   {
+      MatrixNode a_oMatrixNode = (MatrixNode)p_oVariableNode;
+      Matrix m = a_oMatrixNode.Value;
+
+      // Create a VariantArray and compute
+      // the number of matrix elements.
+      auto VariantArray a_adArrayValues;
+      int a_iElements = a_oMatrixNode.Rows * a_oMatrixNode.Cols;
+
+      // The matrix might have an element count such as 6 that
+      // is not a multiple of 4. If that's the case, compute the 
+      // next highest multiple of 4 and store in nhm.
+      int nhm = a_iElements;
+      while( Math.ModI( nhm, 4 ) != 0 )
+      {
+         ++nhm;
+      }
+
+      // Set the array size to the value that
+      // is guakanteed to be a multiple of 4.
+      a_adArrayValues.Count = nhm;
+
+      // Copy matrix values into our array of doubles.
+      // Set any overflow values to 0.0
+      for( int elements = 0; elements < nhm; ++elements )
+      {
+         if( elements < a_iElements )
+         {
+            a_adArrayValues.Objects[elements].Double =
+               m.Elements[elements];
+         }
+         else
+         {
+            a_adArrayValues.Objects[elements].Double = 0.0;
+         }
+      }
+
+      // Create a VectorArrayNode
+      VectorArrayNode a_oVectorArrayNode =
+         CreateVectorArrayNode( a_oMatrixNode.BindingType,
+            a_oMatrixNode.Variable, a_adArrayValues );
+      
+      if( a_oVectorArrayNode )
+      {
+         Model.AddNode( a_oVectorArrayNode, a_oParent, -1 );
+      }
+   }
+   else
+   if( p_oVariableNode.IsDerived( IntegerArrayNode ) )
+   {
+      IntegerArrayNode a_oIntegerArrayNode =
+         (IntegerArrayNode)p_oVariableNode;
+      
+      IntegerNode a_oIntegerNode =
+         CreateIntegerNode( a_oIntegerArrayNode.BindingType,
+         a_oIntegerArrayNode.Variable, a_oIntegerArrayNode.Objects[ 0 ] );
+
+      Model.AddNode( a_oIntegerNode, a_oParent, -1 );
+   }
+   else
+   if( p_oVariableNode.IsDerived( FloatArrayNode ) )
+   {
+      FloatArrayNode a_oFloatArrayNode =
+         (FloatArrayNode)p_oVariableNode;
+      
+      for( int count = 0; count < a_oFloatArrayNode.Count; ++count )
+      {
+         FloatNode a_oFloatNode =
+            CreateFloatNode( a_oFloatArrayNode.BindingType,
+            a_oFloatArrayNode.Variable + "-" + count,
+            a_oFloatArrayNode.Objects[ count ] );
+
+         Model.AddNode( a_oFloatNode, a_oParent, -1 );
+      }
+   }
+   else
+   if( p_oVariableNode.IsDerived( ColorArrayNode ) )
+   {
+      ColorArrayNode a_oColorArrayNode =
+         (ColorArrayNode)p_oVariableNode;
+      
+      ColorNode a_oColorNode =
+         CreateColorNode( a_oColorArrayNode.BindingType,
+         a_oColorArrayNode.Variable, a_oColorArrayNode.Objects[ 0 ] );
+
+      Model.AddNode( a_oColorNode, a_oParent, -1 );
+   }
+   else
+   if( p_oVariableNode.IsDerived( VectorArrayNode ) )
+   {
+      VectorArrayNode a_oVectorArrayNode =
+         (VectorArrayNode)p_oVariableNode;
+
+      for( int count = 0; count < a_oVectorArrayNode.Count; ++count )
+      {
+         VectorNode a_oVectorNode =
+            CreateVectorNode( a_oVectorArrayNode.BindingType,
+            a_oVectorArrayNode.Variable + "-" + count, 4,
+            a_oVectorArrayNode.Objects[ count ] );
+
+         Model.AddNode( a_oVectorNode, a_oParent, -1 );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void ToggleVariableArrayState( List p_lNodeSet, Node p_oIsVariableNode )
+{
+   if( p_oIsVariableNode )
+   {
+      VariableNode a_oVariableNode = (VariableNode)p_oIsVariableNode;
+      ToggleVariableArray( a_oVariableNode );
+   }
+   else
+   if( p_lNodeSet )
+   {
+      for( int nodes = 0; nodes < p_lNodeSet.GetCount(); ++nodes )
+      {
+         VariableNode a_oVariableNode = (VariableNode)p_lNodeSet.Get( nodes );
+         ToggleVariableArray( a_oVariableNode );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function BinaryOperatorNode CreateBinaryOperatorNode( string p_sName, int p_iOperator )
+{
+   BinaryOperatorNode a_oBinaryOperatorNode = new BinaryOperatorNode;
+   a_oBinaryOperatorNode.Name = p_sName;
+   a_oBinaryOperatorNode.Operator = p_iOperator;
+   return a_oBinaryOperatorNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function SamplerExpressionNode CreateSamplerExpressionNode( string p_sName,
+   int p_iExpressionSide, int p_iSamplerType )
+{
+   SamplerExpressionNode a_oSamplerExpressionNode = new SamplerExpressionNode;
+   a_oSamplerExpressionNode.Name = p_sName;
+   a_oSamplerExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oSamplerExpressionNode.GenerateExpression( SamplerExpressionGenerator );
+   return a_oSamplerExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function BooleanExpressionNode CreateBooleanExpressionNode( string p_sName, int p_iExpressionSide )
+{
+   BooleanExpressionNode a_oBooleanExpressionNode = new BooleanExpressionNode;
+   a_oBooleanExpressionNode.Name = p_sName;
+   a_oBooleanExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oBooleanExpressionNode.GenerateExpression( BooleanExpressionGenerator );
+   return a_oBooleanExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function BooleanArrayExpressionNode CreateBooleanArrayExpressionNode( string p_sName, int p_iExpressionSide )
+{
+   BooleanArrayExpressionNode a_oBooleanArrayExpressionNode = new BooleanArrayExpressionNode;
+   a_oBooleanArrayExpressionNode.Name = p_sName;
+   a_oBooleanArrayExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oBooleanArrayExpressionNode.GenerateExpression( BooleanArrayExpressionGenerator );
+   return a_oBooleanArrayExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function BooleanVectorExpressionNode CreateBooleanVectorExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide,
+   int p_iDimension
+
+   )
+{
+   BooleanVectorExpressionNode a_oBooleanVectorExpressionNode = new BooleanVectorExpressionNode;
+   a_oBooleanVectorExpressionNode.Name = p_sName;
+   a_oBooleanVectorExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oBooleanVectorExpressionNode.Dimension = p_iDimension;
+   a_oBooleanVectorExpressionNode.GenerateExpression( BooleanVectorExpressionGenerator );
+   return a_oBooleanVectorExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function BooleanVectorArrayExpressionNode CreateBooleanVectorArrayExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide,
+   int p_iCount,
+   int p_iVectorDimension
+
+   )
+{
+   BooleanVectorArrayExpressionNode a_oBooleanVectorArrayExpressionNode = new BooleanVectorArrayExpressionNode;
+   a_oBooleanVectorArrayExpressionNode.Name = p_sName;
+   a_oBooleanVectorArrayExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oBooleanVectorArrayExpressionNode.Dimension = p_iVectorDimension;
+   a_oBooleanVectorArrayExpressionNode.Count = p_iCount;
+   a_oBooleanVectorArrayExpressionNode.GenerateExpression( BooleanVectorArrayExpressionGenerator );
+   return a_oBooleanVectorArrayExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function IntegerExpressionNode CreateIntegerExpressionNode( string p_sName, int p_iExpressionSide )
+{
+   IntegerExpressionNode a_oIntegerExpressionNode = new IntegerExpressionNode;
+   a_oIntegerExpressionNode.Name = p_sName;
+   a_oIntegerExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oIntegerExpressionNode.GenerateExpression( IntegerExpressionGenerator );
+   return a_oIntegerExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function IntegerArrayExpressionNode CreateIntegerArrayExpressionNode( string p_sName, int p_iExpressionSide )
+{
+   IntegerArrayExpressionNode a_oIntegerArrayExpressionNode = new IntegerArrayExpressionNode;
+   a_oIntegerArrayExpressionNode.Name = p_sName;
+   a_oIntegerArrayExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oIntegerArrayExpressionNode.GenerateExpression( IntegerArrayExpressionGenerator );
+   return a_oIntegerArrayExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function IntegerVectorExpressionNode CreateIntegerVectorExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide,
+   int p_iDimension
+
+   )
+{
+   IntegerVectorExpressionNode a_oIntegerVectorExpressionNode = new IntegerVectorExpressionNode;
+   a_oIntegerVectorExpressionNode.Name = p_sName;
+   a_oIntegerVectorExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oIntegerVectorExpressionNode.Dimension = p_iDimension;
+   a_oIntegerVectorExpressionNode.GenerateExpression( IntegerVectorExpressionGenerator );
+   return a_oIntegerVectorExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function IntegerVectorArrayExpressionNode CreateIntegerVectorArrayExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide,
+   int p_iCount,
+   int p_iVectorDimension
+
+   )
+{
+   IntegerVectorArrayExpressionNode a_oIntegerVectorArrayExpressionNode = new IntegerVectorArrayExpressionNode;
+   a_oIntegerVectorArrayExpressionNode.Name = p_sName;
+   a_oIntegerVectorArrayExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oIntegerVectorArrayExpressionNode.Dimension = p_iVectorDimension;
+   a_oIntegerVectorArrayExpressionNode.Count = p_iCount;
+   a_oIntegerVectorArrayExpressionNode.GenerateExpression( IntegerVectorArrayExpressionGenerator );
+   return a_oIntegerVectorArrayExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function UnsignedIntegerExpressionNode CreateUnsignedIntegerExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide
+
+   )
+{
+   UnsignedIntegerExpressionNode a_oUnsignedIntegerExpressionNode =
+      new UnsignedIntegerExpressionNode;
+   a_oUnsignedIntegerExpressionNode.Name = p_sName;
+   a_oUnsignedIntegerExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oUnsignedIntegerExpressionNode.GenerateExpression( UnsignedIntegerExpressionGenerator );
+   return a_oUnsignedIntegerExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function UnsignedIntegerArrayExpressionNode CreateUnsignedIntegerArrayExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide
+
+   )
+{
+   UnsignedIntegerArrayExpressionNode a_oUnsignedIntegerArrayExpressionNode =
+      new UnsignedIntegerArrayExpressionNode;
+   a_oUnsignedIntegerArrayExpressionNode.Name = p_sName;
+   a_oUnsignedIntegerArrayExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oUnsignedIntegerArrayExpressionNode.GenerateExpression( UnsignedIntegerArrayExpressionGenerator );
+   return a_oUnsignedIntegerArrayExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function UnsignedIntegerVectorExpressionNode CreateUnsignedIntegerVectorExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide,
+   int p_iDimension
+
+   )
+{
+   UnsignedIntegerVectorExpressionNode a_oUnsignedIntegerVectorExpressionNode =
+      new UnsignedIntegerVectorExpressionNode;
+   a_oUnsignedIntegerVectorExpressionNode.Name = p_sName;
+   a_oUnsignedIntegerVectorExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oUnsignedIntegerVectorExpressionNode.Dimension = p_iDimension;
+   a_oUnsignedIntegerVectorExpressionNode.GenerateExpression(
+      UnsignedIntegerVectorExpressionGenerator );
+   return a_oUnsignedIntegerVectorExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function UnsignedIntegerVectorArrayExpressionNode CreateUnsignedIntegerVectorArrayExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide,
+   int p_iCount,
+   int p_iVectorDimension
+
+   )
+{
+   UnsignedIntegerVectorArrayExpressionNode a_oUnsignedIntegerVectorArrayExpressionNode =
+      new UnsignedIntegerVectorArrayExpressionNode;
+   a_oUnsignedIntegerVectorArrayExpressionNode.Name = p_sName;
+   a_oUnsignedIntegerVectorArrayExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oUnsignedIntegerVectorArrayExpressionNode.Dimension = p_iVectorDimension;
+   a_oUnsignedIntegerVectorArrayExpressionNode.Count = p_iCount;
+   a_oUnsignedIntegerVectorArrayExpressionNode.GenerateExpression(
+      UnsignedIntegerVectorArrayExpressionGenerator );
+   return a_oUnsignedIntegerVectorArrayExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function FloatExpressionNode CreateFloatExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide
+
+   )
+{
+   FloatExpressionNode a_oFloatExpressionNode = new FloatExpressionNode;
+   a_oFloatExpressionNode.Name = p_sName;
+   a_oFloatExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oFloatExpressionNode.GenerateExpression( FloatExpressionGenerator );
+   return a_oFloatExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function FloatArrayExpressionNode CreateFloatArrayExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide
+
+   )
+{
+   FloatArrayExpressionNode a_oFloatArrayExpressionNode = new FloatArrayExpressionNode;
+   a_oFloatArrayExpressionNode.Name = p_sName;
+   a_oFloatArrayExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oFloatArrayExpressionNode.GenerateExpression( FloatArrayExpressionGenerator );
+   return a_oFloatArrayExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function VectorExpressionNode CreateVectorExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide,
+   int p_iDimension
+
+   )
+{
+   VectorExpressionNode a_oVectorExpressionNode = new VectorExpressionNode;
+   a_oVectorExpressionNode.Name = p_sName;
+   a_oVectorExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oVectorExpressionNode.Dimension = p_iDimension;
+   a_oVectorExpressionNode.GenerateExpression( VectorExpressionGenerator );
+   return a_oVectorExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function VectorArrayExpressionNode CreateVectorArrayExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide,
+   int p_iCount,
+   int p_iVectorDimension
+
+   )
+{
+   VectorArrayExpressionNode a_oVectorArrayExpressionNode =
+      new VectorArrayExpressionNode;
+   a_oVectorArrayExpressionNode.Name = p_sName;
+   a_oVectorArrayExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oVectorArrayExpressionNode.Dimension = p_iVectorDimension;
+   a_oVectorArrayExpressionNode.Count = p_iCount;
+   a_oVectorArrayExpressionNode.GenerateExpression( VectorArrayExpressionGenerator );
+   return a_oVectorArrayExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function MatrixExpressionNode CreateMatrixExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide,
+   int p_iCols,
+   int p_iRows
+
+   )
+{
+   MatrixExpressionNode a_oMatrixExpressionNode = new MatrixExpressionNode;
+   a_oMatrixExpressionNode.Name = p_sName;
+   a_oMatrixExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oMatrixExpressionNode.Cols = p_iCols;
+   a_oMatrixExpressionNode.Rows = p_iRows;
+   a_oMatrixExpressionNode.GenerateExpression( MatrixExpressionGenerator );
+   return a_oMatrixExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function MatrixArrayExpressionNode CreateMatrixArrayExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide,
+   int p_iCols,
+   int p_iRows,
+   int p_iCount
+
+   )
+{
+   MatrixArrayExpressionNode a_oMatrixArrayExpressionNode =
+      new MatrixArrayExpressionNode;
+   a_oMatrixArrayExpressionNode.Name = p_sName;
+   a_oMatrixArrayExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oMatrixArrayExpressionNode.Cols = p_iCols;
+   a_oMatrixArrayExpressionNode.Rows = p_iRows;
+   a_oMatrixArrayExpressionNode.Count = p_iCount;
+   a_oMatrixArrayExpressionNode.GenerateExpression( MatrixArrayExpressionGenerator );
+   return a_oMatrixArrayExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function StructExpressionNode CreateStructExpressionNode(
+
+   string p_sName,
+   int p_iExpressionSide,
+   string p_sStructTypeName
+
+   )
+{
+   StructExpressionNode a_oStructExpressionNode = new StructExpressionNode;
+   a_oStructExpressionNode.Name = p_sName;
+   a_oStructExpressionNode.ExpressionSide = p_iExpressionSide;
+   a_oStructExpressionNode.StructTypeName = p_sStructTypeName;
+   a_oStructExpressionNode.GenerateExpression( StructExpressionGenerator );
+   return a_oStructExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function GlslQualifierNode CreateGlslQualifierNode( int p_eQualifier )
+{
+   GlslQualifierNode a_oGlslQualifierNode = new GlslQualifierNode;
+   a_oGlslQualifierNode.Qualifier = p_eQualifier;
+   a_oGlslQualifierNode.Name = a_oGlslQualifierNode.GetQualifierName();
+   return a_oGlslQualifierNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void WireDeclaration(
+
+   VariableNode p_oLeft,
+   VariableExpressionNode p_oRight,
+   BinaryOperatorNode p_oBinaryOperatorNode
+
+   )
+{
+   p_oLeft.OperatorDataSource = p_oBinaryOperatorNode;
+   p_oRight.OperatorDataSource = p_oBinaryOperatorNode;
+   p_oBinaryOperatorNode.LeftDataSource = p_oLeft;
+   p_oBinaryOperatorNode.RightDataSource = p_oRight;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void WireExpression(
+
+   VariableExpressionNode p_oLeft,
+   VariableExpressionNode p_oRight,
+   BinaryOperatorNode p_oBinaryOperatorNode
+
+   )
+{
+   p_oLeft.OperatorDataSource = p_oBinaryOperatorNode;
+   p_oRight.OperatorDataSource = p_oBinaryOperatorNode;
+   p_oBinaryOperatorNode.LeftDataSource = p_oLeft;
+   p_oBinaryOperatorNode.RightDataSource = p_oRight;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddAssignmentExpressionToModel(
+
+   Group p_oSelectedGroup,
+   ExpressionNode p_oExpressionNode,
+   VariableExpressionNode p_oLeft,
+   BinaryOperatorNode p_oBinaryOperatorNode,
+   VariableExpressionNode p_oRight
+
+   )
+{
+   Model.AddNode( p_oLeft, p_oExpressionNode, -1 );
+   Model.AddNode( p_oBinaryOperatorNode, p_oExpressionNode, -1 );
+   Model.AddNode( p_oRight, p_oExpressionNode, -1 );
+   Model.AddNode( p_oExpressionNode, p_oSelectedGroup, -1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void AddExpressionToModel(
+
+   Group p_oSelectedGroup,
+   VariableExpressionNode p_oLeft,
+   BinaryOperatorNode p_oBinaryOperatorNode,
+   VariableExpressionNode p_oRight
+
+   )
+{
+   Model.AddNode( p_oLeft, p_oSelectedGroup, -1 );
+   Model.AddNode( p_oBinaryOperatorNode, p_oSelectedGroup, -1 );
+   Model.AddNode( p_oRight, p_oSelectedGroup, -1 );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function VariableExpressionNode CreateExpressionSide(
+
+   TypeInformation p_oTypeInformation,
+   string p_sName,
+   int p_iExpressionSide
+
+   )
+{
+   auto ExpressionInfo a_oScalarArrayExpressionInfo;
+   a_oScalarArrayExpressionInfo.Cols = 1;
+   a_oScalarArrayExpressionInfo.Rows = 1;
+   a_oScalarArrayExpressionInfo.ArrayCount = 4;
+
+   auto ExpressionInfo a_oVectorExpressionInfo;
+   a_oVectorExpressionInfo.Cols = 1;
+   a_oVectorExpressionInfo.Rows = 4;
+
+   auto ExpressionInfo a_oVectorArrayExpressionInfo;
+   a_oVectorExpressionInfo.Cols = 1;
+   a_oVectorExpressionInfo.Rows = 4;
+   a_oVectorExpressionInfo.ArrayCount = 4;
+
+   VariableExpressionNode a_oVariableExpressionNode =
+      (VariableExpressionNode)p_oTypeInformation.CreateObject();
+   a_oVariableExpressionNode.Name = p_sName;
+   a_oVariableExpressionNode.ExpressionSide = p_iExpressionSide;
+
+   if(   a_oVariableExpressionNode &&
+         a_oVariableExpressionNode.IsScalarArrayExpressionType() )
+   {
+      a_oVariableExpressionNode.SetParams( a_oScalarArrayExpressionInfo );
+   }
+   else
+   if(   a_oVariableExpressionNode &&
+         a_oVariableExpressionNode.IsVectorExpressionType() &&
+         !( a_oVariableExpressionNode.IsAnyArrayExpressionType() ) )
+   {
+      a_oVariableExpressionNode.SetParams( a_oVectorExpressionInfo );
+   }
+   else
+   if(   a_oVariableExpressionNode &&
+         a_oVariableExpressionNode.IsVectorArrayExpressionType() )
+   {
+      a_oVariableExpressionNode.SetParams( a_oVectorArrayExpressionInfo );
+   }
+
+   return a_oVariableExpressionNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int NewExpression(
+
+   TypeInformation p_oLeftType,
+   TypeInformation p_oRightType,
+   string p_sOperatorName,
+   int p_iOperatorType,
+   ExpressionInfo p_oExpressionInfo,
+   Group p_oParent
+
+   )
+{
+   // Create the left and right sides.
+   VariableExpressionNode a_oLeft = CreateExpressionSide( p_oLeftType, "Input A", 1 );
+   VariableExpressionNode a_oRight = CreateExpressionSide( p_oRightType, "Input B", 2 );
+   a_oLeft.SetParams( p_oExpressionInfo );
+   a_oRight.SetParams( p_oExpressionInfo );
+
+   // Create the operator.
+   BinaryOperatorNode a_oBinaryOperatorNode =
+      CreateBinaryOperatorNode( p_sOperatorName, p_iOperatorType );
+   a_oBinaryOperatorNode.Visible = true;
+
+   // Wire the expression.
+   WireExpression( a_oLeft, a_oRight, a_oBinaryOperatorNode );
+
+   // Add the expression to the document.
+   AddExpressionToModel(
+      p_oParent,
+      a_oLeft,
+      a_oBinaryOperatorNode,
+      a_oRight );
+
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int GetSamplerIndex( Group p_oSelGroup )
+{
+   int a_nSamplerTextureIndex = 0;
+   auto List a_lSamplerNodes;
+   Graph.GetNodesFromDatabase( p_oSelGroup, a_lSamplerNodes, SamplerNode );
+   // If any samplers are declared.
+   if( a_lSamplerNodes.GetCount() )
+   {
+      // For example: 2 samplers are already declared, which
+      // is index 0 and index 1. The sampler count is the new index.
+      a_nSamplerTextureIndex = a_lSamplerNodes.GetCount();
+   }
+
+   // Return index value;
+   return a_nSamplerTextureIndex;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool CreateBuiltInConstant( int p_nQueryDeviceParameter, string p_sVariableName )
+{
+   // MAX_ATOMIC_COUNTER_BINDINGS is nowhere to be found in GLEXT.H.
+   // The minimum value is 1, so we'll just set it to that.
+   if( p_sVariableName == "gl_MaxAtomicCounterBindings" )
+   {
+      int a_nMaxAtomicCounterBindings = 1;
+      IntegerNode a_oIntegerNode = CreateIntegerNode(
+         Enum.Binding_Constant(), p_sVariableName, a_nMaxAtomicCounterBindings );
+      a_oIntegerNode.ExportDisabled = true;
+
+      if( !( AddNodeByContext( a_oIntegerNode ) ) )
+      {
+         delete a_oIntegerNode;
+         return false;
+      }
+      
+      return true;
+   }
+
+   Render3D a_oRender3D = Model.ActiveView.Render;
+   auto IntArray a_aiValue;
+   a_aiValue.Count = 4;
+   a_oRender3D.QueryDeviceParameterInt( p_nQueryDeviceParameter, a_aiValue );
+
+   IntegerNode a_oIntegerNode = CreateIntegerNode(
+      Enum.Binding_Constant(), p_sVariableName, a_aiValue.Objects[0] );
+   a_oIntegerNode.QualifierList.ModifyQualifier( true, Enum.GLSL_Qualifier_Const() );
+   a_oIntegerNode.ExportDisabled = true;
+
+   if( !( AddNodeByContext( a_oIntegerNode ) ) )
+   {
+      delete a_oIntegerNode;
+      return false;
+   }
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GlBuiltInBooleanVariable( int p_eBinding, string p_sName )
+{
+   bool a_bInitialValue = false;
+   BooleanNode a_oBooleanNode = CreateBooleanNode( p_eBinding, p_sName, a_bInitialValue );
+   AddNodeByContext( a_oBooleanNode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GlBuiltInIntegerVariable( int p_eBinding, string p_sName, bool p_bFlat )
+{
+   int a_iInitialValue = 1;
+   IntegerNode a_oIntegerNode = CreateIntegerNode( p_eBinding, p_sName, a_iInitialValue );
+   if( p_bFlat )
+   {
+      a_oIntegerNode.QualifierList.ModifyQualifier( true, Enum.GLSL_Qualifier_Flat() );
+   }
+   a_oIntegerNode.Name = a_oIntegerNode.UpdateName();
+   AddNodeByContext( a_oIntegerNode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GlBuiltInIntegerArrayVariable(
+
+   int p_eBinding,
+   string p_sName,
+   int p_nArraySize,
+   bool p_bFlat
+
+   )
+{
+   auto IntArray a_aiArrayValues;
+   int a_nInitialVal = 0;
+   for( int i = 0; i < p_nArraySize - 1; ++i )
+   {
+      a_aiArrayValues.Add( a_nInitialVal );
+   }
+
+   IntegerArrayNode a_oIntegerArrayNode = CreateIntegerArrayNode( p_eBinding, p_sName, a_aiArrayValues );
+   if( p_bFlat )
+   {
+      a_oIntegerArrayNode.QualifierList.ModifyQualifier( true, Enum.GLSL_Qualifier_Flat() );
+   }
+
+   AddNodeByContext( a_oIntegerArrayNode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GlBuiltInFloatVariable(
+
+   int p_eBinding,
+   string p_sName,
+   double p_dInitialVal
+
+   )
+{
+   FloatNode a_oFloatNode = CreateFloatNode( p_eBinding, p_sName, p_dInitialVal );
+   AddNodeByContext( a_oFloatNode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GlBuiltInFloatArrayVariable(
+
+   int p_eBinding,
+   string p_sName,
+   int p_nArraySize
+
+   )
+{
+   auto VariantArray a_adArrayValues;
+   a_adArrayValues.Count = p_nArraySize;
+   for( int i = 0; i < a_adArrayValues.Count - 1; ++i )
+   {
+      a_adArrayValues.Objects[i].Double = 0.0;
+   }
+
+   FloatArrayNode a_oFloatArrayNode = CreateFloatArrayNode( p_eBinding, p_sName, a_adArrayValues );
+   AddNodeByContext( a_oFloatArrayNode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void GlBuiltInVectorVariable(
+
+   int p_eBinding,
+   string p_sName,
+   int p_iDimension
+
+   )
+{
+   auto Vec4 a_vVec4;
+   VectorNode a_oGlTessCoord = CreateVectorNode( Enum.Binding_Input(), p_sName, p_iDimension, a_vVec4 );
+   AddNodeByContext( a_oGlTessCoord );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateTessellationBuiltIn(
+
+   string p_sVariableName,
+   int p_iArraySize,
+   int p_eStorageQualifier
+
+   )
+{
+   auto VariantArray a_adArrayValues;
+   a_adArrayValues.Count = p_iArraySize;
+   for( int i = 0; i < a_adArrayValues.Count - 1; ++i )
+   {
+      a_adArrayValues.Objects[i].Double = 0.0;
+   }
+
+   FloatArrayNode a_oFloatArrayNode = CreateFloatArrayNode( Enum.Binding_Local(), p_sVariableName, a_adArrayValues );
+   a_oFloatArrayNode.QualifierList.ModifyQualifier( true, Enum.GLSL_Qualifier_Patch() );
+   a_oFloatArrayNode.QualifierList.ModifyQualifier( true, p_eStorageQualifier );
+   a_oFloatArrayNode.Name = a_oFloatArrayNode.UpdateName();
+   AddNodeByContext( a_oFloatArrayNode );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateGlInterfaceItems( List p_lItems )
+{
+   auto Vec4 a_vVec4;
+   VectorNode a_oGlPosition = CreateVectorNode( Enum.Binding_Local(), "gl_Position", 4, a_vVec4 );
+   FloatNode a_oGlPointSize = CreateFloatNode( Enum.Binding_Local(), "gl_PointSize", 0.0 );
+
+   auto VariantArray a_adArrayValues;
+   a_adArrayValues.Count = 0;
+   FloatArrayNode a_oGlClipDistance = CreateFloatArrayNode( Enum.Binding_Local(), "gl_ClipDistance", a_adArrayValues );
+
+   p_lItems.AddRef( a_oGlPosition );
+   p_lItems.AddRef( a_oGlPointSize );
+   p_lItems.AddRef( a_oGlClipDistance );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void WireInterfaceBlockDeclaration(
+
+   List p_lChildNodes,
+   InterfaceBlockNode p_oInterfaceBlockNode,
+   string p_sBlockName,
+   string p_sBlockInstanceName,
+   string p_sQualifier,
+   bool p_bIsImplicitlySizedArray
+
+   )
+{
+   p_oInterfaceBlockNode.Block.BlockName = p_sBlockName;
+   p_oInterfaceBlockNode.Block.BlockInstanceName = p_sBlockInstanceName;
+   p_oInterfaceBlockNode.Block.ArrayParameters.IsImplicitlySizedArray = p_bIsImplicitlySizedArray;
+
+   auto GlslQualifierNode a_oGlslQualifierNode;
+   int a_nQualifier = a_oGlslQualifierNode.GetQualifierIndexByName( p_sQualifier );
+   p_oInterfaceBlockNode.QualifierList.ModifyQualifier( true, a_nQualifier );
+   p_oInterfaceBlockNode.UpdateName();
+
+   if( p_lChildNodes && p_lChildNodes.GetCount() )
+   {
+      for( int a_nChild = 0; a_nChild < p_lChildNodes.GetCount(); ++a_nChild )
+      {
+         Node a_oChild = (Node)p_lChildNodes.Get( a_nChild );
+         p_oInterfaceBlockNode.AddChild( a_oChild );
+      }
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function InterfaceBlockNode CreateInterfaceBlockDeclaration(
+
+   List p_lChildNodes,
+   string p_sName,
+   string p_sBlockName,
+   string p_sBlockInstanceName,
+   string p_sQualifier,
+   bool p_bIsImplicitlySizedArray
+
+   )
+{
+   InterfaceBlockNode a_oInterfaceBlockNode = new InterfaceBlockNode;
+
+   WireInterfaceBlockDeclaration(
+      p_lChildNodes,
+      a_oInterfaceBlockNode,
+      p_sBlockName,
+      p_sBlockInstanceName,
+      p_sQualifier,
+      p_bIsImplicitlySizedArray );
+
+   BlockParams a_oBlockParams = a_oInterfaceBlockNode.Block;
+   string a_sName;
+   string a_sInstanceName = a_oBlockParams.GetInstanceNameString( "" );
+   if( a_oBlockParams.BlockInstanceName != "" && a_sInstanceName != "" )
+   {
+      a_sName += " " + a_sInstanceName;
+   }
+   else
+   {
+      a_sName = p_sBlockName;
+   }
+
+   return a_oInterfaceBlockNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function int CreateDeclarationForSampler(
+
+   Group p_oContainer,
+   SamplerNode p_oNewSampler,
+   bool p_bNewVariable,
+   string p_sVariableName
+
+   )
+{
+   // Create a new BinaryOperatorNode for assignment.
+   BinaryOperatorNode a_oBinaryOperatorNode = new BinaryOperatorNode;
+   a_oBinaryOperatorNode.Name = "Assign";
+
+   Node a_oLeft;
+   if( p_bNewVariable )
+   {
+      auto Vec4 a_oVec4;
+      DynamicVectorNode a_oLeftVectorNode = CreateDynamicVectorNode(
+         Enum.Binding_Local(),
+         p_sVariableName,
+         Enum.GLSL_DataType_Vec4(),
+         a_oVec4,
+         a_oBinaryOperatorNode );
+
+      a_oLeft = a_oLeftVectorNode;
+   }
+   else
+   {
+      VectorExpressionNode a_oLeftVectorExpressionNode =
+         CreateVectorExpressionNode(
+            "Input A",
+            Enum.ExpressionSide_Left(),
+            Enum.GLSL_DataType_Vec4() );
+
+      a_oLeft = a_oLeftVectorExpressionNode;
+   }
+
+   // Create a new right side expression.
+   string a_sFunctionName = "texture";
+   VectorExpressionNode a_oRightVectorExpressionNode =
+      CreateVectorExpressionNode(
+         a_sFunctionName,
+         Enum.ExpressionSide_Right(),
+         Enum.GLSL_DataType_Vec4() );
+
+   a_oRightVectorExpressionNode.MakeFunction();
+   a_oRightVectorExpressionNode.FunctionName = a_sFunctionName;
+
+   if( p_bNewVariable )
+   {
+       WireDeclaration( (VariableNode)a_oLeft,
+                        a_oRightVectorExpressionNode,
+                        a_oBinaryOperatorNode );
+   }
+   else
+   {
+      WireExpression(   (VariableExpressionNode)a_oLeft,
+                        a_oRightVectorExpressionNode,
+                        a_oBinaryOperatorNode );
+   }
+
+   SamplerExpressionNode a_oSamplerExpressionNode;
+   a_oSamplerExpressionNode = CreateSamplerExpressionNode( "Sampler Parameter",
+      Enum.ExpressionSide_None(), p_oNewSampler.SamplerType );
+   a_oSamplerExpressionNode.MakeFunctionParameter();
+   a_oSamplerExpressionNode.DataSource = p_oNewSampler;
+   a_oSamplerExpressionNode.AddCodeObject( p_oNewSampler.Variable, p_oNewSampler.GetPathToNode(),
+      p_oNewSampler.GetModel().Filename, 0, 0, 0 );
+
+   a_oSamplerExpressionNode.GenerateExpression( SamplerExpressionGenerator );
+   Model.AddNode( a_oSamplerExpressionNode, a_oRightVectorExpressionNode, -1 );
+
+   if( p_oNewSampler.SamplerType == Enum.Sampler2D() )
+   {
+      VectorExpressionNode a_oTextureCoordinatesExpressionNode =
+         CreateVectorExpressionNode( "Texture Coordinates", Enum.ExpressionSide_None(), Enum.GLSL_DataType_Vec2() );
+      a_oTextureCoordinatesExpressionNode.MakeFunctionParameter();
+      Model.AddNode( a_oTextureCoordinatesExpressionNode, a_oRightVectorExpressionNode, -1 );
+   }
+   else
+   if( p_oNewSampler.SamplerType == Enum.Sampler2DArray() || p_oNewSampler.SamplerType == Enum.SamplerCube() )
+   {
+      VectorExpressionNode a_oTextureCoordinatesExpressionNode =
+         CreateVectorExpressionNode( "Texture Coordinates", Enum.ExpressionSide_None(), Enum.GLSL_DataType_Vec3() );
+      a_oTextureCoordinatesExpressionNode.MakeFunctionParameter();
+      Model.AddNode( a_oTextureCoordinatesExpressionNode, a_oRightVectorExpressionNode, -1 );
+   }
+
+   Model.AddNode( a_oLeft, p_oContainer, -1 );
+   Model.AddNode( a_oBinaryOperatorNode, p_oContainer, -1 );
+   Model.AddNode( a_oRightVectorExpressionNode, p_oContainer, -1 );
+   return 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool SetStructInstanceDataSource(
+
+   Model3D p_oModel,
+   StructInstanceNode p_oStructInstanceNode,
+   StructNode p_oStructDataSource
+
+   )
+{
+   if( p_oStructDataSource.GetModel().Filename != p_oModel.Filename )
+   {
+      p_oStructInstanceNode.NodeSelector.SetContainer( p_oModel );
+      p_oStructInstanceNode.NodeSelector.AddNode( p_oModel, p_oStructDataSource );
+   }
+   else
+   {
+      p_oStructInstanceNode.StructDeclaration = p_oStructDataSource;
+   }
+
+   p_oStructInstanceNode.Name = p_oStructInstanceNode.GetDeclarationString();
+
+   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function void CreateStructInstanceDeclaration(
+
+   StructNode p_oStructDataSource,
+   bool p_bIsArray,
+   string p_sArray
+
+   )
+{
+   if( !( p_oStructDataSource ) )
+   {
+      return;
+   }
+
+   List nodes = new List;
+
+   ValidateNodeCreateContext.CreateNodes(
+      Model,
+      DeclarationNode,
+      "Declare Struct Instance " + p_sArray,
+      nodes,
+      -1 );
+
+   DeclarationNode a_oDeclarationNode;
+   for( int node = 0; node < nodes.GetCount(); ++node )
+   {
+      a_oDeclarationNode = (DeclarationNode)nodes.Get(node);
+      a_oDeclarationNode.DeclarationType = Enum.DeclarationType_StructInstance();
+   }
+
+   StructInstanceNode a_oStructInstanceNode = new StructInstanceNode;
+   a_oStructInstanceNode.Variable = "myStructInstance";
+
+   if( p_bIsArray )
+   {
+      a_oStructInstanceNode.IsArray = true;
+   }
+
+   SetStructInstanceDataSource(
+      Model,
+      a_oStructInstanceNode,
+      p_oStructDataSource );
+
+   // Create a BinaryOperatorNode
+   BinaryOperatorNode a_oBinaryOperatorNode = new BinaryOperatorNode;
+   a_oBinaryOperatorNode.Name = "Assign";
+   a_oBinaryOperatorNode.Operator = Enum.BinaryOperator_Assign();
+
+   // Create a StructExpressionNode
+   StructExpressionNode a_oStructExpressionNode =
+      Create.CreateStructExpressionNode( "Struct Expression", Enum.ExpressionSide_Right(), "" );
+   a_oStructExpressionNode.NodeSelector.SetContainer( Model );
+   a_oStructExpressionNode.MakeExpression();
+   a_oStructExpressionNode.StructTypeName = p_oStructDataSource.Block.BlockName;
+   a_oStructExpressionNode.Visible = true;
+   if( p_bIsArray )
+   {
+      a_oStructExpressionNode.IsArray = true;
+   }
+   a_oStructExpressionNode.GenerateExpression( StructExpressionGenerator );
+
+   // Wire the expression.
+   Create.WireDeclaration( a_oStructInstanceNode,
+                           a_oStructExpressionNode,
+                           a_oBinaryOperatorNode );
+
+   // Add the complete declaration to the model.
+   Model.AddNode( a_oStructInstanceNode, a_oDeclarationNode, -1 );
+   Model.AddNode( a_oBinaryOperatorNode, a_oDeclarationNode, -1 );
+   Model.AddNode( a_oStructExpressionNode, a_oDeclarationNode, -1 );
+
+   delete nodes;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool CreateStructInstanceDeclarationExpression(
+
+   bool p_bIsArray,
+   Node p_oIsStructDeclaration
+
+   )
+{
+   if( !( p_oIsStructDeclaration.IsDerived( StructNode ) ) )
+   {
+      return false;
+   }
+
+   StructNode a_oStructNode = (StructNode)p_oIsStructDeclaration;
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+
+   if( a_oSelNode && a_oSelNode.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)a_oSelNode;
+      string a_sArrayNameModifier = "";
+      if( p_bIsArray )
+      {
+         a_sArrayNameModifier = "Array";
+      }
+
+      Create.CreateStructInstanceDeclaration(
+         a_oStructNode,
+         p_bIsArray,
+         a_sArrayNameModifier );
+
+      return true;
+   }
+
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool CreateStructFunctionDeclarationExpression(
+
+   bool p_bIsArray,
+   Node p_oIsStructDeclaration
+
+   )
+{
+   if( !( p_oIsStructDeclaration.IsDerived( StructNode ) ) )
+   {
+      return false;
+   }
+
+   StructNode a_oStructNode = (StructNode)p_oIsStructDeclaration;
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+   auto ExpressionInfo a_oArrayInfo;
+   a_oArrayInfo.Cols = 1;
+   a_oArrayInfo.Rows = 1;
+   a_oArrayInfo.ArrayCount = 4;
+
+   if( a_oSelNode && a_oSelNode.IsDerived( Group ) )
+   {
+      Group a_oGroup = (Group)a_oSelNode;
+      string a_sArrayNameModifier = "";
+      string a_sArrayTypeModifer = "";
+
+      if( p_bIsArray )
+      {
+         a_sArrayNameModifier = "Array";
+         a_sArrayTypeModifer += "[4]";
+      }
+
+      StructExpressionNode a_oStructFunctionDeclaration = new StructExpressionNode;
+      a_oStructFunctionDeclaration.MakeFunctionDeclaration();
+      a_oStructFunctionDeclaration.FunctionName = "MyFunction";
+      a_oStructFunctionDeclaration.NodeSelector.SetContainer( Model );
+      a_oStructFunctionDeclaration.StructTypeName = a_oStructNode.Block.BlockName;
+      a_oStructFunctionDeclaration.Visible = true;
+      a_oStructFunctionDeclaration.Name = a_oStructFunctionDeclaration.StructTypeName +
+         a_sArrayTypeModifer + " " + a_oStructFunctionDeclaration.FunctionName;
+      if( p_bIsArray )
+      {
+         a_oStructFunctionDeclaration.IsArray = true;
+         a_oStructFunctionDeclaration.ArrayDimension = 4;
+      }
+
+      ParameterListNode a_oFunctionParameterList = new ParameterListNode;
+      a_oFunctionParameterList.Name = "Parameters";
+      a_oStructFunctionDeclaration.AddChild( a_oFunctionParameterList );
+
+      StatementBlockNode a_oBody = new StatementBlockNode;
+      a_oBody.Name = "Body";
+      a_oStructFunctionDeclaration.AddChild( a_oBody );
+
+      StructInstanceNode a_oStructInstanceNode = new StructInstanceNode;
+      a_oStructInstanceNode.Variable = "myStructInstance";
+
+      if( p_bIsArray )
+      {
+         a_oStructInstanceNode.IsArray = true;
+         a_oStructInstanceNode.ArrayDimension = 4;
+      }
+      SetStructInstanceDataSource( Model, a_oStructInstanceNode, a_oStructNode );
+      a_oBody.AddChild( a_oStructInstanceNode );
+
+      StructExpressionNode a_oStructFunctionReturn = new StructExpressionNode;
+      a_oStructFunctionReturn.Name = "Return";
+      a_oStructFunctionReturn.MakeReturn();
+      a_oStructFunctionReturn.StructTypeName = a_oStructNode.Block.BlockName;
+      a_oStructFunctionReturn.DataSource = a_oStructInstanceNode;
+      if( p_bIsArray )
+      {
+         a_oStructFunctionReturn.IsArray = true;
+         a_oStructFunctionReturn.ArrayDimension = 4;
+      }
+
+      Model.AddNode( a_oStructFunctionDeclaration, a_oGroup, -1 );
+
+      auto List a_lCodeObjects;
+      auto StrList a_slMemberNames;
+      auto IntArray a_aiArrayDimensions;
+      a_lCodeObjects.AddRef( a_oStructInstanceNode );
+      a_slMemberNames.Add( a_oStructInstanceNode.Variable );
+      a_aiArrayDimensions.Add( 0 );
+
+      a_oStructFunctionReturn.NodeSelector.SetContainer( Model );
+      a_oStructFunctionReturn.NodeSelector.AddInfo( a_oSelNode,
+         a_lCodeObjects, a_slMemberNames, a_aiArrayDimensions );
+
+      // Reconstruct the path to the node because
+      // it hasn't been added to the model yet.
+      // ( We can't use a_oStructInstanceNode.GetPathToNode() )
+      string a_sPathToNode = a_oGroup.GetPathToNode();
+      a_sPathToNode += "/";
+      a_sPathToNode += a_oStructFunctionDeclaration.Name;
+      a_sPathToNode += "/";
+      a_sPathToNode += a_oBody.Name;
+      a_sPathToNode += "/";
+      a_sPathToNode += a_oStructInstanceNode.Name;
+
+      int a_iArrayAddress;
+      for( int a_nInfo = 0; a_nInfo < a_slMemberNames.GetCount(); ++a_nInfo )
+      {
+         a_oStructFunctionReturn.AddCodeObject(
+            a_slMemberNames.GetAt( a_nInfo ),
+            a_sPathToNode,
+            Model.Filename,
+            a_aiArrayDimensions.Objects[ a_nInfo ],
+            a_iArrayAddress,
+            true );
+      }
+      
+      a_oStructFunctionReturn.Expression =
+         a_oStructFunctionReturn.GenerateExpression( StructExpressionGenerator );
+      a_oBody.AddChild( a_oStructFunctionReturn );
+
+
+      return true;
+   }
+
+   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// function
+////////////////////////////////////////////////////////////////////////////////
+
+function bool CreateStructInstanceVariable( bool p_bIsArray, Node p_oIsStructDeclaration )
+{
+   if( !( p_oIsStructDeclaration.IsDerived( StructNode ) ) )
+   {
+      return false;
+   }
+
+   StructNode a_oStructNode = (StructNode)p_oIsStructDeclaration;
+   Node a_oSelNode = (Node)Model.GetFirstSelectedNode().GetNode();
+
+   if( a_oSelNode && a_oSelNode.IsDerived( StructInstanceNode ) )
+   {
+      StructInstanceNode a_oStructInstanceNode = (StructInstanceNode)a_oSelNode;
+      SetStructInstanceDataSource( Model, a_oStructInstanceNode,
+         (StructNode)p_oIsStructDeclaration );
+      a_oStructInstanceNode.Name = a_oStructInstanceNode.GetDeclarationString();
+      string a_sName = a_oStructInstanceNode.Name;
+      StructInstanceNode a_oTemp = (StructInstanceNode)Model.EditNode( a_oSelNode );
+      a_oTemp.Name = a_sName;
+      auto List a_lReferences = a_oStructInstanceNode.GetReferences( BinaryOperatorNode );
+      // DEBUG
+      //SpaListUtil.Out( a_lReferences );
+
+      // Iterate the references, checking for BinaryOperatoNodes that indicate
+      // the StructInstanceNode is being used in an expression.
+      BinaryOperatorNode a_oBinaryOperatorNode;
+
+      for( int a_nRef = 0; a_nRef < a_lReferences.GetCount(); ++a_nRef )
+      {
+         Node a_oRefNode = (Node)a_lReferences.Get( a_nRef );
+         if( a_oRefNode && a_oRefNode.IsDerived( BinaryOperatorNode ) )
+         {
+            a_oBinaryOperatorNode = (BinaryOperatorNode)a_oRefNode;
+            Node a_oLeftDataSource = (Node)a_oBinaryOperatorNode.LeftOperand;
+            if( a_oLeftDataSource && a_oLeftDataSource == (Node)a_oStructInstanceNode )
+            {
+               break;
+            }
+         }
+      }
+
+      if( a_oBinaryOperatorNode )
+      {
+         Node a_oIsRight = (Node)a_oBinaryOperatorNode.RightOperand;
+         if( a_oIsRight && a_oIsRight.IsDerived( StructExpressionNode ) )
+         {
+            StructExpressionNode a_oStructExpressionNode =
+                  (StructExpressionNode)Model.EditNode( a_oIsRight );
+            a_oStructExpressionNode.StructTypeName = a_oStructNode.Block.BlockName;
+         }
+      }
+   }
+   else
+   {
+      Group a_oGroup = (Group)a_oSelNode;
+      StructInstanceNode a_oStructInstanceNode = new StructInstanceNode;
+      if( p_bIsArray )
+      {
+         a_oStructInstanceNode.IsArray = true;
+         a_oStructInstanceNode.ArrayDimension = 2;
+      }
+      a_oStructInstanceNode.Variable = "instance";
+
+      SetStructInstanceDataSource( Model, a_oStructInstanceNode,
+         (StructNode)p_oIsStructDeclaration );
+      Model.AddNode( a_oStructInstanceNode, a_oGroup, -1 );
+   }
+
+   return true;
+}
